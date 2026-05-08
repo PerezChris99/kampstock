@@ -36,7 +36,7 @@ export default function PurchaseOrdersPage() {
                   <td className="px-5 py-3 font-medium">{o.poNumber}</td>
                   <td className="px-5 py-3">{o.supplier?.name}</td>
                   <td className="px-5 py-3 text-gray-500">
-                    {new Date(o.orderDate).toLocaleDateString()}
+                    {o.orderedDate ? new Date(o.orderedDate).toLocaleDateString() : '—'}
                   </td>
                   <td className="px-5 py-3">
                     <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[o.status] ?? ''}`}>
