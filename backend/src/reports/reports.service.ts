@@ -110,4 +110,107 @@ export class ReportsService {
       salesCount: sales.length,
     };
   }
+
+  async salesTrend(days = 30) {
+    const results: { date: string; total: number; count: number }[] = [];
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      const start = new Date(`${dateStr}T00:00:00`);
+      const end = new Date(`${dateStr}T23:59:59`);
+      const sales = await this.prisma.sale.findMany({ where: { createdAt: { gte: start, lte: end }, status: 'COMPLETED' }, select: { grandTotal: true } });
+      results.push({ date: dateStr, total: sales.reduce((s, sale) => s + Number(sale.grandTotal), 0), count: sales.length });
+    }
+    return results;
+  }
+
+  async topProducts(limit = 10, days = 30) {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - days);
+    const lines = await this.prisma.saleLine.findMany({
+      where: { sale: { createdAt: { gte: cutoff }, status: 'COMPLETED' } },
+      include: { product: { select: { name: true, sku: true } } },
+    });
+    const map: Record<number, { productName: string; sku: string; revenue: number; quantity: number; profit: number }> = {};
+    for (const l of lines) {
+      if (!map[l.productId]) map[l.productId] = { productName: l.product.name, sku: l.product.sku, revenue: 0, quantity: 0, profit: 0 };
+      map[l.productId].revenue += Number(l.lineTotal);
+      map[l.productId].quantity += Number(l.quantity);
+      map[l.productId].profit += (Number(l.unitPrice) - Number(l.costPrice)) * Number(l.quantity);
+    }
+    return Object.values(map).sort((a, b) => b.revenue - a.revenue).slice(0, limit);
+  }
+
+  async paymentBreakdown(days = 30) {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - days);
+    const payments = await this.prisma.payment.findMany({
+      where: { receivedAt: { gte: cutoff } },
+      select: { paymentMethod: true, amount: true },
+    });
+    const map: Record<string, number> = {};
+    for (const p of payments) {
+      map[p.paymentMethod] = (map[p.paymentMethod] ?? 0) + Number(p.amount);
+    }
+    return Object.entries(map).map(([method, total]) => ({ method, total }));
+  }
+
+  async categorySales(days = 30) {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - days);
+    const lines = await this.prisma.saleLine.findMany({
+      where: { sale: { createdAt: { gte: cutoff }, status: 'COMPLETED' } },
+      include: { product: { include: { category: true } } },
+    });
+    const map: Record<string, { category: string; revenue: number; quantity: number }> = {};
+    for (const l of lines) {
+      const cat = l.product.category?.name ?? 'Uncategorised';
+      if (!map[cat]) map[cat] = { category: cat, revenue: 0, quantity: 0 };
+      map[cat].revenue += Number(l.lineTotal);
+      map[cat].quantity += Number(l.quantity);
+    }
+    return Object.values(map).sort((a, b) => b.revenue - a.revenue);
+  }
+
+  async monthlySummary(months = 6) {
+    const results: Awaited<ReturnType<typeof this.monthlyProfitSummary>>[] = [];
+    const now = new Date();
+    for (let i = months - 1; i >= 0; i--) {
+      const year = now.getFullYear();
+      const month = now.getMonth() + 1 - i;
+      const actualYear = month <= 0 ? year - 1 : year;
+      const actualMonth = month <= 0 ? 12 + month : month;
+      const data = await this.monthlyProfitSummary(actualYear, actualMonth);
+      results.push(data);
+    }
+    return results;
+  }
+
+  async kpiOverview() {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterdayStart = new Date(todayStart); yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+    const yesterdayEnd = new Date(todayStart); yesterdayEnd.setMilliseconds(-1);
+
+    const [todaySales, yesterdaySales, lowStockItems, allStock] = await Promise.all([
+      this.prisma.sale.findMany({ where: { createdAt: { gte: todayStart }, status: 'COMPLETED' }, select: { grandTotal: true } }),
+      this.prisma.sale.findMany({ where: { createdAt: { gte: yesterdayStart, lte: yesterdayEnd }, status: 'COMPLETED' }, select: { grandTotal: true } }),
+      this.prisma.stockItem.count({ where: { quantityOnHand: { lte: 10 } } }),
+      this.prisma.stockItem.findMany({ include: { product: { include: { units: { where: { isDefault: true } } } } } }),
+    ]);
+
+    const todayTotal = todaySales.reduce((s, sale) => s + Number(sale.grandTotal), 0);
+    const yesterdayTotal = yesterdaySales.reduce((s, sale) => s + Number(sale.grandTotal), 0);
+    const totalStockValue = allStock.reduce((sum, item) => sum + Number(item.lastCostPrice) * Number(item.quantityOnHand), 0);
+
+    return {
+      todaySales: todayTotal,
+      todayTransactions: todaySales.length,
+      yesterdaySales: yesterdayTotal,
+      salesGrowth: yesterdayTotal > 0 ? ((todayTotal - yesterdayTotal) / yesterdayTotal) * 100 : 0,
+      lowStockCount: lowStockItems,
+      totalStockValue,
+    };
+  }
 }

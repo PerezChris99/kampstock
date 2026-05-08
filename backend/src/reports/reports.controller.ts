@@ -34,4 +34,40 @@ export class ReportsController {
       month ? parseInt(month) : now.getMonth() + 1,
     );
   }
+
+  @Get('sales-trend')
+  @Roles('Admin', 'Manager', 'Cashier')
+  salesTrend(@Query('days') days?: string) {
+    return this.reportsService.salesTrend(days ? parseInt(days) : 30);
+  }
+
+  @Get('top-products')
+  @Roles('Admin', 'Manager')
+  topProducts(@Query('limit') limit?: string, @Query('days') days?: string) {
+    return this.reportsService.topProducts(limit ? parseInt(limit) : 10, days ? parseInt(days) : 30);
+  }
+
+  @Get('payment-breakdown')
+  @Roles('Admin', 'Manager', 'Cashier')
+  paymentBreakdown(@Query('days') days?: string) {
+    return this.reportsService.paymentBreakdown(days ? parseInt(days) : 30);
+  }
+
+  @Get('category-sales')
+  @Roles('Admin', 'Manager')
+  categorySales(@Query('days') days?: string) {
+    return this.reportsService.categorySales(days ? parseInt(days) : 30);
+  }
+
+  @Get('monthly-summary')
+  @Roles('Admin', 'Manager')
+  monthlySummary(@Query('months') months?: string) {
+    return this.reportsService.monthlySummary(months ? parseInt(months) : 6);
+  }
+
+  @Get('kpi-overview')
+  @Roles('Admin', 'Manager', 'Cashier')
+  kpiOverview() {
+    return this.reportsService.kpiOverview();
+  }
 }
