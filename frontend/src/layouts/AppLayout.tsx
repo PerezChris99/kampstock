@@ -15,6 +15,7 @@ const navItems = [
   { to: '/suppliers', label: 'Suppliers', icon: Truck },
   { to: '/purchase-orders', label: 'Purchase Orders', icon: ClipboardList },
   { to: '/customers', label: 'Customers', icon: Users },
+  { to: '/sales', label: 'Sales History', icon: Receipt },
   { to: '/expenses', label: 'Expenses', icon: Receipt },
   { to: '/reports', label: 'Reports', icon: BarChart3 },
   { to: '/users', label: 'Users', icon: Settings },

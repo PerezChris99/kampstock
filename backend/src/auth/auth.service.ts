@@ -24,7 +24,7 @@ export class AuthService {
 
   /** Per-username brute-force tracking (in-memory, suitable for single-instance) */
   private readonly attempts = new Map<string, AttemptRecord>();
-  private readonly MAX_ATTEMPTS = 5;
+  private readonly MAX_ATTEMPTS = process.env.NODE_ENV === 'production' ? 5 : 100;
   private readonly LOCKOUT_MS = 15 * 60 * 1000; // 15 minutes
 
   private checkLock(key: string): void {

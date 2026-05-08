@@ -83,12 +83,16 @@ async function bootstrap() {
   app.useGlobalFilters(new GlobalExceptionFilter(httpAdapterHost));
 
   // ── CORS ──────────────────────────────────────────────────────────────────────
-  const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:5173,http://localhost:5174').split(',').map(o => o.trim());
+  const allowedOrigins = (process.env.ALLOWED_ORIGINS || '').split(',').map(o => o.trim()).filter(Boolean);
   app.enableCors({
     origin: (origin, callback) => {
       // Allow server-to-server (no origin) in dev; block in prod
       if (!origin) {
         return callback(null, !isProd);
+      }
+      // In dev: allow any localhost port; in prod: use ALLOWED_ORIGINS list
+      if (!isProd && /^https?:\/\/localhost(:\d+)?$/.test(origin)) {
+        return callback(null, true);
       }
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
