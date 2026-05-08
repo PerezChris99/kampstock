@@ -1,11 +1,13 @@
-﻿import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '../src/generated/client/client';
+import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3';
 import * as bcrypt from 'bcryptjs';
 
-const prisma = new PrismaClient();
+const adapter = new PrismaBetterSqlite3({ url: process.env.DATABASE_URL || 'file:./prisma/dev.db' });
+const prisma = new PrismaClient({ adapter } as any);
 
 // Realistic Kampala wholesale/retail product catalog
 const PRODUCT_CATALOG = [
-  // â”€â”€â”€ FOOD STAPLES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // --- FOOD STAPLES ---
   { name: 'Sugar (1kg)', sku: 'SUG-001', cat: 'Food Staples', brand: 'Kakira', buying: 3500, retail: 4000, wholesale: 3700, minWQty: 10, stock: 280, reorder: 50, unit: 'Kg' },
   { name: 'Sugar (2kg)', sku: 'SUG-002', cat: 'Food Staples', brand: 'Kakira', buying: 6800, retail: 7500, wholesale: 7200, minWQty: 6, stock: 150, reorder: 30, unit: 'Packet' },
   { name: 'Sugar (50kg Bag)', sku: 'SUG-050', cat: 'Food Staples', brand: 'Kakira', buying: 155000, retail: 170000, wholesale: 163000, minWQty: 1, stock: 12, reorder: 4, unit: 'Bag' },
@@ -30,7 +32,7 @@ const PRODUCT_CATALOG = [
   { name: 'Milk Dairy Farm UHT (500ml)', sku: 'MLK-001', cat: 'Food Staples', brand: 'Dairy Farm', buying: 1800, retail: 2200, wholesale: 2000, minWQty: 24, stock: 120, reorder: 30, unit: 'Carton' },
   { name: 'Eggs (Tray 30pcs)', sku: 'EGG-030', cat: 'Food Staples', brand: 'Fresh Farm', buying: 12000, retail: 14000, wholesale: 13200, minWQty: 2, stock: 18, reorder: 5, unit: 'Tray' },
 
-  // â”€â”€â”€ BEVERAGES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // --- BEVERAGES ---
   { name: 'Coca-Cola (300ml)', sku: 'CCL-300', cat: 'Beverages', brand: 'Coca-Cola', buying: 1100, retail: 1500, wholesale: 1300, minWQty: 24, stock: 240, reorder: 48, unit: 'Bottle' },
   { name: 'Coca-Cola (500ml)', sku: 'CCL-500', cat: 'Beverages', brand: 'Coca-Cola', buying: 1500, retail: 2000, wholesale: 1800, minWQty: 24, stock: 180, reorder: 40, unit: 'Bottle' },
   { name: 'Pepsi (300ml)', sku: 'PEP-300', cat: 'Beverages', brand: 'Pepsi', buying: 1000, retail: 1400, wholesale: 1200, minWQty: 24, stock: 200, reorder: 48, unit: 'Bottle' },
@@ -45,7 +47,7 @@ const PRODUCT_CATALOG = [
   { name: 'Tea Leaves Lipton (100g)', sku: 'TEA-001', cat: 'Beverages', brand: 'Lipton', buying: 2500, retail: 3000, wholesale: 2800, minWQty: 12, stock: 80, reorder: 20, unit: 'Pack' },
   { name: 'Coffee Nescafe Sachet', sku: 'COF-001', cat: 'Beverages', brand: 'Nescafe', buying: 350, retail: 500, wholesale: 430, minWQty: 48, stock: 250, reorder: 60, unit: 'Sachet' },
 
-  // â”€â”€â”€ PERSONAL CARE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // --- PERSONAL CARE ---
   { name: 'Bar Soap Geisha (175g)', sku: 'SOP-001', cat: 'Personal Care', brand: 'Geisha', buying: 1400, retail: 1800, wholesale: 1600, minWQty: 24, stock: 160, reorder: 40, unit: 'Bar' },
   { name: 'Bar Soap Key (800g)', sku: 'SOP-002', cat: 'Personal Care', brand: 'Key', buying: 3000, retail: 3500, wholesale: 3200, minWQty: 20, stock: 100, reorder: 25, unit: 'Bar' },
   { name: 'Shampoo Sunsilk (200ml)', sku: 'SHP-001', cat: 'Personal Care', brand: 'Sunsilk', buying: 5500, retail: 6500, wholesale: 6000, minWQty: 12, stock: 45, reorder: 10, unit: 'Bottle' },
@@ -57,7 +59,7 @@ const PRODUCT_CATALOG = [
   { name: 'Sanitary Pads Always (8pcs)', sku: 'SAN-001', cat: 'Personal Care', brand: 'Always', buying: 3500, retail: 4200, wholesale: 3900, minWQty: 12, stock: 65, reorder: 15, unit: 'Pack' },
   { name: 'Razor Blade Gillette', sku: 'RZR-001', cat: 'Personal Care', brand: 'Gillette', buying: 800, retail: 1200, wholesale: 1000, minWQty: 24, stock: 100, reorder: 30, unit: 'Pack' },
 
-  // â”€â”€â”€ HOUSEHOLD ITEMS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // --- HOUSEHOLD ITEMS ---
   { name: 'Detergent Omo (500g)', sku: 'DET-001', cat: 'Household', brand: 'Omo', buying: 3000, retail: 3800, wholesale: 3500, minWQty: 12, stock: 80, reorder: 20, unit: 'Pack' },
   { name: 'Detergent Ariel (1kg)', sku: 'DET-002', cat: 'Household', brand: 'Ariel', buying: 6500, retail: 7800, wholesale: 7200, minWQty: 6, stock: 50, reorder: 12, unit: 'Pack' },
   { name: 'Fabric Softener Comfort (1L)', sku: 'FAB-001', cat: 'Household', brand: 'Comfort', buying: 7000, retail: 8500, wholesale: 7800, minWQty: 6, stock: 30, reorder: 8, unit: 'Bottle' },
@@ -71,7 +73,7 @@ const PRODUCT_CATALOG = [
   { name: 'Broom (Local)', sku: 'BRM-001', cat: 'Household', brand: 'Local', buying: 3500, retail: 5000, wholesale: 4500, minWQty: 5, stock: 20, reorder: 5, unit: 'Piece' },
   { name: 'Plastic Bucket 20L', sku: 'BCK-001', cat: 'Household', brand: 'Nile Plastics', buying: 8000, retail: 12000, wholesale: 10500, minWQty: 3, stock: 15, reorder: 4, unit: 'Piece' },
 
-  // â”€â”€â”€ SNACKS & CONFECTIONERY â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // --- SNACKS & CONFECTIONERY ---
   { name: 'Biscuits Digestive (200g)', sku: 'BSC-001', cat: 'Snacks', brand: 'Nice', buying: 2500, retail: 3000, wholesale: 2800, minWQty: 12, stock: 80, reorder: 20, unit: 'Pack' },
   { name: 'Crisps Pringles (165g)', sku: 'CRP-001', cat: 'Snacks', brand: 'Pringles', buying: 4500, retail: 5500, wholesale: 5000, minWQty: 6, stock: 40, reorder: 10, unit: 'Can' },
   { name: 'Groundnuts Roasted (250g)', sku: 'GNT-001', cat: 'Snacks', brand: 'Local', buying: 2000, retail: 2800, wholesale: 2500, minWQty: 20, stock: 100, reorder: 25, unit: 'Pack' },
@@ -79,7 +81,7 @@ const PRODUCT_CATALOG = [
   { name: 'Chocolate Cadbury (50g)', sku: 'CHC-001', cat: 'Snacks', brand: 'Cadbury', buying: 1800, retail: 2500, wholesale: 2200, minWQty: 24, stock: 90, reorder: 20, unit: 'Bar' },
   { name: 'Chewing Gum Orbit (14stk)', sku: 'GUM-001', cat: 'Snacks', brand: 'Orbit', buying: 800, retail: 1200, wholesale: 1000, minWQty: 30, stock: 150, reorder: 40, unit: 'Pack' },
 
-  // â”€â”€â”€ STATIONERY â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // --- STATIONERY ---
   { name: 'Exercise Book 32pg', sku: 'EXB-032', cat: 'Stationery', brand: 'Superior', buying: 500, retail: 700, wholesale: 600, minWQty: 50, stock: 250, reorder: 60, unit: 'Piece' },
   { name: 'Exercise Book 96pg', sku: 'EXB-096', cat: 'Stationery', brand: 'Superior', buying: 1200, retail: 1500, wholesale: 1350, minWQty: 20, stock: 150, reorder: 40, unit: 'Piece' },
   { name: 'Pen Biro Blue', sku: 'PEN-001', cat: 'Stationery', brand: 'Bic', buying: 300, retail: 500, wholesale: 400, minWQty: 50, stock: 300, reorder: 80, unit: 'Piece' },
@@ -88,7 +90,7 @@ const PRODUCT_CATALOG = [
   { name: 'Eraser Staedtler', sku: 'ERS-001', cat: 'Stationery', brand: 'Staedtler', buying: 300, retail: 500, wholesale: 400, minWQty: 30, stock: 120, reorder: 30, unit: 'Piece' },
   { name: 'Manila Paper A4 (80gsm 500sht)', sku: 'PAP-001', cat: 'Stationery', brand: 'Double A', buying: 18000, retail: 22000, wholesale: 20000, minWQty: 2, stock: 25, reorder: 5, unit: 'Ream' },
 
-  // â”€â”€â”€ AIRTIME & MOBILE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // --- AIRTIME & MOBILE ---
   { name: 'MTN Airtime UGX 1,000', sku: 'ATN-MTN-1K', cat: 'Airtime & Mobile', brand: 'MTN', buying: 950, retail: 1000, wholesale: 980, minWQty: 100, stock: 500, reorder: 100, unit: 'Card' },
   { name: 'MTN Airtime UGX 2,000', sku: 'ATN-MTN-2K', cat: 'Airtime & Mobile', brand: 'MTN', buying: 1900, retail: 2000, wholesale: 1960, minWQty: 50, stock: 300, reorder: 60, unit: 'Card' },
   { name: 'Airtel Airtime UGX 1,000', sku: 'ATN-ART-1K', cat: 'Airtime & Mobile', brand: 'Airtel', buying: 950, retail: 1000, wholesale: 980, minWQty: 100, stock: 450, reorder: 100, unit: 'Card' },
@@ -96,7 +98,7 @@ const PRODUCT_CATALOG = [
   { name: 'Phone Charging Cable USB-C', sku: 'CBL-001', cat: 'Airtime & Mobile', brand: 'Generic', buying: 3500, retail: 6000, wholesale: 5000, minWQty: 5, stock: 30, reorder: 8, unit: 'Piece' },
   { name: 'Earphones Basic 3.5mm', sku: 'EAR-001', cat: 'Airtime & Mobile', brand: 'Generic', buying: 4000, retail: 7000, wholesale: 6000, minWQty: 5, stock: 20, reorder: 5, unit: 'Piece' },
 
-  // â”€â”€â”€ AGRO & SPECIAL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // --- AGRO & SPECIAL ---
   { name: 'Charcoal (Bag 5kg)', sku: 'CHR-005', cat: 'Fuel & Energy', brand: 'Local', buying: 8000, retail: 12000, wholesale: 10500, minWQty: 3, stock: 20, reorder: 6, unit: 'Bag' },
   { name: 'Kerosene (1L)', sku: 'KER-001', cat: 'Fuel & Energy', brand: 'Shell', buying: 4000, retail: 5500, wholesale: 5000, minWQty: 5, stock: 25, reorder: 8, unit: 'Litre' },
 ];
@@ -141,45 +143,45 @@ function randomChoice<T>(arr: T[]): T {
 }
 
 async function main() {
-  console.log('ðŸŒ± Seeding KampStock with realistic Kampala shop data...');
+  console.log('[seed] Seeding KampStock with realistic Kampala shop data...');
 
-  // â”€â”€ ROLES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  const adminRole = await prisma.role.upsert({ where: { name: 'Admin' }, update: {}, create: { name: 'Admin', permissions: JSON.stringify({ all: true }) } });
-  const managerRole = await prisma.role.upsert({ where: { name: 'Manager' }, update: {}, create: { name: 'Manager', permissions: JSON.stringify({ manage_products: true, manage_sales: true, view_reports: true, manage_stock: true }) } });
-  const cashierRole = await prisma.role.upsert({ where: { name: 'Cashier' }, update: {}, create: { name: 'Cashier', permissions: JSON.stringify({ create_sales: true }) } });
-  const storekeeperRole = await prisma.role.upsert({ where: { name: 'Storekeeper' }, update: {}, create: { name: 'Storekeeper', permissions: JSON.stringify({ manage_stock: true }) } });
+  // --- ROLES ---
+  const adminRole = await prisma.role.upsert({ where: { name: 'Admin' }, update: {}, create: { name: 'Admin', permissions: JSON.stringify({ all: true }), tenantId: 1 } });
+  const managerRole = await prisma.role.upsert({ where: { name: 'Manager' }, update: {}, create: { name: 'Manager', permissions: JSON.stringify({ manage_products: true, manage_sales: true, view_reports: true, manage_stock: true }), tenantId: 1 } });
+  const cashierRole = await prisma.role.upsert({ where: { name: 'Cashier' }, update: {}, create: { name: 'Cashier', permissions: JSON.stringify({ create_sales: true }), tenantId: 1 } });
+  const storekeeperRole = await prisma.role.upsert({ where: { name: 'Storekeeper' }, update: {}, create: { name: 'Storekeeper', permissions: JSON.stringify({ manage_stock: true }), tenantId: 1 } });
 
-  // â”€â”€ USERS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // --- USERS ---
   const adminHash = await bcrypt.hash('admin123', 12);
-  const admin = await prisma.user.upsert({ where: { username: 'admin' }, update: {}, create: { name: 'Nakiganda Christine', username: 'admin', passwordHash: adminHash, phone: '0772-100001', roleId: adminRole.id } });
+  const admin = await prisma.user.upsert({ where: { username: 'admin' }, update: {}, create: { name: 'Nakiganda Christine', username: 'admin', passwordHash: adminHash, phone: '0772-100001', roleId: adminRole.id, tenantId: 1 } });
   const managerHash = await bcrypt.hash('manager123', 12);
-  await prisma.user.upsert({ where: { username: 'manager' }, update: {}, create: { name: 'Ssekandi Robert', username: 'manager', passwordHash: managerHash, phone: '0702-100002', roleId: managerRole.id } });
+  await prisma.user.upsert({ where: { username: 'manager' }, update: {}, create: { name: 'Ssekandi Robert', username: 'manager', passwordHash: managerHash, phone: '0702-100002', roleId: managerRole.id, tenantId: 1 } });
   const cashierHash = await bcrypt.hash('cashier123', 12);
-  const cashier = await prisma.user.upsert({ where: { username: 'cashier' }, update: {}, create: { name: 'Namutebi Fiona', username: 'cashier', passwordHash: cashierHash, phone: '0782-100003', roleId: cashierRole.id } });
-  await prisma.user.upsert({ where: { username: 'storekeeper' }, update: {}, create: { name: 'Okello Patrick', username: 'storekeeper', passwordHash: await bcrypt.hash('store123', 12), phone: '0752-100004', roleId: storekeeperRole.id } });
+  const cashier = await prisma.user.upsert({ where: { username: 'cashier' }, update: {}, create: { name: 'Namutebi Fiona', username: 'cashier', passwordHash: cashierHash, phone: '0782-100003', roleId: cashierRole.id, tenantId: 1 } });
+  await prisma.user.upsert({ where: { username: 'storekeeper' }, update: {}, create: { name: 'Okello Patrick', username: 'storekeeper', passwordHash: await bcrypt.hash('store123', 12), phone: '0752-100004', roleId: storekeeperRole.id, tenantId: 1 } });
 
-  console.log('âœ“ Users created (admin/admin123, manager/manager123, cashier/cashier123)');
+  console.log('[ok] Users created');
 
-  // â”€â”€ LOCATIONS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  const mainStore = await prisma.stockLocation.upsert({ where: { name: 'Main Warehouse' }, update: {}, create: { name: 'Main Warehouse', description: 'Primary stock holding area' } });
-  const frontCounter = await prisma.stockLocation.upsert({ where: { name: 'Front Counter' }, update: {}, create: { name: 'Front Counter', description: 'POS counter display stock' } });
-  await prisma.stockLocation.upsert({ where: { name: 'Cold Room' }, update: {}, create: { name: 'Cold Room', description: 'Chilled/refrigerated items storage' } });
+  // --- LOCATIONS ---
+  const mainStore = await prisma.stockLocation.upsert({ where: { name_tenantId: { name: 'Main Warehouse', tenantId: 1 } }, update: {}, create: { name: 'Main Warehouse', description: 'Primary stock holding area', tenantId: 1 } });
+  const frontCounter = await prisma.stockLocation.upsert({ where: { name_tenantId: { name: 'Front Counter', tenantId: 1 } }, update: {}, create: { name: 'Front Counter', description: 'POS counter display stock', tenantId: 1 } });
+  await prisma.stockLocation.upsert({ where: { name_tenantId: { name: 'Cold Room', tenantId: 1 } }, update: {}, create: { name: 'Cold Room', description: 'Chilled/refrigerated items storage', tenantId: 1 } });
 
-  console.log('âœ“ Stock locations created');
+  console.log('[ok] Users created');
 
-  // â”€â”€ CATEGORIES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // --- CATEGORIES ---
   const categoryMap: Record<string, number> = {};
   const catNames = [...new Set(PRODUCT_CATALOG.map(p => p.cat))];
   for (const catName of catNames) {
-    const cat = await prisma.category.upsert({ where: { name: catName }, update: {}, create: { name: catName } });
+    const cat = await prisma.category.upsert({ where: { name_tenantId: { name: catName, tenantId: 1 } }, update: {}, create: { name: catName, tenantId: 1 } });
     categoryMap[catName] = cat.id;
   }
-  console.log(`âœ“ ${catNames.length} categories created`);
+  console.log(`[ok] ${catNames.length} categories created`);
 
-  // â”€â”€ PRODUCTS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // --- PRODUCTS ---
   const productMap: Record<string, { id: number; buying: number; retail: number }> = {};
   for (const p of PRODUCT_CATALOG) {
-    const existing = await prisma.product.findUnique({ where: { sku: p.sku } });
+    const existing = await prisma.product.findUnique({ where: { sku_tenantId: { sku: p.sku, tenantId: 1 } } });
     let productId: number;
     if (existing) {
       productId = existing.id;
@@ -187,7 +189,7 @@ async function main() {
       const product = await prisma.product.create({
         data: {
           name: p.name, sku: p.sku, categoryId: categoryMap[p.cat], brand: p.brand,
-          unitOfMeasure: p.unit,
+          unitOfMeasure: p.unit, tenantId: 1,
           units: {
             create: [{ unitName: p.unit, conversionFactor: 1, buyingPrice: p.buying, sellingPriceRetail: p.retail, sellingPriceWholesale: p.wholesale, minWholesaleQty: p.minWQty, isDefault: true }],
           },
@@ -202,27 +204,27 @@ async function main() {
     }
     productMap[p.sku] = { id: productId, buying: p.buying, retail: p.retail };
   }
-  console.log(`âœ“ ${PRODUCT_CATALOG.length} products created with stock`);
+  console.log(`[ok] ${PRODUCT_CATALOG.length} products created with stock`);
 
-  // â”€â”€ SUPPLIERS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // --- SUPPLIERS ---
   const supplierIds: number[] = [];
   for (const s of SUPPLIERS) {
     let sup = await prisma.supplier.findFirst({ where: { name: s.name } });
-    if (!sup) sup = await prisma.supplier.create({ data: { name: s.name, contactPerson: s.contact, phone: s.phone, email: s.email, address: s.address } });
+    if (!sup) sup = await prisma.supplier.create({ data: { name: s.name, contactPerson: s.contact, phone: s.phone, email: s.email, address: s.address, tenantId: 1 } });
     supplierIds.push(sup.id);
   }
-  console.log(`âœ“ ${SUPPLIERS.length} suppliers created`);
+  console.log(`[ok] ${SUPPLIERS.length} suppliers created`);
 
-  // â”€â”€ CUSTOMERS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // --- CUSTOMERS ---
   const customerIds: number[] = [];
   for (const c of CUSTOMERS) {
     let cust = await prisma.customer.findFirst({ where: { name: c.name } });
-    if (!cust) cust = await prisma.customer.create({ data: { name: c.name, phone: c.phone, email: c.email, address: c.address, isWholesale: c.isWholesale, creditLimit: c.creditLimit } });
+    if (!cust) cust = await prisma.customer.create({ data: { name: c.name, phone: c.phone, email: c.email, address: c.address, isWholesale: c.isWholesale, creditLimit: c.creditLimit, tenantId: 1 } });
     customerIds.push(cust.id);
   }
-  console.log(`âœ“ ${CUSTOMERS.length} customers created`);
+  console.log(`[ok] ${CUSTOMERS.length} customers created`);
 
-  // â”€â”€ PURCHASE ORDERS (last 90 days) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // --- PURCHASE ORDERS (last 90 days) ---
   const poProducts = PRODUCT_CATALOG.slice(0, 20);
   for (let i = 0; i < 15; i++) {
     const daysBack = randomBetween(5, 90);
@@ -235,20 +237,20 @@ async function main() {
     });
     const grandTotal = poLines.reduce((s, l) => s + l.lineTotal, 0);
     const poNum = `PO${orderDate.getFullYear()}${String(orderDate.getMonth() + 1).padStart(2, '0')}${String(i + 1).padStart(5, '0')}`;
-    const existingPO = await prisma.purchaseOrder.findUnique({ where: { poNumber: poNum } });
+    const existingPO = await prisma.purchaseOrder.findUnique({ where: { poNumber_tenantId: { poNumber: poNum, tenantId: 1 } } });
     if (!existingPO) {
       await prisma.purchaseOrder.create({
         data: {
           poNumber: poNum, supplierId: supplierIds[supplierIdx], status: i < 12 ? 'RECEIVED' : 'SENT',
-          orderedDate: orderDate, grandTotal, notes: 'Regular stock replenishment', createdById: admin.id,
+          orderedDate: orderDate, grandTotal, notes: 'Regular stock replenishment', createdById: admin.id, tenantId: 1,
           lines: { create: poLines.map(l => ({ productId: l.productId, quantity: l.quantity, unitPrice: l.unitPrice, lineTotal: l.lineTotal })) },
         },
       });
     }
   }
-  console.log('âœ“ Purchase orders created');
+  console.log('[ok] Users created');
 
-  // â”€â”€ EXPENSES (last 90 days) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // --- EXPENSES (last 90 days) ---
   const expenseCategories = ['Rent', 'Utilities', 'Wages', 'Transport', 'Maintenance', 'Marketing', 'Security', 'Internet'];
   const expenseDetails = [
     { category: 'Rent', amount: 450000, desc: 'Monthly shop rent - Nakasero' },
@@ -266,16 +268,16 @@ async function main() {
   for (let month = 0; month < 3; month++) {
     for (const exp of expenseDetails) {
       const paidAt = daysAgo(randomBetween(month * 30, (month + 1) * 30 - 1));
-      await prisma.expense.create({ data: { category: exp.category, description: exp.desc, amount: exp.amount + randomBetween(-5000, 5000), paidById: admin.id, paidAt } });
+      await prisma.expense.create({ data: { category: exp.category, description: exp.desc, amount: exp.amount + randomBetween(-5000, 5000), paidById: admin.id, paidAt, tenantId: 1 } });
     }
     // Random small expenses
     for (let j = 0; j < 5; j++) {
-      await prisma.expense.create({ data: { category: randomChoice(expenseCategories), description: 'Miscellaneous expense', amount: randomBetween(10000, 80000), paidById: admin.id, paidAt: daysAgo(randomBetween(month * 30, (month + 1) * 30 - 1)) } });
+      await prisma.expense.create({ data: { category: randomChoice(expenseCategories), description: 'Miscellaneous expense', amount: randomBetween(10000, 80000), paidById: admin.id, paidAt: daysAgo(randomBetween(month * 30, (month + 1) * 30 - 1)), tenantId: 1 } });
     }
   }
-  console.log('âœ“ Expenses created (3 months)');
+  console.log('[ok] Users created');
 
-  // â”€â”€ SALES (last 90 days, realistic daily patterns) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // --- SALES (last 90 days) ---
   const posProducts = PRODUCT_CATALOG.slice(0, 35); // Most common products sold
   let saleCounter = 0;
   const saleNumbers: Set<string> = new Set();
@@ -322,7 +324,7 @@ async function main() {
           data: {
             saleNumber: saleNum, customerId, saleType, status: 'COMPLETED',
             total: grandTotal, discountTotal: 0, taxTotal: 0, grandTotal, paidAmount: grandTotal, balance: 0,
-            createdById: createdBy, createdAt: saleDate, updatedAt: saleDate,
+            createdById: createdBy, createdAt: saleDate, updatedAt: saleDate, tenantId: 1,
             lines: { create: lines },
             payments: { create: [{ paymentMethod, amount: grandTotal, receivedById: createdBy, receivedAt: saleDate }] },
           },
@@ -332,15 +334,15 @@ async function main() {
       }
     }
   }
-  console.log(`âœ“ ${saleCounter} sales created over last 90 days`);
+  console.log(`[ok] ${saleCounter} sales created over last 90 days`);
 
-  console.log('\nâœ… KampStock seed complete!');
-  console.log('â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”');
+  console.log('\n[ok] KampStock seed complete!');
+  console.log('[ok] Users created');
   console.log('  Login credentials:');
   console.log('  admin / admin123     (full access)');
   console.log('  manager / manager123 (manage products & sales)');
   console.log('  cashier / cashier123 (POS only)');
-  console.log('â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”');
+  console.log('[ok] Users created');
 }
 
 main()

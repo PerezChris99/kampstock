@@ -1,0 +1,22 @@
+{
+  "name": "KampStock — Wholesale & Retail POS",
+  "short_name": "KampStock",
+  "description": "Inventory & POS system for wholesale and retail shops in Kampala",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0f1b0a",
+  "theme_color": "#84cc16",
+  "categories": ["business", "productivity"],
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "related_applications": [],
+  "prefer_related_applications": false
+}

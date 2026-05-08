@@ -6,7 +6,8 @@ interface User {
   name: string;
   username: string;
   role: string;
-  roleId: number;
+  roleId?: number;
+  tenantId: number;
 }
 
 interface AuthState {

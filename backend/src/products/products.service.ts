@@ -20,11 +20,11 @@ export class ProductsService {
       throw new BadRequestException('Product must have at least one unit');
     }
 
-    const skuExists = await this.prisma.product.findUnique({ where: { sku: dto.sku } });
+    const skuExists = await this.prisma.product.findUnique({ where: { sku_tenantId: { sku: dto.sku, tenantId: 1 } } });
     if (skuExists) throw new ConflictException('SKU already exists');
 
     if (dto.barcode) {
-      const barcodeExists = await this.prisma.product.findUnique({ where: { barcode: dto.barcode } });
+      const barcodeExists = await this.prisma.product.findUnique({ where: { barcode_tenantId: { barcode: dto.barcode, tenantId: 1 } } });
       if (barcodeExists) throw new ConflictException('Barcode already exists');
     }
 
@@ -64,12 +64,12 @@ export class ProductsService {
   async findByBarcode(barcode: string) {
     // Try barcode first, then fallback to SKU lookup
     let product = await this.prisma.product.findUnique({
-      where: { barcode },
+      where: { barcode_tenantId: { barcode, tenantId: 1 } },
       include: { units: true, category: true },
     });
     if (!product) {
       product = await this.prisma.product.findUnique({
-        where: { sku: barcode },
+        where: { sku_tenantId: { sku: barcode, tenantId: 1 } },
         include: { units: true, category: true },
       });
     }

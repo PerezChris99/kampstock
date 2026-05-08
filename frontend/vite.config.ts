@@ -9,29 +9,26 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'favicon.ico'],
-      manifest: {
-        name: 'KampStock',
-        short_name: 'KampStock',
-        description: 'Wholesale & Retail Management System',
-        theme_color: '#1d4ed8',
-        background_color: '#ffffff',
-        display: 'standalone',
-        start_url: '/',
-        icons: [
-          { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
-          { src: '/icon-512.png', sizes: '512x512', type: 'image/png' },
-        ],
-      },
+      includeAssets: ['favicon.svg'],
+      manifest: false, // using /public/manifest.json instead
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         runtimeCaching: [
           {
-            urlPattern: /^\/api\/(products|stock|customers|categories|suppliers)/,
+            urlPattern: /^http:\/\/localhost:3000\/api\/(products|stock|customers|categories|suppliers)/,
             handler: 'NetworkFirst',
             options: {
-              cacheName: 'api-cache',
-              expiration: { maxEntries: 200, maxAgeSeconds: 86400 },
+              cacheName: 'api-read-cache',
+              expiration: { maxEntries: 300, maxAgeSeconds: 86400 },
+              networkTimeoutSeconds: 5,
+            },
+          },
+          {
+            urlPattern: /^https?:\/\/.*\/api\/(products|stock|customers|categories|suppliers)/,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'api-read-cache-prod',
+              expiration: { maxEntries: 300, maxAgeSeconds: 86400 },
               networkTimeoutSeconds: 5,
             },
           },

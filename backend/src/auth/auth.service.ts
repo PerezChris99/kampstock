@@ -47,7 +47,7 @@ export class AuthService {
   }
 
   private generateTokens(user: any) {
-    const payload = { sub: user.id, username: user.username, roleId: user.roleId, role: user.role.name };
+    const payload = { sub: user.id, username: user.username, roleId: user.roleId, role: user.role.name, tenantId: user.tenantId ?? 1 };
     const accessToken = this.jwtService.sign(payload, {
       secret: this.config.get<string>('JWT_SECRET'),
       expiresIn: (this.config.get<string>('JWT_EXPIRES_IN') || '15m') as any,
@@ -59,7 +59,7 @@ export class AuthService {
     return {
       accessToken,
       refreshToken,
-      user: { id: user.id, name: user.name, username: user.username, role: user.role.name },
+      user: { id: user.id, name: user.name, username: user.username, role: user.role.name, tenantId: user.tenantId ?? 1 },
     };
   }
 }

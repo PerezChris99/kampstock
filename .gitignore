@@ -18,6 +18,15 @@ out/
 
 # Prisma
 backend/prisma/migrations/
+backend/prisma/dev.db
+backend/prisma/dev.db-journal
+backend/src/generated/
+backend/prisma/seed.js
+backend/prisma/seed.js.map
+backend/prisma/seed.d.ts
+backend/prisma.config.js
+backend/prisma.config.js.map
+backend/prisma.config.d.ts
 
 # Editor
 .vscode/
