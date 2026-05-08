@@ -5,6 +5,6 @@ const dbUrl = process.env.DATABASE_URL || "";
 const isPg = dbUrl.startsWith("postgresql") || dbUrl.startsWith("postgres");
 
 export default defineConfig({
-  schema: isPg ? "prisma/schema.postgresql.prisma" : "prisma/schema.prisma",
+  schema: isPg ? "prisma-pg/schema.prisma" : "prisma/schema.prisma",
   datasource: { url: env("DATABASE_URL") },
 });
