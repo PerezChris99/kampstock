@@ -105,7 +105,7 @@ export default function ReportsPage() {
   const years = [now.getFullYear() - 1, now.getFullYear()];
 
   return (
-    <div className="p-6 space-y-6 max-w-screen-2xl mx-auto">
+    <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-slate-900">Reports & Analytics</h1>

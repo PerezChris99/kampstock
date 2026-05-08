@@ -139,7 +139,7 @@ export default function POSPage() {
 
   if (receipt) {
     return (
-      <div className="p-6 max-w-lg mx-auto">
+      <div className="flex-1 flex items-center justify-center p-6">
         <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
           <div className="text-5xl mb-4">✅</div>
           <h2 className="text-2xl font-bold text-gray-800">Sale Complete</h2>
