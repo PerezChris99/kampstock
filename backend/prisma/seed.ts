@@ -1,131 +1,131 @@
 import { PrismaClient } from '../src/generated/client/client';
-import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3';
 import * as bcrypt from 'bcryptjs';
 
-const adapter = new PrismaBetterSqlite3({ url: process.env.DATABASE_URL || 'file:./prisma/dev.db' });
-const prisma = new PrismaClient({ adapter } as any);
+const dbUrl = process.env.DATABASE_URL || 'file:./prisma/dev.db';
+let prisma: PrismaClient;
 
-// Realistic Kampala wholesale/retail product catalog
+if (dbUrl.startsWith('file:')) {
+  // SQLite adapter for local development
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { PrismaBetterSqlite3 } = require('@prisma/adapter-better-sqlite3');
+  const adapter = new PrismaBetterSqlite3({ url: dbUrl });
+  prisma = new PrismaClient({ adapter } as any);
+} else {
+  // Standard PrismaClient for PostgreSQL (production)
+  prisma = new PrismaClient();
+}
+
+// Cosmetics & Beauty shop product catalog (suitable for a Kampala cosmetics shop)
 const PRODUCT_CATALOG = [
-  // --- FOOD STAPLES ---
-  { name: 'Sugar (1kg)', sku: 'SUG-001', cat: 'Food Staples', brand: 'Kakira', buying: 3500, retail: 4000, wholesale: 3700, minWQty: 10, stock: 280, reorder: 50, unit: 'Kg' },
-  { name: 'Sugar (2kg)', sku: 'SUG-002', cat: 'Food Staples', brand: 'Kakira', buying: 6800, retail: 7500, wholesale: 7200, minWQty: 6, stock: 150, reorder: 30, unit: 'Packet' },
-  { name: 'Sugar (50kg Bag)', sku: 'SUG-050', cat: 'Food Staples', brand: 'Kakira', buying: 155000, retail: 170000, wholesale: 163000, minWQty: 1, stock: 12, reorder: 4, unit: 'Bag' },
-  { name: 'Cooking Oil Kimbo (1L)', sku: 'OIL-001', cat: 'Food Staples', brand: 'Kimbo', buying: 6200, retail: 7000, wholesale: 6600, minWQty: 12, stock: 95, reorder: 20, unit: 'Bottle' },
-  { name: 'Cooking Oil Ufuta (2L)', sku: 'OIL-002', cat: 'Food Staples', brand: 'Ufuta', buying: 11000, retail: 12500, wholesale: 11800, minWQty: 6, stock: 60, reorder: 15, unit: 'Bottle' },
-  { name: 'Cooking Oil Mukwano (5L)', sku: 'OIL-005', cat: 'Food Staples', brand: 'Mukwano', buying: 27000, retail: 30000, wholesale: 28500, minWQty: 3, stock: 30, reorder: 8, unit: 'Jerrican' },
-  { name: 'Maize Flour Rolex (2kg)', sku: 'FLR-001', cat: 'Food Staples', brand: 'Rolex', buying: 4800, retail: 5500, wholesale: 5200, minWQty: 10, stock: 120, reorder: 25, unit: 'Packet' },
-  { name: 'Maize Flour Maisha (5kg)', sku: 'FLR-002', cat: 'Food Staples', brand: 'Maisha Bora', buying: 11000, retail: 13000, wholesale: 12000, minWQty: 5, stock: 80, reorder: 15, unit: 'Packet' },
-  { name: 'Posho Mill Flour (10kg)', sku: 'FLR-003', cat: 'Food Staples', brand: 'Local', buying: 18000, retail: 22000, wholesale: 20000, minWQty: 3, stock: 40, reorder: 10, unit: 'Bag' },
-  { name: 'Ugali Flour (1kg)', sku: 'FLR-004', cat: 'Food Staples', brand: 'Dola', buying: 2800, retail: 3200, wholesale: 3000, minWQty: 12, stock: 90, reorder: 20, unit: 'Packet' },
-  { name: 'Rice Premium (1kg)', sku: 'RIC-001', cat: 'Food Staples', brand: 'Kaiso', buying: 3800, retail: 4500, wholesale: 4200, minWQty: 10, stock: 110, reorder: 20, unit: 'Kg' },
-  { name: 'Rice (5kg Bag)', sku: 'RIC-005', cat: 'Food Staples', brand: 'Kaiso', buying: 18000, retail: 21000, wholesale: 19500, minWQty: 2, stock: 35, reorder: 8, unit: 'Bag' },
-  { name: 'Dry Beans (1kg)', sku: 'BNS-001', cat: 'Food Staples', brand: 'Local', buying: 3200, retail: 4000, wholesale: 3600, minWQty: 10, stock: 75, reorder: 15, unit: 'Kg' },
-  { name: 'Dry Beans (5kg)', sku: 'BNS-005', cat: 'Food Staples', brand: 'Local', buying: 15000, retail: 18500, wholesale: 17000, minWQty: 2, stock: 25, reorder: 6, unit: 'Bag' },
-  { name: 'Salt (500g)', sku: 'SLT-001', cat: 'Food Staples', brand: 'Kensalt', buying: 900, retail: 1200, wholesale: 1050, minWQty: 20, stock: 200, reorder: 50, unit: 'Pack' },
-  { name: 'Salt (1kg)', sku: 'SLT-002', cat: 'Food Staples', brand: 'Kensalt', buying: 1700, retail: 2200, wholesale: 2000, minWQty: 12, stock: 130, reorder: 30, unit: 'Pack' },
-  { name: 'Spaghetti Pembe (400g)', sku: 'SPG-001', cat: 'Food Staples', brand: 'Pembe', buying: 3200, retail: 3800, wholesale: 3500, minWQty: 12, stock: 65, reorder: 15, unit: 'Pack' },
-  { name: 'Noodles Indomie (70g)', sku: 'NDL-001', cat: 'Food Staples', brand: 'Indomie', buying: 650, retail: 800, wholesale: 720, minWQty: 40, stock: 300, reorder: 80, unit: 'Pack' },
-  { name: 'Tomato Paste (70g)', sku: 'TMP-001', cat: 'Food Staples', brand: 'Kenmei', buying: 800, retail: 1000, wholesale: 900, minWQty: 24, stock: 180, reorder: 50, unit: 'Tin' },
-  { name: 'Tomato Paste (400g)', sku: 'TMP-002', cat: 'Food Staples', brand: 'Kenmei', buying: 2800, retail: 3500, wholesale: 3200, minWQty: 12, stock: 90, reorder: 20, unit: 'Tin' },
-  { name: 'Margarine Blue Band (250g)', sku: 'MRG-001', cat: 'Food Staples', brand: 'Blue Band', buying: 4500, retail: 5200, wholesale: 4900, minWQty: 12, stock: 55, reorder: 12, unit: 'Tub' },
-  { name: 'Milk Dairy Farm UHT (500ml)', sku: 'MLK-001', cat: 'Food Staples', brand: 'Dairy Farm', buying: 1800, retail: 2200, wholesale: 2000, minWQty: 24, stock: 120, reorder: 30, unit: 'Carton' },
-  { name: 'Eggs (Tray 30pcs)', sku: 'EGG-030', cat: 'Food Staples', brand: 'Fresh Farm', buying: 12000, retail: 14000, wholesale: 13200, minWQty: 2, stock: 18, reorder: 5, unit: 'Tray' },
+  // --- FACE CARE ---
+  { name: 'Nivea Face Cream (50ml)', sku: 'FC-001', cat: 'Face Care', brand: 'Nivea', buying: 8000, retail: 12000, wholesale: 10500, minWQty: 6, stock: 80, reorder: 20, unit: 'Jar' },
+  { name: 'Clean & Clear Face Wash (100ml)', sku: 'FC-002', cat: 'Face Care', brand: 'Clean & Clear', buying: 9500, retail: 14000, wholesale: 12500, minWQty: 6, stock: 60, reorder: 15, unit: 'Bottle' },
+  { name: 'Garnier Micellar Water (400ml)', sku: 'FC-003', cat: 'Face Care', brand: 'Garnier', buying: 18000, retail: 26000, wholesale: 23000, minWQty: 3, stock: 40, reorder: 10, unit: 'Bottle' },
+  { name: 'Neutrogena Sunscreen SPF50 (88ml)', sku: 'FC-004', cat: 'Face Care', brand: 'Neutrogena', buying: 22000, retail: 34000, wholesale: 30000, minWQty: 3, stock: 30, reorder: 8, unit: 'Bottle' },
+  { name: 'Olay Total Effects Moisturiser (50ml)', sku: 'FC-005', cat: 'Face Care', brand: 'Olay', buying: 25000, retail: 40000, wholesale: 35000, minWQty: 3, stock: 25, reorder: 6, unit: 'Jar' },
+  { name: 'Vaseline Lip Therapy Original (20g)', sku: 'FC-006', cat: 'Face Care', brand: 'Vaseline', buying: 3500, retail: 5500, wholesale: 4800, minWQty: 12, stock: 120, reorder: 30, unit: 'Tin' },
+  { name: 'Noxzema Classic Cream (200ml)', sku: 'FC-007', cat: 'Face Care', brand: 'Noxzema', buying: 7000, retail: 11000, wholesale: 9500, minWQty: 6, stock: 50, reorder: 12, unit: 'Jar' },
+  { name: 'Simple Micellar Gel Wash (150ml)', sku: 'FC-008', cat: 'Face Care', brand: 'Simple', buying: 16000, retail: 24000, wholesale: 21000, minWQty: 3, stock: 35, reorder: 8, unit: 'Bottle' },
+  { name: 'Pond\'s Brightening Cream (50g)', sku: 'FC-009', cat: 'Face Care', brand: 'Pond\'s', buying: 9000, retail: 14000, wholesale: 12500, minWQty: 6, stock: 70, reorder: 18, unit: 'Jar' },
+  { name: 'Fair & White Exfoliating Gel (200ml)', sku: 'FC-010', cat: 'Face Care', brand: 'Fair & White', buying: 12000, retail: 19000, wholesale: 16500, minWQty: 3, stock: 45, reorder: 10, unit: 'Tube' },
 
-  // --- BEVERAGES ---
-  { name: 'Coca-Cola (300ml)', sku: 'CCL-300', cat: 'Beverages', brand: 'Coca-Cola', buying: 1100, retail: 1500, wholesale: 1300, minWQty: 24, stock: 240, reorder: 48, unit: 'Bottle' },
-  { name: 'Coca-Cola (500ml)', sku: 'CCL-500', cat: 'Beverages', brand: 'Coca-Cola', buying: 1500, retail: 2000, wholesale: 1800, minWQty: 24, stock: 180, reorder: 40, unit: 'Bottle' },
-  { name: 'Pepsi (300ml)', sku: 'PEP-300', cat: 'Beverages', brand: 'Pepsi', buying: 1000, retail: 1400, wholesale: 1200, minWQty: 24, stock: 200, reorder: 48, unit: 'Bottle' },
-  { name: 'Sprite (300ml)', sku: 'SPR-300', cat: 'Beverages', brand: 'Sprite', buying: 1100, retail: 1500, wholesale: 1300, minWQty: 24, stock: 160, reorder: 40, unit: 'Bottle' },
-  { name: 'Fanta Orange (300ml)', sku: 'FNT-300', cat: 'Beverages', brand: 'Fanta', buying: 1100, retail: 1500, wholesale: 1300, minWQty: 24, stock: 170, reorder: 40, unit: 'Bottle' },
-  { name: 'Water Rwenzori (500ml)', sku: 'WTR-500', cat: 'Beverages', brand: 'Rwenzori', buying: 600, retail: 1000, wholesale: 800, minWQty: 24, stock: 300, reorder: 60, unit: 'Bottle' },
-  { name: 'Water Rwenzori (1.5L)', sku: 'WTR-1500', cat: 'Beverages', brand: 'Rwenzori', buying: 1200, retail: 1800, wholesale: 1500, minWQty: 12, stock: 150, reorder: 30, unit: 'Bottle' },
-  { name: 'Juice Splash (300ml)', sku: 'JCE-300', cat: 'Beverages', brand: 'Splash', buying: 1000, retail: 1400, wholesale: 1200, minWQty: 24, stock: 130, reorder: 30, unit: 'Bottle' },
-  { name: 'Riham Cola (300ml)', sku: 'RHM-300', cat: 'Beverages', brand: 'Riham', buying: 700, retail: 1000, wholesale: 850, minWQty: 24, stock: 220, reorder: 48, unit: 'Bottle' },
-  { name: 'Bell Beer 500ml', sku: 'BEL-500', cat: 'Beverages', brand: 'Bell', buying: 2800, retail: 3500, wholesale: 3200, minWQty: 24, stock: 144, reorder: 30, unit: 'Bottle' },
-  { name: 'Club Beer 500ml', sku: 'CLB-500', cat: 'Beverages', brand: 'Club', buying: 2900, retail: 3600, wholesale: 3300, minWQty: 24, stock: 120, reorder: 30, unit: 'Bottle' },
-  { name: 'Tea Leaves Lipton (100g)', sku: 'TEA-001', cat: 'Beverages', brand: 'Lipton', buying: 2500, retail: 3000, wholesale: 2800, minWQty: 12, stock: 80, reorder: 20, unit: 'Pack' },
-  { name: 'Coffee Nescafe Sachet', sku: 'COF-001', cat: 'Beverages', brand: 'Nescafe', buying: 350, retail: 500, wholesale: 430, minWQty: 48, stock: 250, reorder: 60, unit: 'Sachet' },
+  // --- HAIR CARE ---
+  { name: 'Sunsilk Shampoo Black Shine (375ml)', sku: 'HC-001', cat: 'Hair Care', brand: 'Sunsilk', buying: 9000, retail: 13500, wholesale: 12000, minWQty: 6, stock: 90, reorder: 20, unit: 'Bottle' },
+  { name: 'Pantene Conditioner Smooth (375ml)', sku: 'HC-002', cat: 'Hair Care', brand: 'Pantene', buying: 10000, retail: 15500, wholesale: 13500, minWQty: 6, stock: 70, reorder: 18, unit: 'Bottle' },
+  { name: 'Dove Shampoo Damage Therapy (400ml)', sku: 'HC-003', cat: 'Hair Care', brand: 'Dove', buying: 11000, retail: 17000, wholesale: 15000, minWQty: 6, stock: 65, reorder: 15, unit: 'Bottle' },
+  { name: 'Dark & Lovely Hair Relaxer Kit', sku: 'HC-004', cat: 'Hair Care', brand: 'Dark & Lovely', buying: 18000, retail: 29000, wholesale: 25000, minWQty: 3, stock: 40, reorder: 10, unit: 'Kit' },
+  { name: 'African Pride Olive Oil Moisturiser (250ml)', sku: 'HC-005', cat: 'Hair Care', brand: 'African Pride', buying: 12000, retail: 19000, wholesale: 16500, minWQty: 3, stock: 35, reorder: 8, unit: 'Bottle' },
+  { name: 'Head & Shoulders 2-in-1 (200ml)', sku: 'HC-006', cat: 'Hair Care', brand: 'Head & Shoulders', buying: 10500, retail: 16000, wholesale: 14000, minWQty: 6, stock: 55, reorder: 15, unit: 'Bottle' },
+  { name: 'Jamaican Black Castor Oil (100ml)', sku: 'HC-007', cat: 'Hair Care', brand: 'Jamaican Mango', buying: 15000, retail: 24000, wholesale: 21000, minWQty: 3, stock: 30, reorder: 8, unit: 'Bottle' },
+  { name: 'Coconut Oil Pure (200g)', sku: 'HC-008', cat: 'Hair Care', brand: 'Viva', buying: 8000, retail: 13000, wholesale: 11000, minWQty: 6, stock: 60, reorder: 15, unit: 'Jar' },
+  { name: 'Garnier Fructis Shampoo (400ml)', sku: 'HC-009', cat: 'Hair Care', brand: 'Garnier', buying: 13000, retail: 20000, wholesale: 17500, minWQty: 6, stock: 50, reorder: 12, unit: 'Bottle' },
+  { name: 'ORS Olive Oil Hair Lotion (251ml)', sku: 'HC-010', cat: 'Hair Care', brand: 'ORS', buying: 11000, retail: 17500, wholesale: 15500, minWQty: 6, stock: 45, reorder: 10, unit: 'Bottle' },
 
-  // --- PERSONAL CARE ---
-  { name: 'Bar Soap Geisha (175g)', sku: 'SOP-001', cat: 'Personal Care', brand: 'Geisha', buying: 1400, retail: 1800, wholesale: 1600, minWQty: 24, stock: 160, reorder: 40, unit: 'Bar' },
-  { name: 'Bar Soap Key (800g)', sku: 'SOP-002', cat: 'Personal Care', brand: 'Key', buying: 3000, retail: 3500, wholesale: 3200, minWQty: 20, stock: 100, reorder: 25, unit: 'Bar' },
-  { name: 'Shampoo Sunsilk (200ml)', sku: 'SHP-001', cat: 'Personal Care', brand: 'Sunsilk', buying: 5500, retail: 6500, wholesale: 6000, minWQty: 12, stock: 45, reorder: 10, unit: 'Bottle' },
-  { name: 'Toothpaste Colgate (75ml)', sku: 'TTP-001', cat: 'Personal Care', brand: 'Colgate', buying: 2800, retail: 3500, wholesale: 3200, minWQty: 12, stock: 70, reorder: 15, unit: 'Tube' },
-  { name: 'Toothbrush Oral-B', sku: 'TTB-001', cat: 'Personal Care', brand: 'Oral-B', buying: 1800, retail: 2500, wholesale: 2200, minWQty: 12, stock: 55, reorder: 12, unit: 'Piece' },
-  { name: 'Petroleum Jelly Vaseline (100ml)', sku: 'VSL-001', cat: 'Personal Care', brand: 'Vaseline', buying: 2500, retail: 3200, wholesale: 2900, minWQty: 12, stock: 60, reorder: 15, unit: 'Jar' },
-  { name: 'Lotion Cocoa Butter (400ml)', sku: 'LTN-001', cat: 'Personal Care', brand: 'Palmer\'s', buying: 8000, retail: 9500, wholesale: 8800, minWQty: 6, stock: 30, reorder: 8, unit: 'Bottle' },
-  { name: 'Deodorant Rexona (150ml)', sku: 'DEO-001', cat: 'Personal Care', brand: 'Rexona', buying: 5500, retail: 7000, wholesale: 6500, minWQty: 12, stock: 40, reorder: 10, unit: 'Can' },
-  { name: 'Sanitary Pads Always (8pcs)', sku: 'SAN-001', cat: 'Personal Care', brand: 'Always', buying: 3500, retail: 4200, wholesale: 3900, minWQty: 12, stock: 65, reorder: 15, unit: 'Pack' },
-  { name: 'Razor Blade Gillette', sku: 'RZR-001', cat: 'Personal Care', brand: 'Gillette', buying: 800, retail: 1200, wholesale: 1000, minWQty: 24, stock: 100, reorder: 30, unit: 'Pack' },
+  // --- BODY CARE ---
+  { name: 'Vaseline Intensive Care Lotion (400ml)', sku: 'BC-001', cat: 'Body Care', brand: 'Vaseline', buying: 9000, retail: 14000, wholesale: 12500, minWQty: 6, stock: 100, reorder: 25, unit: 'Bottle' },
+  { name: 'Palmer\'s Cocoa Butter Lotion (400ml)', sku: 'BC-002', cat: 'Body Care', brand: 'Palmer\'s', buying: 12000, retail: 19000, wholesale: 16500, minWQty: 6, stock: 70, reorder: 18, unit: 'Bottle' },
+  { name: 'Dove Body Lotion Deeply Nourishing (400ml)', sku: 'BC-003', cat: 'Body Care', brand: 'Dove', buying: 13000, retail: 20500, wholesale: 18000, minWQty: 6, stock: 60, reorder: 15, unit: 'Bottle' },
+  { name: 'Nivea Body Lotion Q10 (250ml)', sku: 'BC-004', cat: 'Body Care', brand: 'Nivea', buying: 11000, retail: 17000, wholesale: 15000, minWQty: 6, stock: 55, reorder: 12, unit: 'Bottle' },
+  { name: 'Dove Body Wash (250ml)', sku: 'BC-005', cat: 'Body Care', brand: 'Dove', buying: 10000, retail: 15500, wholesale: 13500, minWQty: 6, stock: 65, reorder: 15, unit: 'Bottle' },
+  { name: 'Lux Body Wash (250ml)', sku: 'BC-006', cat: 'Body Care', brand: 'Lux', buying: 8500, retail: 13500, wholesale: 11800, minWQty: 6, stock: 80, reorder: 20, unit: 'Bottle' },
+  { name: 'Jergens Original Scent Lotion (250ml)', sku: 'BC-007', cat: 'Body Care', brand: 'Jergens', buying: 10500, retail: 16500, wholesale: 14500, minWQty: 6, stock: 45, reorder: 12, unit: 'Bottle' },
+  { name: 'Caress Body Wash (400ml)', sku: 'BC-008', cat: 'Body Care', brand: 'Caress', buying: 12000, retail: 19000, wholesale: 16500, minWQty: 6, stock: 40, reorder: 10, unit: 'Bottle' },
+  { name: 'Lifebuoy Bar Soap (100g)', sku: 'BC-009', cat: 'Body Care', brand: 'Lifebuoy', buying: 1500, retail: 2500, wholesale: 2200, minWQty: 24, stock: 200, reorder: 50, unit: 'Bar' },
+  { name: 'Dove Beauty Bar Soap (100g)', sku: 'BC-010', cat: 'Body Care', brand: 'Dove', buying: 2500, retail: 4000, wholesale: 3500, minWQty: 12, stock: 150, reorder: 36, unit: 'Bar' },
 
-  // --- HOUSEHOLD ITEMS ---
-  { name: 'Detergent Omo (500g)', sku: 'DET-001', cat: 'Household', brand: 'Omo', buying: 3000, retail: 3800, wholesale: 3500, minWQty: 12, stock: 80, reorder: 20, unit: 'Pack' },
-  { name: 'Detergent Ariel (1kg)', sku: 'DET-002', cat: 'Household', brand: 'Ariel', buying: 6500, retail: 7800, wholesale: 7200, minWQty: 6, stock: 50, reorder: 12, unit: 'Pack' },
-  { name: 'Fabric Softener Comfort (1L)', sku: 'FAB-001', cat: 'Household', brand: 'Comfort', buying: 7000, retail: 8500, wholesale: 7800, minWQty: 6, stock: 30, reorder: 8, unit: 'Bottle' },
-  { name: 'Dishwash Liquid Fairy (500ml)', sku: 'DSH-001', cat: 'Household', brand: 'Fairy', buying: 5500, retail: 6500, wholesale: 6000, minWQty: 6, stock: 40, reorder: 10, unit: 'Bottle' },
-  { name: 'Matches Uganda (Box)', sku: 'MCH-001', cat: 'Household', brand: 'Mukwano', buying: 300, retail: 500, wholesale: 400, minWQty: 50, stock: 350, reorder: 100, unit: 'Box' },
-  { name: 'Toilet Paper Kasese (4roll)', sku: 'TTP-002', cat: 'Household', brand: 'Kasese', buying: 3500, retail: 4500, wholesale: 4000, minWQty: 12, stock: 90, reorder: 24, unit: 'Pack' },
-  { name: 'Candles (Box 10pcs)', sku: 'CDL-001', cat: 'Household', brand: 'Beacon', buying: 2000, retail: 2800, wholesale: 2500, minWQty: 12, stock: 60, reorder: 15, unit: 'Box' },
-  { name: 'Mosquito Coil Doom (10pcs)', sku: 'MSQ-001', cat: 'Household', brand: 'Doom', buying: 2500, retail: 3200, wholesale: 2900, minWQty: 12, stock: 45, reorder: 12, unit: 'Pack' },
-  { name: 'Insecticide Mortein (300ml)', sku: 'INS-001', cat: 'Household', brand: 'Mortein', buying: 5500, retail: 6800, wholesale: 6200, minWQty: 6, stock: 35, reorder: 10, unit: 'Can' },
-  { name: 'Air Freshener Glade (300ml)', sku: 'AFR-001', cat: 'Household', brand: 'Glade', buying: 6000, retail: 7500, wholesale: 6800, minWQty: 6, stock: 25, reorder: 8, unit: 'Can' },
-  { name: 'Broom (Local)', sku: 'BRM-001', cat: 'Household', brand: 'Local', buying: 3500, retail: 5000, wholesale: 4500, minWQty: 5, stock: 20, reorder: 5, unit: 'Piece' },
-  { name: 'Plastic Bucket 20L', sku: 'BCK-001', cat: 'Household', brand: 'Nile Plastics', buying: 8000, retail: 12000, wholesale: 10500, minWQty: 3, stock: 15, reorder: 4, unit: 'Piece' },
+  // --- MAKEUP ---
+  { name: 'Revlon ColorStay Lipstick', sku: 'MK-001', cat: 'Makeup', brand: 'Revlon', buying: 15000, retail: 26000, wholesale: 23000, minWQty: 3, stock: 50, reorder: 12, unit: 'Piece' },
+  { name: 'Maybelline Fit Me Foundation', sku: 'MK-002', cat: 'Makeup', brand: 'Maybelline', buying: 20000, retail: 34000, wholesale: 29000, minWQty: 3, stock: 40, reorder: 10, unit: 'Bottle' },
+  { name: 'Maybelline Lash Sensational Mascara', sku: 'MK-003', cat: 'Makeup', brand: 'Maybelline', buying: 18000, retail: 30000, wholesale: 26000, minWQty: 3, stock: 35, reorder: 8, unit: 'Piece' },
+  { name: 'NYX Slim Lip Liner', sku: 'MK-004', cat: 'Makeup', brand: 'NYX', buying: 12000, retail: 21000, wholesale: 18500, minWQty: 3, stock: 45, reorder: 10, unit: 'Piece' },
+  { name: 'Revlon Eye Shadow Quad Palette', sku: 'MK-005', cat: 'Makeup', brand: 'Revlon', buying: 22000, retail: 37000, wholesale: 32000, minWQty: 2, stock: 25, reorder: 6, unit: 'Palette' },
+  { name: 'L.A. Girl Pro Conceal', sku: 'MK-006', cat: 'Makeup', brand: 'L.A. Girl', buying: 14000, retail: 23000, wholesale: 20000, minWQty: 3, stock: 40, reorder: 10, unit: 'Piece' },
+  { name: 'Black Opal True Color Foundation', sku: 'MK-007', cat: 'Makeup', brand: 'Black Opal', buying: 18000, retail: 30000, wholesale: 26000, minWQty: 3, stock: 30, reorder: 8, unit: 'Bottle' },
+  { name: 'Wet n Wild Eyebrow Kit', sku: 'MK-008', cat: 'Makeup', brand: 'Wet n Wild', buying: 10000, retail: 17000, wholesale: 15000, minWQty: 3, stock: 35, reorder: 8, unit: 'Kit' },
+  { name: 'NYX Soft Matte Lip Cream', sku: 'MK-009', cat: 'Makeup', brand: 'NYX', buying: 14000, retail: 24000, wholesale: 21000, minWQty: 3, stock: 55, reorder: 12, unit: 'Piece' },
+  { name: 'Maybelline Baby Lips Lip Balm', sku: 'MK-010', cat: 'Makeup', brand: 'Maybelline', buying: 8000, retail: 13500, wholesale: 12000, minWQty: 6, stock: 80, reorder: 20, unit: 'Piece' },
 
-  // --- SNACKS & CONFECTIONERY ---
-  { name: 'Biscuits Digestive (200g)', sku: 'BSC-001', cat: 'Snacks', brand: 'Nice', buying: 2500, retail: 3000, wholesale: 2800, minWQty: 12, stock: 80, reorder: 20, unit: 'Pack' },
-  { name: 'Crisps Pringles (165g)', sku: 'CRP-001', cat: 'Snacks', brand: 'Pringles', buying: 4500, retail: 5500, wholesale: 5000, minWQty: 6, stock: 40, reorder: 10, unit: 'Can' },
-  { name: 'Groundnuts Roasted (250g)', sku: 'GNT-001', cat: 'Snacks', brand: 'Local', buying: 2000, retail: 2800, wholesale: 2500, minWQty: 20, stock: 100, reorder: 25, unit: 'Pack' },
-  { name: 'Candy Sugus Assorted (100g)', sku: 'CDY-001', cat: 'Snacks', brand: 'Sugus', buying: 1500, retail: 2000, wholesale: 1800, minWQty: 24, stock: 120, reorder: 30, unit: 'Pack' },
-  { name: 'Chocolate Cadbury (50g)', sku: 'CHC-001', cat: 'Snacks', brand: 'Cadbury', buying: 1800, retail: 2500, wholesale: 2200, minWQty: 24, stock: 90, reorder: 20, unit: 'Bar' },
-  { name: 'Chewing Gum Orbit (14stk)', sku: 'GUM-001', cat: 'Snacks', brand: 'Orbit', buying: 800, retail: 1200, wholesale: 1000, minWQty: 30, stock: 150, reorder: 40, unit: 'Pack' },
+  // --- FRAGRANCES ---
+  { name: 'Axe Dark Temptation Body Spray (150ml)', sku: 'FR-001', cat: 'Fragrances', brand: 'Axe', buying: 9000, retail: 14500, wholesale: 12800, minWQty: 6, stock: 80, reorder: 20, unit: 'Can' },
+  { name: 'Rexona Men Body Spray (150ml)', sku: 'FR-002', cat: 'Fragrances', brand: 'Rexona', buying: 8500, retail: 13500, wholesale: 12000, minWQty: 6, stock: 90, reorder: 22, unit: 'Can' },
+  { name: 'Dove Women Deodorant Roll-On (40ml)', sku: 'FR-003', cat: 'Fragrances', brand: 'Dove', buying: 7000, retail: 11500, wholesale: 10000, minWQty: 6, stock: 70, reorder: 18, unit: 'Bottle' },
+  { name: 'Zara Night Pour Homme EDT (100ml)', sku: 'FR-004', cat: 'Fragrances', brand: 'Zara', buying: 45000, retail: 80000, wholesale: 70000, minWQty: 1, stock: 15, reorder: 4, unit: 'Bottle' },
+  { name: 'Zara Femme Eau de Parfum (100ml)', sku: 'FR-005', cat: 'Fragrances', brand: 'Zara', buying: 45000, retail: 80000, wholesale: 70000, minWQty: 1, stock: 12, reorder: 4, unit: 'Bottle' },
+  { name: 'Avon Attraction Perfume (50ml)', sku: 'FR-006', cat: 'Fragrances', brand: 'Avon', buying: 28000, retail: 47000, wholesale: 41000, minWQty: 2, stock: 20, reorder: 5, unit: 'Bottle' },
+  { name: 'Sure Anti-Perspirant Spray (150ml)', sku: 'FR-007', cat: 'Fragrances', brand: 'Sure', buying: 8000, retail: 13000, wholesale: 11500, minWQty: 6, stock: 60, reorder: 15, unit: 'Can' },
+  { name: 'Victoria\'s Secret Body Mist (250ml)', sku: 'FR-008', cat: 'Fragrances', brand: 'Victoria\'s Secret', buying: 32000, retail: 55000, wholesale: 48000, minWQty: 2, stock: 18, reorder: 5, unit: 'Bottle' },
 
-  // --- STATIONERY ---
-  { name: 'Exercise Book 32pg', sku: 'EXB-032', cat: 'Stationery', brand: 'Superior', buying: 500, retail: 700, wholesale: 600, minWQty: 50, stock: 250, reorder: 60, unit: 'Piece' },
-  { name: 'Exercise Book 96pg', sku: 'EXB-096', cat: 'Stationery', brand: 'Superior', buying: 1200, retail: 1500, wholesale: 1350, minWQty: 20, stock: 150, reorder: 40, unit: 'Piece' },
-  { name: 'Pen Biro Blue', sku: 'PEN-001', cat: 'Stationery', brand: 'Bic', buying: 300, retail: 500, wholesale: 400, minWQty: 50, stock: 300, reorder: 80, unit: 'Piece' },
-  { name: 'Pencil HB (Box 12pcs)', sku: 'PCL-001', cat: 'Stationery', brand: 'Staedtler', buying: 2500, retail: 3500, wholesale: 3000, minWQty: 10, stock: 60, reorder: 15, unit: 'Box' },
-  { name: 'Ruler 30cm', sku: 'RUL-001', cat: 'Stationery', brand: 'Maped', buying: 500, retail: 800, wholesale: 650, minWQty: 24, stock: 80, reorder: 20, unit: 'Piece' },
-  { name: 'Eraser Staedtler', sku: 'ERS-001', cat: 'Stationery', brand: 'Staedtler', buying: 300, retail: 500, wholesale: 400, minWQty: 30, stock: 120, reorder: 30, unit: 'Piece' },
-  { name: 'Manila Paper A4 (80gsm 500sht)', sku: 'PAP-001', cat: 'Stationery', brand: 'Double A', buying: 18000, retail: 22000, wholesale: 20000, minWQty: 2, stock: 25, reorder: 5, unit: 'Ream' },
+  // --- NAIL CARE ---
+  { name: 'OPI Nail Lacquer (15ml)', sku: 'NC-001', cat: 'Nail Care', brand: 'OPI', buying: 8000, retail: 15000, wholesale: 13000, minWQty: 3, stock: 60, reorder: 15, unit: 'Bottle' },
+  { name: 'Revlon ColorStay Nail Polish (14.7ml)', sku: 'NC-002', cat: 'Nail Care', brand: 'Revlon', buying: 6000, retail: 11000, wholesale: 9500, minWQty: 6, stock: 80, reorder: 20, unit: 'Bottle' },
+  { name: 'Acetone Nail Polish Remover (100ml)', sku: 'NC-003', cat: 'Nail Care', brand: 'Elegant Touch', buying: 4000, retail: 7000, wholesale: 6200, minWQty: 6, stock: 70, reorder: 18, unit: 'Bottle' },
+  { name: 'Emery Board Nail Files (Pack 10)', sku: 'NC-004', cat: 'Nail Care', brand: 'Generic', buying: 2000, retail: 3800, wholesale: 3200, minWQty: 10, stock: 100, reorder: 25, unit: 'Pack' },
+  { name: 'Sally Hansen Cuticle Oil (14ml)', sku: 'NC-005', cat: 'Nail Care', brand: 'Sally Hansen', buying: 5000, retail: 9000, wholesale: 7800, minWQty: 6, stock: 50, reorder: 12, unit: 'Bottle' },
+  { name: 'Nailene Nail Glue (3g)', sku: 'NC-006', cat: 'Nail Care', brand: 'Nailene', buying: 3000, retail: 6000, wholesale: 5200, minWQty: 6, stock: 60, reorder: 15, unit: 'Tube' },
+  { name: 'Essence Nail Polish (8ml)', sku: 'NC-007', cat: 'Nail Care', brand: 'Essence', buying: 4500, retail: 8000, wholesale: 7000, minWQty: 6, stock: 90, reorder: 20, unit: 'Bottle' },
 
-  // --- AIRTIME & MOBILE ---
-  { name: 'MTN Airtime UGX 1,000', sku: 'ATN-MTN-1K', cat: 'Airtime & Mobile', brand: 'MTN', buying: 950, retail: 1000, wholesale: 980, minWQty: 100, stock: 500, reorder: 100, unit: 'Card' },
-  { name: 'MTN Airtime UGX 2,000', sku: 'ATN-MTN-2K', cat: 'Airtime & Mobile', brand: 'MTN', buying: 1900, retail: 2000, wholesale: 1960, minWQty: 50, stock: 300, reorder: 60, unit: 'Card' },
-  { name: 'Airtel Airtime UGX 1,000', sku: 'ATN-ART-1K', cat: 'Airtime & Mobile', brand: 'Airtel', buying: 950, retail: 1000, wholesale: 980, minWQty: 100, stock: 450, reorder: 100, unit: 'Card' },
-  { name: 'Airtel Airtime UGX 2,000', sku: 'ATN-ART-2K', cat: 'Airtime & Mobile', brand: 'Airtel', buying: 1900, retail: 2000, wholesale: 1960, minWQty: 50, stock: 280, reorder: 60, unit: 'Card' },
-  { name: 'Phone Charging Cable USB-C', sku: 'CBL-001', cat: 'Airtime & Mobile', brand: 'Generic', buying: 3500, retail: 6000, wholesale: 5000, minWQty: 5, stock: 30, reorder: 8, unit: 'Piece' },
-  { name: 'Earphones Basic 3.5mm', sku: 'EAR-001', cat: 'Airtime & Mobile', brand: 'Generic', buying: 4000, retail: 7000, wholesale: 6000, minWQty: 5, stock: 20, reorder: 5, unit: 'Piece' },
+  // --- BABY CARE ---
+  { name: 'Johnson\'s Baby Powder (500g)', sku: 'BB-001', cat: 'Baby Care', brand: 'Johnson\'s', buying: 8000, retail: 13000, wholesale: 11500, minWQty: 6, stock: 50, reorder: 12, unit: 'Bottle' },
+  { name: 'Johnson\'s Baby Lotion (400ml)', sku: 'BB-002', cat: 'Baby Care', brand: 'Johnson\'s', buying: 9000, retail: 14500, wholesale: 13000, minWQty: 6, stock: 45, reorder: 10, unit: 'Bottle' },
+  { name: 'Johnson\'s Baby Oil (300ml)', sku: 'BB-003', cat: 'Baby Care', brand: 'Johnson\'s', buying: 8500, retail: 13500, wholesale: 12000, minWQty: 6, stock: 40, reorder: 10, unit: 'Bottle' },
+  { name: 'Huggies Baby Wipes (72pcs)', sku: 'BB-004', cat: 'Baby Care', brand: 'Huggies', buying: 10000, retail: 15500, wholesale: 13800, minWQty: 6, stock: 60, reorder: 15, unit: 'Pack' },
+  { name: 'Baby Dove Rich Moisture Body Wash (200ml)', sku: 'BB-005', cat: 'Baby Care', brand: 'Dove', buying: 9500, retail: 15000, wholesale: 13200, minWQty: 6, stock: 35, reorder: 8, unit: 'Bottle' },
 
-  // --- AGRO & SPECIAL ---
-  { name: 'Charcoal (Bag 5kg)', sku: 'CHR-005', cat: 'Fuel & Energy', brand: 'Local', buying: 8000, retail: 12000, wholesale: 10500, minWQty: 3, stock: 20, reorder: 6, unit: 'Bag' },
-  { name: 'Kerosene (1L)', sku: 'KER-001', cat: 'Fuel & Energy', brand: 'Shell', buying: 4000, retail: 5500, wholesale: 5000, minWQty: 5, stock: 25, reorder: 8, unit: 'Litre' },
+  // --- ACCESSORIES ---
+  { name: 'Elastic Hair Ties (Pack 20)', sku: 'AC-001', cat: 'Accessories', brand: 'Generic', buying: 1500, retail: 3000, wholesale: 2600, minWQty: 20, stock: 150, reorder: 40, unit: 'Pack' },
+  { name: 'Paddle Hair Brush', sku: 'AC-002', cat: 'Accessories', brand: 'Tangle Teezer', buying: 8000, retail: 15000, wholesale: 13000, minWQty: 3, stock: 30, reorder: 8, unit: 'Piece' },
+  { name: 'Bobby Pins Assorted (Pack 100)', sku: 'AC-003', cat: 'Accessories', brand: 'Generic', buying: 2000, retail: 4000, wholesale: 3400, minWQty: 12, stock: 100, reorder: 25, unit: 'Pack' },
+  { name: 'Makeup Brush Set (7 pieces)', sku: 'AC-004', cat: 'Accessories', brand: 'BS-MALL', buying: 12000, retail: 22000, wholesale: 19000, minWQty: 3, stock: 25, reorder: 6, unit: 'Set' },
+  { name: 'Cotton Pads Round (100 pieces)', sku: 'AC-005', cat: 'Accessories', brand: 'Swisspers', buying: 4000, retail: 7000, wholesale: 6200, minWQty: 6, stock: 80, reorder: 20, unit: 'Pack' },
+  { name: 'Revlon Tweezers Stainless Steel', sku: 'AC-006', cat: 'Accessories', brand: 'Revlon', buying: 5000, retail: 9500, wholesale: 8200, minWQty: 6, stock: 40, reorder: 10, unit: 'Piece' },
+  { name: 'Vanity Mirror Double-Sided', sku: 'AC-007', cat: 'Accessories', brand: 'Generic', buying: 8000, retail: 15000, wholesale: 13000, minWQty: 3, stock: 20, reorder: 5, unit: 'Piece' },
+  { name: 'Eyelash Curler', sku: 'AC-008', cat: 'Accessories', brand: 'Shiseido', buying: 6000, retail: 11000, wholesale: 9500, minWQty: 3, stock: 30, reorder: 8, unit: 'Piece' },
 ];
 
-// Realistic Kampala business names for suppliers/customers
+// Cosmetics-focused suppliers for a Kampala beauty shop
 const SUPPLIERS = [
-  { name: 'Uchumi Distributors Ltd', contact: 'James Kamau', phone: '0701-234567', email: 'orders@uchumi-dist.co.ug', address: 'Nakawa Industrial Area, Kampala' },
-  { name: 'Kakira Sugar Works Ltd', contact: 'Sarah Mutesi', phone: '0772-456789', email: 'sales@kakirasugar.com', address: 'Industrial Area, Kampala' },
-  { name: 'Mukwano Industries Uganda', contact: 'Peter Ochieng', phone: '0782-567890', email: 'wholesale@mukwano.com', address: 'Nalukolongo, Kampala' },
-  { name: 'Crown Beverages Ltd', contact: 'Grace Nansubuga', phone: '0752-678901', email: 'supply@crownbev.co.ug', address: 'Port Bell, Kampala' },
-  { name: 'Nice House of Plastics', contact: 'David Ssemakula', phone: '0712-789012', email: 'orders@nicehouse.co.ug', address: 'Kampala Road, Kampala' },
-  { name: 'Total Energies Uganda', contact: 'Winnie Nakabuye', phone: '0793-890123', email: 'fuel@total.co.ug', address: 'Bugolobi, Kampala' },
-  { name: 'Procter & Gamble Uganda', contact: 'Moses Byarugaba', phone: '0763-901234', email: 'orders@pg.co.ug', address: 'Industrial Area, Kampala' },
-  { name: 'Unilever East Africa', contact: 'Joyce Akello', phone: '0741-012345', email: 'sales@unilever-ea.com', address: 'Namanve, Kampala' },
+  { name: 'BeautyPro Distributors Uganda', contact: 'Alice Namaganda', phone: '0701-234567', email: 'orders@beautypro.co.ug', address: 'Nakawa Industrial Area, Kampala' },
+  { name: 'Unilever East Africa Ltd', contact: 'Sarah Mutesi', phone: '0772-456789', email: 'sales@unilever-ea.com', address: 'Namanve Industrial Area, Kampala' },
+  { name: 'L\'Oreal Uganda Distributors', contact: 'Peter Ochieng', phone: '0782-567890', email: 'wholesale@loreal-ug.com', address: 'Industrial Area, Kampala' },
+  { name: 'Revlon & Maybelline Importers', contact: 'Grace Nansubuga', phone: '0752-678901', email: 'supply@revlon-ug.co.ug', address: 'Kampala Road, Kampala' },
+  { name: 'GlowMart Cosmetics Wholesale', contact: 'David Ssemakula', phone: '0712-789012', email: 'orders@glowmart.co.ug', address: 'Kikuubo, Kampala' },
+  { name: 'Procter & Gamble Uganda', contact: 'Winnie Nakabuye', phone: '0793-890123', email: 'orders@pg-ug.com', address: 'Bugolobi, Kampala' },
+  { name: 'African Beauty Supplies', contact: 'Moses Byarugaba', phone: '0763-901234', email: 'orders@africanbeauty.co.ug', address: 'Industrial Area, Kampala' },
+  { name: 'Avon Uganda Direct', contact: 'Joyce Akello', phone: '0741-012345', email: 'sales@avon-ug.com', address: 'Ntinda, Kampala' },
 ];
 
+// Beauty-shop wholesale customers
 const CUSTOMERS = [
-  { name: 'Mama Grace Supermarket', phone: '0772-111222', email: 'mamgrace@gmail.com', address: 'Kalerwe Market, Kampala', isWholesale: true, creditLimit: 2000000 },
-  { name: 'Kisaasi Corner Shop', phone: '0702-333444', email: null, address: 'Kisaasi, Kampala', isWholesale: false, creditLimit: 500000 },
-  { name: 'Bulamu Traders', phone: '0782-555666', email: 'bulamu@yahoo.com', address: 'Nalya, Kampala', isWholesale: true, creditLimit: 5000000 },
-  { name: 'St. Kizito School Canteen', phone: '0752-777888', email: null, address: 'Kireka, Kampala', isWholesale: false, creditLimit: 300000 },
-  { name: 'Ntinda View Hotel', phone: '0712-999000', email: 'ntindaview@gmail.com', address: 'Ntinda, Kampala', isWholesale: true, creditLimit: 3000000 },
-  { name: 'Wandegeya Fresh Market', phone: '0793-112233', email: null, address: 'Wandegeya, Kampala', isWholesale: true, creditLimit: 1500000 },
-  { name: 'Nasser Road Mini Mart', phone: '0763-445566', email: 'nasser.mart@gmail.com', address: 'Nasser Road, Kampala', isWholesale: false, creditLimit: 800000 },
-  { name: 'Mengo Parish Retailer', phone: '0741-778899', email: null, address: 'Mengo, Kampala', isWholesale: false, creditLimit: 400000 },
-  { name: 'Bwaise Community Store', phone: '0701-001122', email: null, address: 'Bwaise, Kampala', isWholesale: false, creditLimit: 200000 },
-  { name: 'Entebbe Road Kiosk', phone: '0772-334455', email: null, address: 'Entebbe Road, Kampala', isWholesale: false, creditLimit: 0 },
+  { name: 'Glam Zone Salon & Spa', phone: '0772-111222', email: 'glamzone@gmail.com', address: 'Kololo Hill, Kampala', isWholesale: true, creditLimit: 3000000 },
+  { name: 'Beauty Corner Shop Kisaasi', phone: '0702-333444', email: null, address: 'Kisaasi, Kampala', isWholesale: false, creditLimit: 500000 },
+  { name: 'Nalya Ladies Fashion & Beauty', phone: '0782-555666', email: 'nalya.beauty@yahoo.com', address: 'Nalya, Kampala', isWholesale: true, creditLimit: 5000000 },
+  { name: 'Queens Hair & Nails Ntinda', phone: '0752-777888', email: null, address: 'Ntinda, Kampala', isWholesale: false, creditLimit: 400000 },
+  { name: 'Makerere Uni Salon', phone: '0712-999000', email: 'makuni.salon@gmail.com', address: 'Makerere, Kampala', isWholesale: true, creditLimit: 2000000 },
+  { name: 'Wandegeya Market Beauty Stall', phone: '0793-112233', email: null, address: 'Wandegeya, Kampala', isWholesale: true, creditLimit: 1000000 },
+  { name: 'Nasser Road Cosmetics Kiosk', phone: '0763-445566', email: 'nasser.cosm@gmail.com', address: 'Nasser Road, Kampala', isWholesale: false, creditLimit: 600000 },
+  { name: 'Divine Beauty Parlour Mengo', phone: '0741-778899', email: null, address: 'Mengo, Kampala', isWholesale: false, creditLimit: 350000 },
+  { name: 'Bwaise Glam Studio', phone: '0701-001122', email: null, address: 'Bwaise, Kampala', isWholesale: false, creditLimit: 200000 },
+  { name: 'Entebbe Road Mini Pharmacy & Beauty', phone: '0772-334455', email: null, address: 'Entebbe Road, Kampala', isWholesale: false, creditLimit: 0 },
 ];
 
 function daysAgo(n: number): Date {
@@ -143,7 +143,14 @@ function randomChoice<T>(arr: T[]): T {
 }
 
 async function main() {
-  console.log('[seed] Seeding KampStock with realistic Kampala shop data...');
+  console.log('[seed] Seeding KampStock with cosmetics shop data...');
+
+  // Idempotency check — skip if already seeded
+  const existingAdmin = await prisma.user.findUnique({ where: { username: 'admin' } });
+  if (existingAdmin) {
+    console.log('[seed] Already seeded — skipping. Delete records manually to re-seed.');
+    return;
+  }
 
   // --- ROLES ---
   const adminRole = await prisma.role.upsert({ where: { name: 'Admin' }, update: {}, create: { name: 'Admin', permissions: JSON.stringify({ all: true }), tenantId: 1 } });
