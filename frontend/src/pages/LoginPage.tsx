@@ -173,7 +173,7 @@ export default function LoginPage() {
               rel="noopener noreferrer"
               className="ks-footer-link"
             >
-              Perez Chris
+              Designed by Perez Chris
             </a>
             <span className="ks-footer-sep">·</span>
             <Link to="/about" className="ks-footer-link">About</Link>
