@@ -92,6 +92,12 @@ export default function AppLayout() {
             <LogOut className="w-4 h-4" />
           </button>
         </div>
+        <div className="mt-3 pt-3 border-t border-slate-800/60 flex items-center justify-between">
+          <Link to="/about" className="text-[11px] text-slate-600 hover:text-slate-400 transition">
+            About KampStock
+          </Link>
+          <span className="text-[11px] text-slate-700">v2.0</span>
+        </div>
       </div>
     </div>
   );

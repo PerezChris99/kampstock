@@ -1,5 +1,5 @@
 ﻿import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import api from '../lib/api';
 import { useAuthStore } from '../store/auth.store';
 
@@ -165,8 +165,18 @@ export default function LoginPage() {
           )}
 
           <div className="ks-footer-hint">
-            <span>Powered by</span>
             <span className="ks-footer-brand">KampStock v2.0</span>
+            <span className="ks-footer-sep">·</span>
+            <a
+              href="https://perezchris.netlify.app"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="ks-footer-link"
+            >
+              Perez Chris
+            </a>
+            <span className="ks-footer-sep">·</span>
+            <Link to="/about" className="ks-footer-link">About</Link>
           </div>
         </div>
       </div>

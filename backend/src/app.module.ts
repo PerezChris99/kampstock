@@ -24,8 +24,8 @@ import { TenantsModule } from './tenants/tenants.module';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     ThrottlerModule.forRoot([
-      { name: 'short', ttl: 60000, limit: 30 },   // 30 req/min per IP
-      { name: 'long', ttl: 3600000, limit: 500 },  // 500 req/hour per IP
+      { name: 'short', ttl: 60_000,   limit: 60 },   // 60 req/min  per IP  (general)
+      { name: 'long',  ttl: 3_600_000, limit: 600 },  // 600 req/hr  per IP  (general)
     ]),
     PrismaModule,
     AuthModule,

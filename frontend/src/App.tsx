@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import AppLayout from './layouts/AppLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 import LoginPage from './pages/LoginPage';
+import AboutPage from './pages/AboutPage';
 import DashboardPage from './pages/DashboardPage';
 import POSPage from './pages/POSPage';
 import ProductsPage from './pages/ProductsPage';
@@ -26,6 +27,7 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/about" element={<AboutPage />} />
           <Route
             path="/"
             element={

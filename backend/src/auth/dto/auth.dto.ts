@@ -1,11 +1,13 @@
-import { IsString, MinLength, IsOptional, IsInt } from 'class-validator';
+import { IsString, MinLength, MaxLength, IsOptional, IsInt, Matches } from 'class-validator';
 
 export class LoginDto {
   @IsString()
+  @MaxLength(50, { message: 'Username too long' })
   username: string;
 
   @IsString()
   @MinLength(6)
+  @MaxLength(128, { message: 'Password too long' })
   password: string;
 }
 

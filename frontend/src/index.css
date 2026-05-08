@@ -349,6 +349,9 @@ input:focus, select:focus, textarea:focus {
   gap: 5px;
 }
 .ks-footer-brand { font-weight: 600; color: #64748b; }
+.ks-footer-sep   { color: #475569; }
+.ks-footer-link  { color: #64748b; text-decoration: none; transition: color 0.15s; }
+.ks-footer-link:hover { color: #818cf8; }
 
 .ks-single-mode-badge {
   display: inline-flex;
