@@ -1,7 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
+import { Plus } from 'lucide-react';
 import api from '../lib/api';
+import { useAuthStore } from '../store/auth.store';
 
 export default function InventoryPage() {
+  const { user } = useAuthStore();
+  const canEdit = user?.role === 'Admin' || user?.role === 'Manager';
+
   const { data: items, isLoading } = useQuery({
     queryKey: ['stock-items'],
     queryFn: () => api.get('/stock/items').then((r) => r.data),
@@ -9,7 +15,18 @@ export default function InventoryPage() {
 
   return (
     <div className="p-6">
-      <h2 className="text-2xl font-bold text-gray-800 mb-6">Inventory</h2>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-bold text-gray-800">Inventory</h2>
+        {canEdit && (
+          <Link
+            to="/products"
+            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition"
+          >
+            <Plus className="w-4 h-4" />
+            Add Product
+          </Link>
+        )}
+      </div>
       {isLoading ? (
         <p className="text-gray-500">Loading...</p>
       ) : (
