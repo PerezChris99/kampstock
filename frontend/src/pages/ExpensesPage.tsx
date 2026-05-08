@@ -30,7 +30,15 @@ export default function ExpensesPage() {
 
       {totals && (
         <div className="grid grid-cols-2 gap-4 mb-6">
-          {Object.entries(totals).map(([cat, amt]: [string, any]) => (
+          <div className="bg-white rounded-xl shadow p-4 flex justify-between items-center">
+            <span className="text-gray-600">Total Expenses</span>
+            <span className="font-bold text-gray-800">UGX {Number(totals.total ?? 0).toLocaleString()}</span>
+          </div>
+          <div className="bg-white rounded-xl shadow p-4 flex justify-between items-center">
+            <span className="text-gray-600">Transactions</span>
+            <span className="font-bold text-gray-800">{totals.count ?? 0}</span>
+          </div>
+          {Object.entries(totals.byCategory ?? {}).map(([cat, amt]: [string, any]) => (
             <div key={cat} className="bg-white rounded-xl shadow p-4 flex justify-between items-center">
               <span className="text-gray-600">{cat}</span>
               <span className="font-bold text-gray-800">UGX {Number(amt).toLocaleString()}</span>

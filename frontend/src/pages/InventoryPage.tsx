@@ -4,7 +4,7 @@ import api from '../lib/api';
 export default function InventoryPage() {
   const { data: items, isLoading } = useQuery({
     queryKey: ['stock-items'],
-    queryFn: () => api.get('/stock').then((r) => r.data),
+    queryFn: () => api.get('/stock/items').then((r) => r.data),
   });
 
   return (

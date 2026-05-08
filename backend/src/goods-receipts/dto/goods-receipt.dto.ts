@@ -44,6 +44,9 @@ export class CreateSupplierInvoiceDto {
   @IsInt()
   goodsReceiptId: number;
 
+  @IsInt()
+  supplierId: number;
+
   @IsString()
   invoiceNumber: string;
 

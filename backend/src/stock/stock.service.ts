@@ -17,7 +17,7 @@ export class StockService {
   }
 
   async findAllLocations() {
-    return this.prisma.stockLocation.findMany({ where: { isActive: true }, orderBy: { name: 'asc' } });
+    return this.prisma.stockLocation.findMany({ where: { isActive: true }, orderBy: { id: 'asc' } });
   }
 
   // ─── Stock items ────────────────────────────────────────────────────────────

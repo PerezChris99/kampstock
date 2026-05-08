@@ -11,22 +11,22 @@ async function main() {
     prisma.role.upsert({
       where: { name: 'Admin' },
       update: {},
-      create: { name: 'Admin', permissions: { all: true } },
+      create: { name: 'Admin', permissions: JSON.stringify({ all: true }) },
     }),
     prisma.role.upsert({
       where: { name: 'Manager' },
       update: {},
-      create: { name: 'Manager', permissions: { manage_products: true, manage_sales: true, view_reports: true } },
+      create: { name: 'Manager', permissions: JSON.stringify({ manage_products: true, manage_sales: true, view_reports: true }) },
     }),
     prisma.role.upsert({
       where: { name: 'Cashier' },
       update: {},
-      create: { name: 'Cashier', permissions: { create_sales: true } },
+      create: { name: 'Cashier', permissions: JSON.stringify({ create_sales: true }) },
     }),
     prisma.role.upsert({
       where: { name: 'Storekeeper' },
       update: {},
-      create: { name: 'Storekeeper', permissions: { manage_stock: true } },
+      create: { name: 'Storekeeper', permissions: JSON.stringify({ manage_stock: true }) },
     }),
   ]);
 

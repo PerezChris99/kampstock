@@ -19,4 +19,9 @@ export class CreateExpenseDto {
   @IsOptional()
   @IsDateString()
   paidAt?: string;
+
+  // alias accepted from frontend (mapped to paidAt in service)
+  @IsOptional()
+  @IsDateString()
+  expenseDate?: string;
 }

@@ -14,7 +14,7 @@ export class CustomersService {
     return this.prisma.customer.findMany({
       where: {
         isActive: true,
-        ...(search && { name: { contains: search, mode: 'insensitive' } }),
+        ...(search && { name: { contains: search } }),
       },
       orderBy: { name: 'asc' },
     });

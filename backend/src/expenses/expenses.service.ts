@@ -9,11 +9,15 @@ export class ExpensesService {
   constructor(private prisma: PrismaService) {}
 
   async create(dto: CreateExpenseDto, actorId: number) {
+    const resolvedDate = dto.expenseDate ?? dto.paidAt;
     return this.prisma.expense.create({
       data: {
-        ...dto,
+        category: dto.category,
+        description: dto.description,
+        amount: dto.amount,
+        paidTo: dto.paidTo,
         paidById: actorId,
-        paidAt: dto.paidAt ? new Date(dto.paidAt) : undefined,
+        paidAt: resolvedDate ? new Date(resolvedDate) : undefined,
       },
     });
   }

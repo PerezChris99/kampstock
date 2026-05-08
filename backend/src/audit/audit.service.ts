@@ -20,8 +20,8 @@ export class AuditService {
         action,
         entityType,
         entityId,
-        previousValue: previousValue ?? undefined,
-        newValue: newValue ?? undefined,
+        previousValue: previousValue != null ? JSON.stringify(previousValue) : undefined,
+        newValue: newValue != null ? JSON.stringify(newValue) : undefined,
         ipAddress,
       },
     });

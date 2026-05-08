@@ -6,11 +6,20 @@ import { CreatePurchaseOrderDto, UpdatePOStatusDto } from './dto/purchase-order.
 export class PurchaseOrdersService {
   constructor(private prisma: PrismaService) {}
 
+  private async generatePoNumber(): Promise<string> {
+    const count = await this.prisma.purchaseOrder.count();
+    const date = new Date();
+    const prefix = `PO${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}`;
+    return `${prefix}${String(count + 1).padStart(5, '0')}`;
+  }
+
   async create(dto: CreatePurchaseOrderDto, actorId: number) {
     const { lines, ...poData } = dto;
+    const poNumber = await this.generatePoNumber();
     return this.prisma.purchaseOrder.create({
       data: {
         ...poData,
+        poNumber,
         createdById: actorId,
         lines: { create: lines },
       },

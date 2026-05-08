@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../lib/api';
 import { useAuthStore } from '../store/auth.store';
+import { enqueueOfflineSale, flushOfflineQueue } from '../lib/offlineQueue';
 
 interface CartLine {
   productId: number;
@@ -20,9 +21,25 @@ export default function POSPage() {
   const [customerId, setCustomerId] = useState<number | undefined>();
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'MOBILE_MONEY' | 'BANK' | 'CREDIT'>('CASH');
   const [receipt, setReceipt] = useState<any>(null);
+  const [offlineBanner, setOfflineBanner] = useState(false);
   const barcodeRef = useRef<HTMLInputElement>(null);
   const { user } = useAuthStore();
   const qc = useQueryClient();
+
+  // Flush queued offline sales when connection is restored
+  useEffect(() => {
+    const handleOnline = async () => {
+      const token = (useAuthStore.getState() as any).accessToken;
+      if (!token) return;
+      const synced = await flushOfflineQueue(token);
+      if (synced > 0) {
+        qc.invalidateQueries({ queryKey: ['daily-sales'] });
+        setOfflineBanner(false);
+      }
+    };
+    window.addEventListener('online', handleOnline);
+    return () => window.removeEventListener('online', handleOnline);
+  }, [qc]);
 
   const { data: customers } = useQuery({
     queryKey: ['customers'],
@@ -57,7 +74,7 @@ export default function POSPage() {
         productName: product.name,
         unitName: unit.unitName,
         quantity: 1,
-        unitPrice: saleType === 'WHOLESALE' ? unit.sellingPriceWholesale : unit.sellingPriceRetail,
+        unitPrice: parseFloat(saleType === 'WHOLESALE' ? unit.sellingPriceWholesale : unit.sellingPriceRetail),
         discount: 0,
       });
     } catch {
@@ -91,23 +108,29 @@ export default function POSPage() {
 
   const grandTotal = cart.reduce((s, l) => s + l.quantity * l.unitPrice * (1 - l.discount / 100), 0);
 
-  const checkout = () => {
+  const checkout = async () => {
     if (!cart.length) return;
-    createSaleMutation.mutate({
+    const salePayload = {
       saleType,
-      customerId: customerId ?? null,
+      customerId: customerId ?? undefined,
       locationId: defaultLocationId,
-      cashierId: user?.id,
       notes: '',
       lines: cart.map((l) => ({
         productId: l.productId,
-        productUnitId: l.productUnitId,
         quantity: l.quantity,
-        unitPrice: l.unitPrice,
+        unitPrice: parseFloat(String(l.unitPrice)),
         discount: l.discount,
       })),
-      payments: [{ paymentMethod, amount: grandTotal, reference: '' }],
-    });
+      payments: [{ paymentMethod, amount: grandTotal, paymentReference: '' }],
+    };
+    if (!navigator.onLine) {
+      await enqueueOfflineSale(salePayload);
+      setOfflineBanner(true);
+      setCart([]);
+      alert('You are offline — sale queued and will sync when connection is restored.');
+      return;
+    }
+    createSaleMutation.mutate(salePayload);
   };
 
   useEffect(() => {
@@ -136,7 +159,13 @@ export default function POSPage() {
   }
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full flex-col">
+      {offlineBanner && (
+        <div className="bg-yellow-500 text-white text-sm text-center py-1.5 font-medium">
+          OFFLINE MODE — Sales are queued locally and will sync when connection is restored.
+        </div>
+      )}
+      <div className="flex flex-1 overflow-hidden">
       {/* Cart panel */}
       <div className="flex-1 p-6 flex flex-col">
         <div className="flex items-center gap-4 mb-4">
@@ -157,7 +186,7 @@ export default function POSPage() {
             value={barcode}
             onChange={(e) => setBarcode(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && scanBarcode()}
-            placeholder="Scan or type barcode... (Enter)"
+            placeholder="Scan barcode or type SKU... (Enter)"
             className="flex-1 border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <button
@@ -268,6 +297,7 @@ export default function POSPage() {
             <p className="text-red-500 text-xs mt-2 text-center">Sale failed. Check stock levels.</p>
           )}
         </div>
+      </div>
       </div>
     </div>
   );

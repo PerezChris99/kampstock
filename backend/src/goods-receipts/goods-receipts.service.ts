@@ -105,6 +105,7 @@ export class GoodsReceiptsService {
     const balance = dto.totalAmount - (dto.paidAmount ?? 0);
     return this.prisma.supplierInvoice.create({
       data: {
+        supplierId: dto.supplierId,
         goodsReceiptId: dto.goodsReceiptId,
         invoiceNumber: dto.invoiceNumber,
         invoiceDate: new Date(dto.invoiceDate),

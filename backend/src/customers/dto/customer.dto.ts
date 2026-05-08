@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsNumber, Min } from 'class-validator';
+import { IsString, IsOptional, IsNumber, IsBoolean, IsEmail, Min } from 'class-validator';
 
 export class CreateCustomerDto {
   @IsString()
@@ -7,6 +7,10 @@ export class CreateCustomerDto {
   @IsOptional()
   @IsString()
   phone?: string;
+
+  @IsOptional()
+  @IsEmail()
+  email?: string;
 
   @IsOptional()
   @IsString()
@@ -20,6 +24,10 @@ export class CreateCustomerDto {
   @IsNumber()
   @Min(0)
   creditLimit?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  isWholesale?: boolean;
 }
 
 export class UpdateCustomerDto {
@@ -32,6 +40,10 @@ export class UpdateCustomerDto {
   phone?: string;
 
   @IsOptional()
+  @IsEmail()
+  email?: string;
+
+  @IsOptional()
   @IsString()
   address?: string;
 
@@ -39,4 +51,8 @@ export class UpdateCustomerDto {
   @IsNumber()
   @Min(0)
   creditLimit?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  isWholesale?: boolean;
 }

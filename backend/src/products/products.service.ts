@@ -44,7 +44,7 @@ export class ProductsService {
     return this.prisma.product.findMany({
       where: {
         isActive: true,
-        ...(search && { name: { contains: search, mode: 'insensitive' } }),
+        ...(search && { name: { contains: search } }),
         ...(categoryId && { categoryId }),
       },
       include: { units: true, category: true },
@@ -62,10 +62,17 @@ export class ProductsService {
   }
 
   async findByBarcode(barcode: string) {
-    const product = await this.prisma.product.findUnique({
+    // Try barcode first, then fallback to SKU lookup
+    let product = await this.prisma.product.findUnique({
       where: { barcode },
       include: { units: true, category: true },
     });
+    if (!product) {
+      product = await this.prisma.product.findUnique({
+        where: { sku: barcode },
+        include: { units: true, category: true },
+      });
+    }
     if (!product) throw new NotFoundException('Product not found');
     return product;
   }

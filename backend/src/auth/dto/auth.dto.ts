@@ -1,4 +1,4 @@
-import { IsString, MinLength, IsOptional } from 'class-validator';
+import { IsString, MinLength, IsOptional, IsInt } from 'class-validator';
 
 export class LoginDto {
   @IsString()
@@ -29,5 +29,6 @@ export class CreateUserDto {
   @IsString()
   phone?: string;
 
+  @IsInt()
   roleId: number;
 }
