@@ -22,6 +22,8 @@ export default function POSPage() {
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'MOBILE_MONEY' | 'BANK' | 'CREDIT'>('CASH');
   const [receipt, setReceipt] = useState<any>(null);
   const [offlineBanner, setOfflineBanner] = useState(false);
+  const [scanError, setScanError] = useState('');
+  const [offlineSaleMsg, setOfflineSaleMsg] = useState('');
   const barcodeRef = useRef<HTMLInputElement>(null);
   const { user } = useAuthStore();
   const qc = useQueryClient();
@@ -60,6 +62,17 @@ export default function POSPage() {
       setCart([]);
       qc.invalidateQueries({ queryKey: ['daily-sales'] });
     },
+    onError: (err: any) => {
+      const status = err?.response?.status;
+      const msg = err?.response?.data?.message;
+      if (status === 429) {
+        setScanError('Too many requests — please wait a moment before completing this sale.');
+      } else if (status === 422 || status === 400) {
+        setScanError(msg ?? 'Sale could not be completed. Check item quantities and try again.');
+      } else {
+        setScanError(msg ?? 'Failed to process sale. Please try again.');
+      }
+    },
   });
 
   const scanBarcode = async () => {
@@ -77,8 +90,15 @@ export default function POSPage() {
         unitPrice: parseFloat(saleType === 'WHOLESALE' ? unit.sellingPriceWholesale : unit.sellingPriceRetail),
         discount: 0,
       });
-    } catch {
-      alert('Product not found for this barcode');
+    } catch (err: any) {
+      const status = err?.response?.status;
+      if (status === 429) {
+        setScanError('Too many requests — please slow down and try again in a moment.');
+      } else if (status === 404) {
+        setScanError(`No product found for "${barcode.trim()}". Check the barcode or SKU.`);
+      } else {
+        setScanError('Could not look up product. Please check your connection and try again.');
+      }
     }
     setBarcode('');
     barcodeRef.current?.focus();
@@ -127,7 +147,7 @@ export default function POSPage() {
       await enqueueOfflineSale(salePayload);
       setOfflineBanner(true);
       setCart([]);
-      alert('You are offline — sale queued and will sync when connection is restored.');
+      setOfflineSaleMsg('You are offline — sale has been saved locally and will sync automatically when your connection is restored.');
       return;
     }
     createSaleMutation.mutate(salePayload);
@@ -180,14 +200,16 @@ export default function POSPage() {
           </select>
         </div>
 
-        <div className="flex gap-2 mb-4">
+        <div className="flex gap-2 mb-1">
           <input
             ref={barcodeRef}
             value={barcode}
-            onChange={(e) => setBarcode(e.target.value)}
+            onChange={(e) => { setBarcode(e.target.value); setScanError(''); }}
             onKeyDown={(e) => e.key === 'Enter' && scanBarcode()}
             placeholder="Scan barcode or type SKU... (Enter)"
-            className="flex-1 border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className={`flex-1 border rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+              scanError ? 'border-red-400' : 'border-gray-300'
+            }`}
           />
           <button
             onClick={scanBarcode}
@@ -196,6 +218,17 @@ export default function POSPage() {
             Add
           </button>
         </div>
+        {scanError && (
+          <p className="text-xs text-red-600 mb-3 flex items-center gap-1">
+            <span>⚠</span> {scanError}
+          </p>
+        )}
+        {offlineSaleMsg && (
+          <div className="mb-3 bg-amber-50 border border-amber-300 text-amber-800 text-xs rounded-lg px-3 py-2 flex items-center gap-2">
+            <span>📶</span> {offlineSaleMsg}
+            <button onClick={() => setOfflineSaleMsg('')} className="ml-auto text-amber-600 hover:text-amber-900">✕</button>
+          </div>
+        )}
 
         {/* Cart table */}
         <div className="flex-1 bg-white rounded-xl shadow overflow-auto">

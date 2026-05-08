@@ -1,121 +1,214 @@
-# KampStock
+<div align="center">
 
-> **Wholesale & retail stock control for Kampala shops**
+# 🏪 KampStock
 
-KampStock is a production-grade full-stack inventory, stock, and sales management system built for wholesale/retail shops in Kampala, Uganda. It handles FMCG and household goods with multi-tier pricing, offline-capable POS, supplier management, credit customers, and business reporting.
+### Wholesale & Retail Stock Management System
 
----
+**A production-grade inventory, POS, and business management platform built for Kampala shops.**
 
-## Features
-
-- **User & Role Management** – Admin, Manager, Cashier, Storekeeper with RBAC
-- **Product & Catalog Management** – Categories, barcodes, units, multi-tier pricing, expiry tracking
-- **Inventory & Stock Control** – Real-time stock across locations, movements audit trail
-- **Purchasing & Supplier Management** – POs, goods receipts, supplier invoices and balances
-- **Sales & POS** – Fast keyboard/barcode POS, cash/credit/mobile money, returns
-- **Customer & Credit Management** – Credit limits, ageing, outstanding balances
-- **Finance & Expenses** – Basic P&L, expense categories
-- **Compliance & Logging** – EFRIS-ready structure, full audit log
-- **Reporting** – Daily sales, stock valuation, slow movers, monthly profit
+[![NestJS](https://img.shields.io/badge/Backend-NestJS%2011-E0234E?logo=nestjs&logoColor=white)](https://nestjs.com)
+[![React](https://img.shields.io/badge/Frontend-React%2019-61DAFB?logo=react&logoColor=black)](https://react.dev)
+[![Prisma](https://img.shields.io/badge/ORM-Prisma%207-2D3748?logo=prisma&logoColor=white)](https://prisma.io)
+[![TypeScript](https://img.shields.io/badge/Language-TypeScript-3178C6?logo=typescript&logoColor=white)](https://typescriptlang.org)
+[![TailwindCSS](https://img.shields.io/badge/Styles-TailwindCSS%20v4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
 
 ---
 
-## Tech Stack
+*Built for FMCG and household goods retailers in Uganda — handling multi-tier pricing, real-time stock, credit customers, and full business reporting.*
 
-| Layer | Technology |
-|-------|-----------|
-| Backend | Node.js, NestJS, TypeScript |
-| Database | PostgreSQL via Prisma ORM |
-| Frontend | React, TypeScript, TailwindCSS |
-| POS | React PWA with IndexedDB offline support |
-| Auth | JWT + refresh tokens, RBAC |
-| Infra | Nginx, Let's Encrypt, GitHub Actions CI/CD |
+</div>
 
 ---
 
-## Project Structure
+## ✨ Features
+
+<table>
+<tr>
+<td width="50%">
+
+### 🧑‍💼 Access & Security
+- Role-based access control (Admin, Manager, Cashier, Storekeeper)
+- JWT authentication with refresh token rotation
+- Brute-force protection & rate limiting
+- Full audit trail on all mutations
+
+### 🛒 Point of Sale
+- Fast keyboard & barcode POS interface
+- Retail and wholesale pricing modes
+- Cash, Mobile Money, Bank, and Credit payments
+- Sales returns & refunds
+- Offline mode — queues sales locally, syncs on reconnect
+
+### 📦 Inventory & Products
+- Product catalog with categories, barcodes, multi-unit pricing
+- Real-time stock levels across locations
+- Stock movement history and audit log
+- Low-stock alerts and expiry tracking
+
+</td>
+<td width="50%">
+
+### 🏭 Purchasing
+- Purchase order creation and approval workflow
+- Goods received notes and supplier invoicing
+- Supplier balance and payment tracking
+
+### 👥 Customers & Credit
+- Customer profiles with credit limits
+- Outstanding balance ageing reports
+- Credit sale workflows
+
+### 💰 Finance & Reporting
+- Daily sales summary and trends
+- Gross profit / P&L by period
+- Top products, category breakdown, payment method split
+- Expense tracking and categorisation
+- Stock valuation report
+
+### 📊 Dashboard
+- Live revenue, order count, low-stock indicators
+- 30-day sales trend chart
+- 6-month P&L summary
+- Payment method distribution
+
+</td>
+</tr>
+</table>
+
+---
+
+## 🗂️ Project Structure
 
 ```
 kampstock/
-├── backend/          # NestJS API server
-├── frontend/         # React web app + POS PWA
-├── docs/             # Architecture and development docs
-└── docker-compose.yml
+├── backend/                  # NestJS API server
+│   ├── src/
+│   │   ├── auth/             # JWT auth, RBAC guards
+│   │   ├── products/         # Product catalog & units
+│   │   ├── inventory/        # Stock locations & movements
+│   │   ├── sales/            # POS engine, receipts, returns
+│   │   ├── purchasing/       # Purchase orders, GRNs
+│   │   ├── customers/        # Customer profiles, credit
+│   │   ├── suppliers/        # Supplier management
+│   │   ├── expenses/         # Expense categories & records
+│   │   ├── reports/          # Analytics & reporting
+│   │   └── users/            # User management
+│   ├── prisma/               # SQLite schema (dev)
+│   └── prisma-pg/            # PostgreSQL schema (production)
+│
+├── frontend/                 # React 19 web app
+│   └── src/
+│       ├── pages/            # Dashboard, POS, Products, Sales, …
+│       ├── layouts/          # AppLayout with role-aware nav
+│       ├── store/            # Zustand auth store
+│       └── lib/              # Axios client, offline queue
+│
+└── docs/                     # Architecture & development docs
 ```
 
 ---
 
-## Quick Start
+## ⚙️ Tech Stack
+
+| Layer | Technology | Purpose |
+|-------|-----------|---------|
+| **Backend** | NestJS 11, TypeScript | REST API, business logic |
+| **Database (dev)** | SQLite + Prisma 7 | Local development |
+| **Database (prod)** | PostgreSQL + Prisma 7 | Production deployment |
+| **Frontend** | React 19, Vite 8, TypeScript | SPA web interface |
+| **Styling** | TailwindCSS v4 | Utility-first UI |
+| **Charts** | Recharts | Reporting & dashboards |
+| **Auth** | JWT + Refresh Tokens, Throttler | Secure authentication |
+| **State** | Zustand, TanStack Query | Client state & caching |
+| **Offline** | IndexedDB (via custom queue) | Offline POS sales sync |
+
+---
+
+## 🚀 Quick Start
 
 ### Prerequisites
 
-- Node.js >= 18
-- PostgreSQL >= 14
-- npm >= 9
+- **Node.js** ≥ 18
+- **npm** ≥ 9
+- **PostgreSQL** ≥ 14 *(production only — SQLite used in dev)*
 
-### Backend
+### 1. Backend
 
 ```bash
 cd backend
-cp .env.example .env
-# Edit .env with your database URL and secrets
+cp .env.example .env          # configure DATABASE_URL, JWT_SECRET, etc.
 npm install
-npx prisma migrate dev
-npx prisma db seed
-npm run start:dev
+npx prisma migrate dev        # run migrations
+npx prisma db seed            # seed demo data and user accounts
+npm run start:dev             # starts on http://localhost:3000
 ```
 
-### Frontend
+### 2. Frontend
 
 ```bash
 cd frontend
-cp .env.example .env
+cp .env.example .env          # set VITE_API_URL=http://localhost:3000/api
 npm install
-npm run dev
+npm run dev                   # starts on http://localhost:5173
 ```
 
 ---
 
-## Environment Variables
+## 🔑 Demo Accounts *(seeded)*
 
-See `backend/.env.example` and `frontend/.env.example` for all required variables.
-
----
-
-## Running Tests
-
-```bash
-# Backend tests
-cd backend
-npm run test
-npm run test:e2e
-
-# Frontend tests
-cd frontend
-npm run test
-```
+| Username | Password | Role |
+|----------|----------|------|
+| `admin` | `admin123` | Admin — full access |
+| `manager` | `manager123` | Manager — no user/role management |
+| `cashier` | `cashier123` | Cashier — POS & sales only |
+| `storekeeper` | `store123` | Storekeeper — inventory & receiving |
 
 ---
 
-## Development Phases
+## 🌐 Environment Variables
+
+### Backend (`backend/.env`)
+
+| Variable | Description |
+|----------|-------------|
+| `DATABASE_URL` | PostgreSQL connection string *(prod)* |
+| `JWT_SECRET` | Access token signing secret |
+| `JWT_REFRESH_SECRET` | Refresh token signing secret |
+| `JWT_EXPIRY` | Access token TTL (e.g. `15m`) |
+| `JWT_REFRESH_EXPIRY` | Refresh token TTL (e.g. `7d`) |
+| `NODE_ENV` | `development` or `production` |
+| `ALLOWED_ORIGINS` | Comma-separated frontend origin URLs *(prod)* |
+
+### Frontend (`frontend/.env`)
+
+| Variable | Description |
+|----------|-------------|
+| `VITE_API_URL` | Backend API base URL |
+| `VITE_APP_MODE` | `multi` (role login) or `single` (owner mode) |
+
+---
+
+## 📈 Development Progress
 
 | Phase | Description | Status |
 |-------|-------------|--------|
-| 0 | Repository scaffolding | ✅ Done |
-| 1 | Backend setup + Prisma schema | ✅ Done |
-| 2 | Auth, users, roles | ✅ Done |
-| 3 | Catalog and inventory backend | ✅ Done |
-| 4 | Purchasing and supplier backend | ✅ Done |
-| 5 | Sales, POS backend, credit logic | ✅ Done |
-| 6 | Expenses, reports, compliance stubs | ✅ Done |
-| 7 | Frontend scaffolding + auth UI | ✅ Done |
-| 8 | Frontend catalog, inventory, purchasing | ✅ Done |
-| 9 | POS frontend + PWA offline | ✅ Done |
-| 10 | Reporting UI + UX polish | ✅ Done |
-| 11 | Documentation + deployment | ✅ Done |
+| 0 | Repository scaffolding | ✅ Complete |
+| 1 | Backend setup + Prisma schema | ✅ Complete |
+| 2 | Auth, users, roles, RBAC | ✅ Complete |
+| 3 | Product catalog & inventory backend | ✅ Complete |
+| 4 | Purchasing & supplier backend | ✅ Complete |
+| 5 | Sales, POS engine, credit logic | ✅ Complete |
+| 6 | Expenses, reports, compliance stubs | ✅ Complete |
+| 7 | Frontend scaffolding + auth UI | ✅ Complete |
+| 8 | Frontend catalog, inventory, purchasing | ✅ Complete |
+| 9 | POS frontend + PWA offline mode | ✅ Complete |
+| 10 | Sales history, reporting UI, UX polish | ✅ Complete |
+| 11 | Documentation + deployment prep | ✅ Complete |
 
 ---
 
-## License
+## 🔒 License
 
-MIT
+Copyright (c) 2024–2026 KampStock. **All rights reserved.**
+
+This software is proprietary and confidential. Unauthorised copying, modification, distribution, or use is strictly prohibited. See [LICENSE](./LICENSE) for full terms.

@@ -23,8 +23,17 @@ export default function LoginPage() {
       const { data } = await api.post('/auth/login', { username, password });
       setAuth(data.user, data.accessToken, data.refreshToken);
       navigate('/');
-    } catch {
-      setError('Invalid credentials. Please try again.');
+    } catch (err: any) {
+      const status = err?.response?.status;
+      if (status === 429) {
+        setError('Too many login attempts. Please wait a few minutes before trying again.');
+      } else if (status === 401 || status === 400) {
+        setError('Invalid username or password. Please check your credentials.');
+      } else if (status === 403) {
+        setError('Your account has been locked. Please contact your administrator.');
+      } else {
+        setError('Unable to connect to the server. Please try again shortly.');
+      }
     } finally {
       setLoading(false);
     }
