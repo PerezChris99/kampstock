@@ -173,6 +173,13 @@ export default function LoginPage() {
             </div>
           )}
 
+          {APP_MODE !== 'single' && (
+            <p style={{ textAlign: 'center', fontSize: '0.8rem', color: '#71717a', margin: '0.25rem 0 0.75rem' }}>
+              New business?{' '}
+              <Link to="/register" style={{ color: '#84cc16', textDecoration: 'none', fontWeight: 600 }}>Create a free account</Link>
+            </p>
+          )}
+
           <div className="ks-footer-hint">
             <span className="ks-footer-brand">KampStock v2.0</span>
             <span className="ks-footer-sep">·</span>
