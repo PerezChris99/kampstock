@@ -16,6 +16,13 @@ export class TenantsController {
     return this.service.register(dto);
   }
 
+  /** Public: resolve tenant branding by subdomain (used by login page) */
+  @Public()
+  @Get('subdomain/:subdomain')
+  findBySubdomain(@Param('subdomain') subdomain: string) {
+    return this.service.findBySubdomain(subdomain);
+  }
+
   /** Super-admin only: list all tenants */
   @UseGuards(RolesGuard)
   @Roles('Admin')

@@ -2,6 +2,7 @@
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../lib/api';
 import { useAuthStore } from '../store/auth.store';
+import { useTenantBranding } from '../hooks/useTenantBranding';
 
 // Mode: 'single' = shop owner only (simplified), 'multi' = full role-based login
 const APP_MODE = import.meta.env.VITE_APP_MODE || 'multi';
@@ -14,6 +15,7 @@ export default function LoginPage() {
   const [showPw, setShowPw] = useState(false);
   const setAuth = useAuthStore((s) => s.setAuth);
   const navigate = useNavigate();
+  const { tenant: tenantBranding } = useTenantBranding();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,10 +65,19 @@ export default function LoginPage() {
                 </defs>
               </svg>
             </div>
-            <h1 className="ks-card-title">KampStock</h1>
-            <p className="ks-card-subtitle">
-              {APP_MODE === 'single' ? 'Shop Owner Access' : 'Wholesale & Retail Management'}
-            </p>
+            {tenantBranding ? (
+              <>
+                <h1 className="ks-card-title">{tenantBranding.name}</h1>
+                <p className="ks-card-subtitle">Powered by KampStock</p>
+              </>
+            ) : (
+              <>
+                <h1 className="ks-card-title">KampStock</h1>
+                <p className="ks-card-subtitle">
+                  {APP_MODE === 'single' ? 'Shop Owner Access' : 'Wholesale & Retail Management'}
+                </p>
+              </>
+            )}
             {APP_MODE === 'single' && (
               <div className="ks-single-mode-badge">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

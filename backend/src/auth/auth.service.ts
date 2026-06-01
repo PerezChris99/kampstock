@@ -50,7 +50,7 @@ export class AuthService {
     this.attempts.delete(key);
   }
 
-  async login(dto: LoginDto, ip = 'unknown') {
+  async login(dto: LoginDto, ip = 'unknown', subdomainTenantId?: number) {
     // Check lockout by both username and IP
     this.checkLock(`user:${dto.username}`);
     this.checkLock(`ip:${ip}`);
@@ -70,6 +70,12 @@ export class AuthService {
       this.recordFail(`user:${dto.username}`);
       this.recordFail(`ip:${ip}`);
       // Identical message regardless of whether user exists (prevents user enumeration)
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    // If the request came in on a tenant subdomain, ensure the user belongs to that tenant
+    if (subdomainTenantId && user.tenantId !== subdomainTenantId) {
+      this.recordFail(`user:${dto.username}`);
       throw new UnauthorizedException('Invalid credentials');
     }
 

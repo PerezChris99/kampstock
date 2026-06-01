@@ -100,4 +100,14 @@ export class TenantsService {
     ]);
     return { users, products, salesCount, totalRevenue: totalRevenue._sum.grandTotal ?? 0 };
   }
+
+  /** Public: resolve a tenant by subdomain (for login-page branding) */
+  async findBySubdomain(subdomain: string) {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { subdomain: subdomain.toLowerCase() },
+      select: { id: true, name: true, subdomain: true, plan: true, isActive: true },
+    });
+    if (!tenant || !tenant.isActive) throw new NotFoundException('Tenant not found');
+    return tenant;
+  }
 }

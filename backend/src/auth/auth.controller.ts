@@ -28,7 +28,8 @@ export class AuthController {
     const ip = (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim()
       ?? req.socket?.remoteAddress
       ?? 'unknown';
-    return this.authService.login(dto, ip);
+    const subdomainTenantId = (req as any).subdomainTenantId as number | undefined;
+    return this.authService.login(dto, ip, subdomainTenantId);
   }
 
   @Public()

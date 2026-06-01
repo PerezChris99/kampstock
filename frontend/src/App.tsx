@@ -17,6 +17,7 @@ import ReportsPage from './pages/ReportsPage';
 import SalesPage from './pages/SalesPage';
 import UsersPage from './pages/UsersPage';
 import BillingPage from './pages/BillingPage';
+import BillingCallbackPage from './pages/BillingCallbackPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -32,6 +33,7 @@ export default function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/about" element={<AboutPage />} />
+          <Route path="/billing/callback" element={<BillingCallbackPage />} />
           <Route
             path="/"
             element={
