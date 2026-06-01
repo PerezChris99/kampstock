@@ -8,6 +8,7 @@ interface User {
   role: string;
   roleId?: number;
   tenantId: number;
+  isSuperAdmin?: boolean;
 }
 
 interface AuthState {

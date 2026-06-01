@@ -3,7 +3,7 @@ import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, ShoppingCart, Package, Warehouse, Truck,
   ClipboardList, Users, Receipt, BarChart3, Settings, LogOut,
-  Menu, X, Bell, ChevronRight, Store, CreditCard,
+  Menu, X, Bell, ChevronRight, Store, CreditCard, Shield,
 } from 'lucide-react';
 import { useAuthStore } from '../store/auth.store';
 
@@ -28,12 +28,17 @@ export default function AppLayout() {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  const visibleNavItems = [
+    ...navItems,
+    ...(user?.isSuperAdmin ? [{ to: '/super-admin', label: 'Super Admin', icon: Shield }] : []),
+  ];
+
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
 
-  const currentPage = navItems.find(n => n.to === location.pathname)?.label ?? 'KampStock';
+  const currentPage = visibleNavItems.find(n => n.to === location.pathname)?.label ?? 'KampStock';
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
@@ -52,7 +57,7 @@ export default function AppLayout() {
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-0.5">
-        {navItems.map((item) => {
+        {visibleNavItems.map((item) => {
           const Icon = item.icon;
           const isActive = location.pathname === item.to;
           return (

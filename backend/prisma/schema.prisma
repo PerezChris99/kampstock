@@ -16,6 +16,7 @@ model User {
     roleId       Int      @map("role_id")
     tenantId     Int      @default(1) @map("tenant_id")
     isActive     Boolean  @default(true) @map("is_active")
+    isSuperAdmin Boolean  @default(false) @map("is_super_admin")
     createdAt    DateTime @default(now()) @map("created_at")
     updatedAt    DateTime @updatedAt @map("updated_at")
 

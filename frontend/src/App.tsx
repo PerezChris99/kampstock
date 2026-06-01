@@ -18,6 +18,8 @@ import SalesPage from './pages/SalesPage';
 import UsersPage from './pages/UsersPage';
 import BillingPage from './pages/BillingPage';
 import BillingCallbackPage from './pages/BillingCallbackPage';
+import SuperAdminPage from './pages/SuperAdminPage';
+import SuperAdminRoute from './components/SuperAdminRoute';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -54,6 +56,14 @@ export default function App() {
             <Route path="reports" element={<ReportsPage />} />
             <Route path="users" element={<UsersPage />} />
             <Route path="billing" element={<BillingPage />} />
+            <Route
+              path="super-admin"
+              element={
+                <SuperAdminRoute>
+                  <SuperAdminPage />
+                </SuperAdminRoute>
+              }
+            />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

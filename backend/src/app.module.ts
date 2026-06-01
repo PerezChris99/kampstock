@@ -21,6 +21,7 @@ import { HealthModule } from './health/health.module';
 import { BackupModule } from './backup/backup.module';
 import { TenantsModule } from './tenants/tenants.module';
 import { BillingModule } from './billing/billing.module';
+import { SuperAdminModule } from './super-admin/super-admin.module';
 
 @Module({
   imports: [
@@ -47,6 +48,7 @@ import { BillingModule } from './billing/billing.module';
     BackupModule,
     TenantsModule,
     BillingModule,
+    SuperAdminModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

@@ -107,6 +107,7 @@ export class AuthService {
       roleId: user.roleId,
       role: user.role.name,
       tenantId: user.tenantId ?? 1,
+      isSuperAdmin: user.isSuperAdmin ?? false,
     };
     const accessToken = this.jwtService.sign(payload, {
       secret: this.config.get<string>('JWT_SECRET'),
@@ -125,6 +126,7 @@ export class AuthService {
         username: user.username,
         role: user.role.name,
         tenantId: user.tenantId ?? 1,
+        isSuperAdmin: user.isSuperAdmin ?? false,
       },
     };
   }
