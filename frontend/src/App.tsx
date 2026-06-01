@@ -19,6 +19,8 @@ import UsersPage from './pages/UsersPage';
 import BillingPage from './pages/BillingPage';
 import BillingCallbackPage from './pages/BillingCallbackPage';
 import SuperAdminPage from './pages/SuperAdminPage';
+import AdminCalendarPage from './pages/AdminCalendarPage';
+import LockedPage from './pages/LockedPage';
 import SuperAdminRoute from './components/SuperAdminRoute';
 
 const queryClient = new QueryClient({
@@ -36,6 +38,7 @@ export default function App() {
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/billing/callback" element={<BillingCallbackPage />} />
+          <Route path="/locked" element={<LockedPage />} />
           <Route
             path="/"
             element={
@@ -61,6 +64,14 @@ export default function App() {
               element={
                 <SuperAdminRoute>
                   <SuperAdminPage />
+                </SuperAdminRoute>
+              }
+            />
+            <Route
+              path="super-admin/calendar"
+              element={
+                <SuperAdminRoute>
+                  <AdminCalendarPage />
                 </SuperAdminRoute>
               }
             />

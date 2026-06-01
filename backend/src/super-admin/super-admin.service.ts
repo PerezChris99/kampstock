@@ -63,6 +63,14 @@ export class SuperAdminService {
       select: {
         id: true, name: true, subdomain: true, plan: true, isActive: true,
         ownerEmail: true, trialEndsAt: true, planExpiresAt: true, createdAt: true,
+        subscriptions: {
+          orderBy: { createdAt: 'desc' },
+          take: 5,
+          select: {
+            id: true, status: true, confirmedAt: true, expiresAt: true,
+            plan: true, amount: true, periodMonths: true,
+          },
+        },
       },
     });
 

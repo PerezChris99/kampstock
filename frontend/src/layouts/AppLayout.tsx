@@ -6,6 +6,7 @@ import {
   Menu, X, Bell, ChevronRight, Store, CreditCard, Shield,
 } from 'lucide-react';
 import { useAuthStore } from '../store/auth.store';
+import ExpiryWarningBanner from '../components/ExpiryWarningBanner';
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -158,6 +159,9 @@ export default function AppLayout() {
             </div>
           </div>
         </header>
+
+        {/* Expiry warning banner — shown when ≤2 days remain */}
+        <ExpiryWarningBanner />
 
         {/* Page content */}
         <main className="flex-1 overflow-auto">

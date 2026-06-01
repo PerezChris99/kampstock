@@ -30,6 +30,8 @@ model User {
     priceHistories   PriceHistory[]
     paymentsReceived Payment[]
 
+    @@index([tenantId])
+    @@index([roleId])
     @@map("users")
 }
 
@@ -43,6 +45,7 @@ model Role {
     users User[]
 
     @@unique([name, tenantId])
+    @@index([tenantId])
     @@map("roles")
 }
 
@@ -59,6 +62,7 @@ model Category {
     products Product[]
 
     @@unique([name, tenantId])
+    @@index([tenantId])
     @@map("categories")
 }
 
@@ -90,6 +94,8 @@ model Product {
 
     @@unique([sku, tenantId])
     @@unique([barcode, tenantId])
+    @@index([tenantId, isActive])
+    @@index([categoryId])
     @@map("products")
 }
 
@@ -124,6 +130,7 @@ model PriceHistory {
     product   Product @relation(fields: [productId], references: [id])
     changedBy User    @relation(fields: [changedById], references: [id])
 
+    @@index([productId])
     @@map("price_histories")
 }
 
@@ -157,6 +164,8 @@ model StockItem {
     location StockLocation @relation(fields: [locationId], references: [id])
 
     @@unique([productId, locationId, batchNo])
+    @@index([productId])
+    @@index([locationId])
     @@map("stock_items")
 }
 
@@ -178,6 +187,8 @@ model StockMovement {
     toLocation   StockLocation? @relation("ToLocation", fields: [toLocationId], references: [id])
     createdBy    User           @relation(fields: [createdById], references: [id])
 
+    @@index([productId, createdAt])
+    @@index([createdById])
     @@map("stock_movements")
 }
 
@@ -198,6 +209,7 @@ model Supplier {
     purchaseOrders   PurchaseOrder[]
     supplierInvoices SupplierInvoice[]
 
+    @@index([tenantId])
     @@map("suppliers")
 }
 
@@ -221,6 +233,8 @@ model PurchaseOrder {
     goodsReceipts GoodsReceipt[]
 
     @@unique([poNumber, tenantId])
+    @@index([tenantId, status])
+    @@index([supplierId])
     @@map("purchase_orders")
 }
 
@@ -236,6 +250,7 @@ model PurchaseOrderLine {
     purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
     product       Product       @relation(fields: [productId], references: [id])
 
+    @@index([purchaseOrderId])
     @@map("purchase_order_lines")
 }
 
@@ -253,6 +268,7 @@ model GoodsReceipt {
     lines           GoodsReceiptLine[]
     supplierInvoice SupplierInvoice?
 
+    @@index([tenantId])
     @@map("goods_receipts")
 }
 
@@ -268,6 +284,7 @@ model GoodsReceiptLine {
     goodsReceipt GoodsReceipt @relation(fields: [goodsReceiptId], references: [id], onDelete: Cascade)
     product      Product      @relation(fields: [productId], references: [id])
 
+    @@index([goodsReceiptId])
     @@map("goods_receipt_lines")
 }
 
@@ -286,6 +303,7 @@ model SupplierInvoice {
     supplier     Supplier      @relation(fields: [supplierId], references: [id])
     goodsReceipt GoodsReceipt? @relation(fields: [goodsReceiptId], references: [id])
 
+    @@index([supplierId])
     @@map("supplier_invoices")
 }
 
@@ -306,6 +324,7 @@ model Customer {
 
     sales Sale[]
 
+    @@index([tenantId, isActive])
     @@map("customers")
 }
 
@@ -334,6 +353,9 @@ model Sale {
     fiscalInvoice InvoiceFiscal?
 
     @@unique([saleNumber, tenantId])
+    @@index([tenantId, createdAt])
+    @@index([tenantId, status])
+    @@index([customerId])
     @@map("sales")
 }
 
@@ -352,6 +374,8 @@ model SaleLine {
     product     Product      @relation(fields: [productId], references: [id])
     productUnit ProductUnit? @relation(fields: [productUnitId], references: [id])
 
+    @@index([saleId])
+    @@index([productId])
     @@map("sale_lines")
 }
 
@@ -367,6 +391,7 @@ model Payment {
     sale       Sale @relation(fields: [saleId], references: [id], onDelete: Cascade)
     receivedBy User @relation(fields: [receivedById], references: [id])
 
+    @@index([saleId])
     @@map("payments")
 }
 
@@ -383,6 +408,7 @@ model Expense {
 
     paidBy User @relation(fields: [paidById], references: [id])
 
+    @@index([tenantId, paidAt])
     @@map("expenses")
 }
 
@@ -415,6 +441,8 @@ model AuditLog {
 
     user User? @relation(fields: [userId], references: [id])
 
+    @@index([tenantId, createdAt])
+    @@index([userId])
     @@map("audit_logs")
 }
 
@@ -452,10 +480,12 @@ model Subscription {
     paymentMethod String?   @map("payment_method")
     confirmedAt   DateTime? @map("confirmed_at")
     expiresAt     DateTime? @map("expires_at")
+    unlockCode    String?   @unique @map("unlock_code")
     createdAt     DateTime  @default(now()) @map("created_at")
     updatedAt     DateTime  @updatedAt @map("updated_at")
 
     tenant Tenant @relation(fields: [tenantId], references: [id])
 
+    @@index([tenantId, status])
     @@map("subscriptions")
 }

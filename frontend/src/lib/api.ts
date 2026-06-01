@@ -19,6 +19,17 @@ api.interceptors.response.use(
   (res) => res,
   async (error) => {
     const originalRequest = error.config;
+
+    // 402 Payment Required — tenant subscription expired
+    if (error.response?.status === 402) {
+      // Don't redirect if already on locked/billing routes
+      const currentPath = window.location.pathname;
+      if (!currentPath.startsWith('/locked') && !currentPath.startsWith('/billing')) {
+        window.location.href = '/locked';
+      }
+      return Promise.reject(error);
+    }
+
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       const refreshToken = localStorage.getItem('refresh_token');

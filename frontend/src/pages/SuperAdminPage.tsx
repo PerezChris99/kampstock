@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import api from '../lib/api';
 import {
   Users, Building2, ShoppingBag, TrendingUp,
   ToggleLeft, ToggleRight, ChevronDown, ChevronUp,
-  Shield, AlertTriangle,
+  Shield, AlertTriangle, CalendarDays,
 } from 'lucide-react';
 
 // ─── types ────────────────────────────────────────────────────────────────────
@@ -49,6 +50,7 @@ function fmtDate(d: string | null) {
 
 export default function SuperAdminPage() {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [planEdit, setPlanEdit] = useState<Record<number, string>>({});
 
@@ -87,10 +89,17 @@ export default function SuperAdminPage() {
         <div className="p-2 bg-red-100 rounded-xl">
           <Shield className="w-6 h-6 text-red-600" />
         </div>
-        <div>
+        <div className="flex-1">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Super-Admin Dashboard</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">Platform-wide overview and tenant management</p>
         </div>
+        <button
+          onClick={() => navigate('/super-admin/calendar')}
+          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold transition"
+        >
+          <CalendarDays className="w-4 h-4" />
+          Subscription Calendar
+        </button>
       </div>
 
       {/* Stat cards */}

@@ -4,6 +4,7 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { PrismaModule } from './prisma/prisma.module';
 import { SubdomainTenantMiddleware } from './common/middleware/subdomain-tenant.middleware';
+import { TenantLockMiddleware } from './common/middleware/tenant-lock.middleware';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { CategoriesModule } from './categories/categories.module';
@@ -57,5 +58,6 @@ import { SuperAdminModule } from './super-admin/super-admin.module';
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     consumer.apply(SubdomainTenantMiddleware).forRoutes('*');
+    consumer.apply(TenantLockMiddleware).forRoutes('*');
   }
 }

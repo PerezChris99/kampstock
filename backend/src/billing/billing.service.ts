@@ -2,7 +2,8 @@ import { Injectable, NotFoundException, BadRequestException, Logger } from '@nes
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { PesapalService } from './pesapal.service';
-import { randomUUID } from 'crypto';
+import { randomUUID, randomBytes } from 'crypto';
+import { bustLockCache } from '../common/middleware/tenant-lock.middleware';
 
 export const PLAN_PRICES: Record<string, number> = {
   starter: 50_000,
@@ -96,6 +97,10 @@ export class BillingService {
       const expiresAt = new Date(now);
       expiresAt.setMonth(expiresAt.getMonth() + sub.periodMonths);
 
+      // Generate a cryptographically secure unlock code (single-use, stored plaintext in DB)
+      // The code is only ever created here — triggered by Pesapal payment confirmation
+      const unlockCode = randomBytes(16).toString('hex'); // 32-char hex
+
       await this.prisma.$transaction([
         this.prisma.subscription.update({
           where: { id: sub.id },
@@ -104,6 +109,7 @@ export class BillingService {
             paymentMethod: txStatus.paymentMethod,
             confirmedAt: now,
             expiresAt,
+            unlockCode,
           },
         }),
         this.prisma.tenant.update({
@@ -111,6 +117,9 @@ export class BillingService {
           data: { plan: sub.plan, planExpiresAt: expiresAt, isActive: true },
         }),
       ]);
+
+      // Bust the in-memory lock cache so the tenant can access immediately after unlock
+      bustLockCache(sub.tenantId);
 
       this.logger.log(`Subscription COMPLETED for tenant ${sub.tenantId} — plan ${sub.plan} until ${expiresAt.toISOString()}`);
       return { status: 'completed' };
@@ -122,6 +131,37 @@ export class BillingService {
     }
 
     return { status: 'pending' };
+  }
+
+  async verifyUnlockCode(tenantId: number, code: string): Promise<{ success: boolean; planExpiresAt: Date | null }> {
+    if (!code || code.length < 8) throw new BadRequestException('Invalid unlock code');
+
+    // Find a COMPLETED subscription for this tenant with this exact unlock code
+    const sub = await this.prisma.subscription.findFirst({
+      where: {
+        tenantId,
+        status: 'COMPLETED',
+        unlockCode: code.trim().toLowerCase(),
+      },
+      orderBy: { confirmedAt: 'desc' },
+    });
+
+    if (!sub) throw new BadRequestException('Invalid or already-used unlock code');
+
+    // Fetch current tenant planExpiresAt
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { planExpiresAt: true },
+    });
+
+    // Clear the unlock code (single-use) and bust cache
+    await this.prisma.subscription.update({
+      where: { id: sub.id },
+      data: { unlockCode: null },
+    });
+    bustLockCache(tenantId);
+
+    return { success: true, planExpiresAt: tenant?.planExpiresAt ?? null };
   }
 
   async getByTenant(tenantId: number) {
@@ -137,10 +177,39 @@ export class BillingService {
       select: { plan: true, trialEndsAt: true, planExpiresAt: true, isActive: true, name: true },
     });
     if (!tenant) throw new NotFoundException('Tenant not found');
-    const latestSub = await this.prisma.subscription.findFirst({
-      where: { tenantId, status: 'COMPLETED' },
-      orderBy: { confirmedAt: 'desc' },
+
+    const history = await this.prisma.subscription.findMany({
+      where: { tenantId },
+      orderBy: { createdAt: 'desc' },
     });
-    return { ...tenant, latestSub, prices: PLAN_PRICES };
+
+    const latestSub = history.find((s) => s.status === 'COMPLETED') ?? null;
+
+    // Compute lock/warning status
+    const now = new Date();
+    let daysLeft: number | null = null;
+    let isLocked = false;
+    let warningActive = false;
+
+    if (tenant.planExpiresAt) {
+      const diffMs = tenant.planExpiresAt.getTime() - now.getTime();
+      daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+      isLocked = daysLeft <= 0;
+      warningActive = daysLeft > 0 && daysLeft <= 2;
+    } else if (tenant.trialEndsAt) {
+      const diffMs = tenant.trialEndsAt.getTime() - now.getTime();
+      daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+      warningActive = daysLeft > 0 && daysLeft <= 2;
+    }
+
+    return {
+      ...tenant,
+      latestSub,
+      history,
+      prices: PLAN_PRICES,
+      daysLeft,
+      isLocked,
+      warningActive,
+    };
   }
 }

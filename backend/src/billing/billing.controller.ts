@@ -2,7 +2,7 @@ import { Controller, Post, Get, Body, Query, HttpCode } from '@nestjs/common';
 import { BillingService } from './billing.service';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Public } from '../auth/decorators/public.decorator';
-import { IsIn, IsInt, IsOptional, Min, Max } from 'class-validator';
+import { IsIn, IsInt, IsOptional, Min, Max, IsString, Length } from 'class-validator';
 import { Type } from 'class-transformer';
 
 class InitiateDto {
@@ -15,6 +15,12 @@ class InitiateDto {
   @Max(12)
   @Type(() => Number)
   periodMonths?: number;
+}
+
+class UnlockDto {
+  @IsString()
+  @Length(8, 64)
+  code: string;
 }
 
 @Controller('billing')
@@ -42,10 +48,17 @@ export class BillingController {
   /** Current tenant billing info + subscription history */
   @Get('my')
   async my(@CurrentUser('tenantId') tenantId: number) {
-    const [info, history] = await Promise.all([
-      this.billing.getTenantBillingInfo(tenantId),
-      this.billing.getByTenant(tenantId),
-    ]);
-    return { ...info, history };
+    return this.billing.getTenantBillingInfo(tenantId);
+  }
+
+  /**
+   * Verify an unlock code received after payment.
+   * The code is single-use and generated only when Pesapal confirms a payment.
+   * Accessible even when locked (bypass route in TenantLockMiddleware).
+   */
+  @Post('unlock')
+  async unlock(@Body() dto: UnlockDto, @CurrentUser('tenantId') tenantId: number) {
+    return this.billing.verifyUnlockCode(tenantId, dto.code);
   }
 }
+

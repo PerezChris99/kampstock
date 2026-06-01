@@ -47,6 +47,20 @@ interface BillingInfo {
   isActive: boolean;
   name: string;
   prices: Record<string, number>;
+  daysLeft: number | null;
+  isLocked: boolean;
+  warningActive: boolean;
+  latestSub: {
+    id: number;
+    plan: string;
+    amount: number;
+    currency: string;
+    periodMonths: number;
+    status: string;
+    unlockCode: string | null;
+    confirmedAt: string | null;
+    expiresAt: string | null;
+  } | null;
   history: Array<{
     id: number;
     plan: string;
@@ -138,13 +152,48 @@ export default function BillingPage() {
                 </span>
               </div>
             )}
-            {info.planExpiresAt && (
+            {info.planExpiresAt && !info.isLocked && (
               <div>
-                <div style={{ fontSize: '0.7rem', color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.2rem' }}>Renews</div>
-                <div style={{ fontSize: '0.875rem', color: '#a1a1aa' }}>{new Date(info.planExpiresAt).toLocaleDateString()}</div>
+                <div style={{ fontSize: '0.7rem', color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.2rem' }}>Expires</div>
+                <div style={{ fontSize: '0.875rem', color: info.warningActive ? '#f59e0b' : '#a1a1aa' }}>
+                  {new Date(info.planExpiresAt).toLocaleDateString()}
+                  {info.daysLeft !== null && (
+                    <span style={{ marginLeft: '0.4rem', fontSize: '0.75rem', color: info.daysLeft <= 1 ? '#ef4444' : '#f59e0b' }}>
+                      ({info.daysLeft === 0 ? 'today' : `${info.daysLeft}d left`})
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+            {info.isLocked && (
+              <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, padding: '0.4rem 0.75rem' }}>
+                <span style={{ fontSize: '0.8rem', color: '#f87171', fontWeight: 600 }}>🔒 Subscription expired</span>
               </div>
             )}
           </div>
+
+          {/* Unlock code display — shown once after payment is confirmed */}
+          {info.latestSub?.unlockCode && (
+            <div style={{ background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: 12, padding: '1rem 1.25rem', marginBottom: '1.5rem' }}>
+              <div style={{ fontSize: '0.7rem', color: '#a5b4fc', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.5rem', fontWeight: 600 }}>
+                🔑 Your Unlock Code — Save this now!
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                <code style={{ background: '#0f172a', border: '1px solid #334155', borderRadius: 6, padding: '0.5rem 0.75rem', color: '#e2e8f0', fontFamily: 'monospace', fontSize: '0.875rem', letterSpacing: '0.1em', wordBreak: 'break-all' }}>
+                  {info.latestSub.unlockCode}
+                </code>
+                <button
+                  onClick={() => navigator.clipboard.writeText(info.latestSub!.unlockCode!)}
+                  style={{ padding: '0.4rem 0.75rem', borderRadius: 6, border: '1px solid rgba(99,102,241,0.3)', background: 'rgba(99,102,241,0.1)', color: '#a5b4fc', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600 }}
+                >
+                  Copy
+                </button>
+              </div>
+              <p style={{ margin: '0.5rem 0 0', fontSize: '0.75rem', color: '#64748b' }}>
+                This code is shown once. Use it on the locked screen if you ever lose access.
+              </p>
+            </div>
+          )}
 
           {/* Period toggle */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>
