@@ -10,29 +10,29 @@ export class CategoriesController {
 
   @Post()
   @Roles('Admin', 'Manager')
-  create(@Body() dto: CreateCategoryDto, @CurrentUser('id') actorId: number) {
-    return this.categoriesService.create(dto, actorId);
+  create(@Body() dto: CreateCategoryDto, @CurrentUser('id') actorId: number, @CurrentUser('tenantId') tenantId: number) {
+    return this.categoriesService.create(dto, actorId, tenantId);
   }
 
   @Get()
-  findAll() {
-    return this.categoriesService.findAll();
+  findAll(@CurrentUser('tenantId') tenantId?: number) {
+    return this.categoriesService.findAll(tenantId);
   }
 
   @Get(':id')
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.categoriesService.findOne(id);
+  findOne(@Param('id', ParseIntPipe) id: number, @CurrentUser('tenantId') tenantId: number) {
+    return this.categoriesService.findOne(id, tenantId);
   }
 
   @Put(':id')
   @Roles('Admin', 'Manager')
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateCategoryDto, @CurrentUser('id') actorId: number) {
-    return this.categoriesService.update(id, dto, actorId);
+  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateCategoryDto, @CurrentUser('id') actorId: number, @CurrentUser('tenantId') tenantId: number) {
+    return this.categoriesService.update(id, dto, actorId, tenantId);
   }
 
   @Delete(':id')
   @Roles('Admin')
-  remove(@Param('id', ParseIntPipe) id: number, @CurrentUser('id') actorId: number) {
-    return this.categoriesService.remove(id, actorId);
+  remove(@Param('id', ParseIntPipe) id: number, @CurrentUser('id') actorId: number, @CurrentUser('tenantId') tenantId: number) {
+    return this.categoriesService.remove(id, actorId, tenantId);
   }
 }

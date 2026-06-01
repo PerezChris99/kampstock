@@ -10,14 +10,14 @@ export class ExpensesController {
 
   @Post()
   @Roles('Admin', 'Manager')
-  create(@Body() dto: CreateExpenseDto, @CurrentUser('id') actorId: number) {
-    return this.expensesService.create(dto, actorId);
+  create(@Body() dto: CreateExpenseDto, @CurrentUser('id') actorId: number, @CurrentUser('tenantId') tenantId: number) {
+    return this.expensesService.create(dto, actorId, tenantId);
   }
 
   @Get()
   @Roles('Admin', 'Manager')
-  findAll(@Query('from') from?: string, @Query('to') to?: string, @Query('category') category?: string) {
-    return this.expensesService.findAll(from, to, category);
+  findAll(@Query('from') from?: string, @Query('to') to?: string, @Query('category') category?: string, @CurrentUser('tenantId') tenantId?: number) {
+    return this.expensesService.findAll(from, to, category, tenantId);
   }
 
   @Get('categories')
@@ -27,7 +27,7 @@ export class ExpensesController {
 
   @Get('totals')
   @Roles('Admin', 'Manager')
-  getTotals(@Query('from') from?: string, @Query('to') to?: string) {
-    return this.expensesService.getTotals(from, to);
+  getTotals(@Query('from') from?: string, @Query('to') to?: string, @CurrentUser('tenantId') tenantId?: number) {
+    return this.expensesService.getTotals(from, to, tenantId);
   }
 }

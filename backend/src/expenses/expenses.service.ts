@@ -8,7 +8,7 @@ export const EXPENSE_CATEGORIES = ['Rent', 'Utilities', 'Wages', 'Transport', 'S
 export class ExpensesService {
   constructor(private prisma: PrismaService) {}
 
-  async create(dto: CreateExpenseDto, actorId: number) {
+  async create(dto: CreateExpenseDto, actorId: number, tenantId: number) {
     const resolvedDate = dto.expenseDate ?? dto.paidAt;
     return this.prisma.expense.create({
       data: {
@@ -16,16 +16,18 @@ export class ExpensesService {
         description: dto.description,
         amount: dto.amount,
         paidTo: dto.paidTo,
+        tenantId,
         paidById: actorId,
         paidAt: resolvedDate ? new Date(resolvedDate) : undefined,
       },
     });
   }
 
-  async findAll(from?: string, to?: string, category?: string) {
+  async findAll(from?: string, to?: string, category?: string, tenantId?: number) {
     return this.prisma.expense.findMany({
       where: {
         ...(category && { category }),
+        ...(tenantId && { tenantId }),
         ...(from && to && {
           paidAt: { gte: new Date(from), lte: new Date(to) },
         }),
@@ -39,8 +41,8 @@ export class ExpensesService {
     return EXPENSE_CATEGORIES;
   }
 
-  async getTotals(from?: string, to?: string) {
-    const expenses = await this.findAll(from, to);
+  async getTotals(from?: string, to?: string, tenantId?: number) {
+    const expenses = await this.findAll(from, to, undefined, tenantId);
     const total = expenses.reduce((s, e) => s + Number(e.amount), 0);
     const byCategory = expenses.reduce((acc, e) => {
       acc[e.category] = (acc[e.category] ?? 0) + Number(e.amount);

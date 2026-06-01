@@ -10,29 +10,29 @@ export class ProductsController {
 
   @Post()
   @Roles('Admin', 'Manager')
-  create(@Body() dto: CreateProductDto, @CurrentUser('id') actorId: number) {
-    return this.productsService.create(dto, actorId);
+  create(@Body() dto: CreateProductDto, @CurrentUser('id') actorId: number, @CurrentUser('tenantId') tenantId: number) {
+    return this.productsService.create(dto, actorId, tenantId);
   }
 
   @Get()
-  findAll(@Query('search') search?: string, @Query('categoryId') categoryId?: string) {
-    return this.productsService.findAll(search, categoryId ? parseInt(categoryId) : undefined);
+  findAll(@Query('search') search?: string, @Query('categoryId') categoryId?: string, @CurrentUser('tenantId') tenantId?: number) {
+    return this.productsService.findAll(search, categoryId ? parseInt(categoryId) : undefined, tenantId);
   }
 
   @Get('barcode/:barcode')
-  findByBarcode(@Param('barcode') barcode: string) {
-    return this.productsService.findByBarcode(barcode);
+  findByBarcode(@Param('barcode') barcode: string, @CurrentUser('tenantId') tenantId: number) {
+    return this.productsService.findByBarcode(barcode, tenantId);
   }
 
   @Get(':id')
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.productsService.findOne(id);
+  findOne(@Param('id', ParseIntPipe) id: number, @CurrentUser('tenantId') tenantId: number) {
+    return this.productsService.findOne(id, tenantId);
   }
 
   @Put(':id')
   @Roles('Admin', 'Manager')
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateProductDto, @CurrentUser('id') actorId: number) {
-    return this.productsService.update(id, dto, actorId);
+  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateProductDto, @CurrentUser('id') actorId: number, @CurrentUser('tenantId') tenantId: number) {
+    return this.productsService.update(id, dto, actorId, tenantId);
   }
 
   @Put(':id/units/:unitId')
@@ -48,7 +48,7 @@ export class ProductsController {
 
   @Delete(':id')
   @Roles('Admin')
-  remove(@Param('id', ParseIntPipe) id: number, @CurrentUser('id') actorId: number) {
-    return this.productsService.remove(id, actorId);
+  remove(@Param('id', ParseIntPipe) id: number, @CurrentUser('id') actorId: number, @CurrentUser('tenantId') tenantId: number) {
+    return this.productsService.remove(id, actorId, tenantId);
   }
 }

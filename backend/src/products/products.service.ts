@@ -15,16 +15,16 @@ export class ProductsService {
     private audit: AuditService,
   ) {}
 
-  async create(dto: CreateProductDto, actorId: number) {
+  async create(dto: CreateProductDto, actorId: number, tenantId: number) {
     if (!dto.units || dto.units.length === 0) {
       throw new BadRequestException('Product must have at least one unit');
     }
 
-    const skuExists = await this.prisma.product.findUnique({ where: { sku_tenantId: { sku: dto.sku, tenantId: 1 } } });
+    const skuExists = await this.prisma.product.findUnique({ where: { sku_tenantId: { sku: dto.sku, tenantId } } });
     if (skuExists) throw new ConflictException('SKU already exists');
 
     if (dto.barcode) {
-      const barcodeExists = await this.prisma.product.findUnique({ where: { barcode_tenantId: { barcode: dto.barcode, tenantId: 1 } } });
+      const barcodeExists = await this.prisma.product.findUnique({ where: { barcode_tenantId: { barcode: dto.barcode, tenantId } } });
       if (barcodeExists) throw new ConflictException('Barcode already exists');
     }
 
@@ -32,6 +32,7 @@ export class ProductsService {
     const product = await this.prisma.product.create({
       data: {
         ...productData,
+        tenantId,
         units: { create: units },
       },
       include: { units: true, category: true },
@@ -40,10 +41,11 @@ export class ProductsService {
     return product;
   }
 
-  async findAll(search?: string, categoryId?: number) {
+  async findAll(search?: string, categoryId?: number, tenantId?: number) {
     return this.prisma.product.findMany({
       where: {
         isActive: true,
+        ...(tenantId && { tenantId }),
         ...(search && { name: { contains: search } }),
         ...(categoryId && { categoryId }),
       },
@@ -52,24 +54,24 @@ export class ProductsService {
     });
   }
 
-  async findOne(id: number) {
-    const product = await this.prisma.product.findUnique({
-      where: { id },
+  async findOne(id: number, tenantId?: number) {
+    const product = await this.prisma.product.findFirst({
+      where: { id, ...(tenantId && { tenantId }) },
       include: { units: true, category: true, priceHistories: { orderBy: { changedAt: 'desc' }, take: 20 } },
     });
     if (!product) throw new NotFoundException('Product not found');
     return product;
   }
 
-  async findByBarcode(barcode: string) {
+  async findByBarcode(barcode: string, tenantId: number) {
     // Try barcode first, then fallback to SKU lookup
     let product = await this.prisma.product.findUnique({
-      where: { barcode_tenantId: { barcode, tenantId: 1 } },
+      where: { barcode_tenantId: { barcode, tenantId } },
       include: { units: true, category: true },
     });
     if (!product) {
       product = await this.prisma.product.findUnique({
-        where: { sku_tenantId: { sku: barcode, tenantId: 1 } },
+        where: { sku_tenantId: { sku: barcode, tenantId } },
         include: { units: true, category: true },
       });
     }
@@ -77,8 +79,8 @@ export class ProductsService {
     return product;
   }
 
-  async update(id: number, dto: UpdateProductDto, actorId: number) {
-    const product = await this.findOne(id);
+  async update(id: number, dto: UpdateProductDto, actorId: number, tenantId: number) {
+    const product = await this.findOne(id, tenantId);
     const updated = await this.prisma.product.update({ where: { id }, data: dto });
     await this.audit.log(actorId, 'UPDATE', 'Product', id, product, dto);
     return updated;
@@ -108,8 +110,8 @@ export class ProductsService {
     return updated;
   }
 
-  async remove(id: number, actorId: number) {
-    const product = await this.findOne(id);
+  async remove(id: number, actorId: number, tenantId: number) {
+    const product = await this.findOne(id, tenantId);
     await this.prisma.product.update({ where: { id }, data: { isActive: false } });
     await this.audit.log(actorId, 'DELETE', 'Product', id, { name: product.name }, null);
     return { deleted: true };

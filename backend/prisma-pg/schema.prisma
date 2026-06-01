@@ -35,13 +35,14 @@ model User {
 
 model Role {
     id          Int      @id @default(autoincrement())
-    name        String   @unique
+    name        String
     permissions String   @default("{}") // JSON stored as string
     tenantId    Int      @default(1) @map("tenant_id")
     createdAt   DateTime @default(now()) @map("created_at")
 
     users User[]
 
+    @@unique([name, tenantId])
     @@map("roles")
 }
 

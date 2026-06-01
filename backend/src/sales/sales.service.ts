@@ -10,14 +10,14 @@ import { CreateSaleDto, AddPaymentDto } from './dto/sale.dto';
 export class SalesService {
   constructor(private prisma: PrismaService) {}
 
-  private async generateSaleNumber(): Promise<string> {
-    const count = await this.prisma.sale.count();
+  private async generateSaleNumber(tenantId: number): Promise<string> {
+    const count = await this.prisma.sale.count({ where: { tenantId } });
     const date = new Date();
     const prefix = `KS${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}`;
     return `${prefix}${String(count + 1).padStart(5, '0')}`;
   }
 
-  async create(dto: CreateSaleDto, actorId: number) {
+  async create(dto: CreateSaleDto, actorId: number, tenantId: number) {
     return this.prisma.$transaction(async (tx) => {
       const locationId = dto.locationId ?? 1; // Default to first location
 
@@ -53,11 +53,12 @@ export class SalesService {
       const paidAmount = dto.payments.reduce((s, p) => s + p.amount, 0);
       const balance = Math.max(0, grandTotal - paidAmount);
 
-      const saleNumber = await this.generateSaleNumber();
+      const saleNumber = await this.generateSaleNumber(tenantId);
 
       const sale = await tx.sale.create({
         data: {
           saleNumber,
+          tenantId,
           customerId: dto.customerId,
           saleType: dto.saleType ?? 'RETAIL',
           status: 'COMPLETED',
@@ -127,7 +128,7 @@ export class SalesService {
     });
   }
 
-  async findAll(date?: string, cashierId?: number) {
+  async findAll(date?: string, cashierId?: number, tenantId?: number) {
     const dateFilter = date ? {
       createdAt: {
         gte: new Date(`${date}T00:00:00`),
@@ -138,6 +139,7 @@ export class SalesService {
     return this.prisma.sale.findMany({
       where: {
         ...dateFilter,
+        ...(tenantId && { tenantId }),
         ...(cashierId && { createdById: cashierId }),
       },
       include: {

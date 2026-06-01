@@ -10,20 +10,20 @@ export class UsersController {
 
   @Post()
   @Roles('Admin')
-  create(@Body() dto: CreateUserDto, @CurrentUser('id') actorId: number) {
-    return this.usersService.create(dto, actorId);
+  create(@Body() dto: CreateUserDto, @CurrentUser('id') actorId: number, @CurrentUser('tenantId') tenantId: number) {
+    return this.usersService.create(dto, actorId, tenantId);
   }
 
   @Get()
   @Roles('Admin', 'Manager')
-  findAll() {
-    return this.usersService.findAll();
+  findAll(@CurrentUser('tenantId') tenantId?: number) {
+    return this.usersService.findAll(tenantId);
   }
 
   @Get(':id')
   @Roles('Admin', 'Manager')
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.usersService.findOne(id);
+  findOne(@Param('id', ParseIntPipe) id: number, @CurrentUser('tenantId') tenantId: number) {
+    return this.usersService.findOne(id, tenantId);
   }
 
   @Patch(':id/toggle-active')

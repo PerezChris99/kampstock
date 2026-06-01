@@ -10,13 +10,13 @@ export class PurchaseOrdersController {
 
   @Post()
   @Roles('Admin', 'Manager')
-  create(@Body() dto: CreatePurchaseOrderDto, @CurrentUser('id') actorId: number) {
-    return this.poService.create(dto, actorId);
+  create(@Body() dto: CreatePurchaseOrderDto, @CurrentUser('id') actorId: number, @CurrentUser('tenantId') tenantId: number) {
+    return this.poService.create(dto, actorId, tenantId);
   }
 
   @Get()
-  findAll(@Query('supplierId') supplierId?: string) {
-    return this.poService.findAll(supplierId ? parseInt(supplierId) : undefined);
+  findAll(@Query('supplierId') supplierId?: string, @CurrentUser('tenantId') tenantId?: number) {
+    return this.poService.findAll(supplierId ? parseInt(supplierId) : undefined, tenantId);
   }
 
   @Get(':id')

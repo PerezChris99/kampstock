@@ -6,23 +6,24 @@ import { CreateSupplierDto, UpdateSupplierDto } from './dto/supplier.dto';
 export class SuppliersService {
   constructor(private prisma: PrismaService) {}
 
-  async create(dto: CreateSupplierDto) {
-    return this.prisma.supplier.create({ data: dto });
+  async create(dto: CreateSupplierDto, tenantId: number) {
+    return this.prisma.supplier.create({ data: { ...dto, tenantId } });
   }
 
-  async findAll(search?: string) {
+  async findAll(search?: string, tenantId?: number) {
     return this.prisma.supplier.findMany({
       where: {
         isActive: true,
+        ...(tenantId && { tenantId }),
         ...(search && { name: { contains: search } }),
       },
       orderBy: { name: 'asc' },
     });
   }
 
-  async findOne(id: number) {
-    const supplier = await this.prisma.supplier.findUnique({
-      where: { id },
+  async findOne(id: number, tenantId?: number) {
+    const supplier = await this.prisma.supplier.findFirst({
+      where: { id, ...(tenantId && { tenantId }) },
       include: {
         purchaseOrders: {
           orderBy: { orderedDate: 'desc' },
@@ -35,8 +36,8 @@ export class SuppliersService {
     return supplier;
   }
 
-  async update(id: number, dto: UpdateSupplierDto) {
-    await this.findOne(id);
+  async update(id: number, dto: UpdateSupplierDto, tenantId: number) {
+    await this.findOne(id, tenantId);
     return this.prisma.supplier.update({ where: { id }, data: dto });
   }
 

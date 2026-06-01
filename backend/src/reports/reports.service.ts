@@ -5,12 +5,12 @@ import { PrismaService } from '../prisma/prisma.service';
 export class ReportsService {
   constructor(private prisma: PrismaService) {}
 
-  async dailySalesSummary(date: string) {
+  async dailySalesSummary(date: string, tenantId?: number) {
     const start = new Date(`${date}T00:00:00`);
     const end = new Date(`${date}T23:59:59`);
 
     const sales = await this.prisma.sale.findMany({
-      where: { createdAt: { gte: start, lte: end }, status: 'COMPLETED' },
+      where: { createdAt: { gte: start, lte: end }, status: 'COMPLETED', ...(tenantId && { tenantId }) },
       include: {
         payments: true,
         createdBy: { select: { id: true, name: true } },
@@ -59,11 +59,11 @@ export class ReportsService {
     return { items: rows, totalValue };
   }
 
-  async slowMovingItems(days = 30) {
+  async slowMovingItems(days = 30, tenantId?: number) {
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - days);
 
-    const allProducts = await this.prisma.product.findMany({ where: { isActive: true } });
+    const allProducts = await this.prisma.product.findMany({ where: { isActive: true, ...(tenantId && { tenantId }) } });
     const recentMovements = await this.prisma.stockMovement.findMany({
       where: { createdAt: { gte: cutoff }, movementType: 'SALE' },
       select: { productId: true, quantity: true },
@@ -80,12 +80,12 @@ export class ReportsService {
       .slice(0, 50);
   }
 
-  async monthlyProfitSummary(year: number, month: number) {
+  async monthlyProfitSummary(year: number, month: number, tenantId?: number) {
     const start = new Date(year, month - 1, 1);
     const end = new Date(year, month, 0, 23, 59, 59);
 
     const sales = await this.prisma.sale.findMany({
-      where: { createdAt: { gte: start, lte: end }, status: 'COMPLETED' },
+      where: { createdAt: { gte: start, lte: end }, status: 'COMPLETED', ...(tenantId && { tenantId }) },
       include: { lines: true },
     });
 
@@ -93,7 +93,7 @@ export class ReportsService {
     const cogs = sales.flatMap(s => s.lines).reduce((s, l) => s + Number(l.quantity) * Number(l.costPrice), 0);
 
     const expenses = await this.prisma.expense.findMany({
-      where: { paidAt: { gte: start, lte: end } },
+      where: { paidAt: { gte: start, lte: end }, ...(tenantId && { tenantId }) },
     });
     const totalExpenses = expenses.reduce((s, e) => s + Number(e.amount), 0);
 
@@ -102,16 +102,11 @@ export class ReportsService {
 
     return {
       period: `${year}-${String(month).padStart(2, '0')}`,
-      revenue,
-      cogs,
-      grossProfit,
-      totalExpenses,
-      netProfit,
-      salesCount: sales.length,
+      revenue, cogs, grossProfit, totalExpenses, netProfit, salesCount: sales.length,
     };
   }
 
-  async salesTrend(days = 30) {
+  async salesTrend(days = 30, tenantId?: number) {
     const results: { date: string; total: number; count: number }[] = [];
     for (let i = days - 1; i >= 0; i--) {
       const d = new Date();
@@ -119,17 +114,17 @@ export class ReportsService {
       const dateStr = d.toISOString().split('T')[0];
       const start = new Date(`${dateStr}T00:00:00`);
       const end = new Date(`${dateStr}T23:59:59`);
-      const sales = await this.prisma.sale.findMany({ where: { createdAt: { gte: start, lte: end }, status: 'COMPLETED' }, select: { grandTotal: true } });
+      const sales = await this.prisma.sale.findMany({ where: { createdAt: { gte: start, lte: end }, status: 'COMPLETED', ...(tenantId && { tenantId }) }, select: { grandTotal: true } });
       results.push({ date: dateStr, total: sales.reduce((s, sale) => s + Number(sale.grandTotal), 0), count: sales.length });
     }
     return results;
   }
 
-  async topProducts(limit = 10, days = 30) {
+  async topProducts(limit = 10, days = 30, tenantId?: number) {
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - days);
     const lines = await this.prisma.saleLine.findMany({
-      where: { sale: { createdAt: { gte: cutoff }, status: 'COMPLETED' } },
+      where: { sale: { createdAt: { gte: cutoff }, status: 'COMPLETED', ...(tenantId && { tenantId }) } },
       include: { product: { select: { name: true, sku: true } } },
     });
     const map: Record<number, { productName: string; sku: string; revenue: number; quantity: number; profit: number }> = {};
@@ -142,11 +137,11 @@ export class ReportsService {
     return Object.values(map).sort((a, b) => b.revenue - a.revenue).slice(0, limit);
   }
 
-  async paymentBreakdown(days = 30) {
+  async paymentBreakdown(days = 30, tenantId?: number) {
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - days);
     const payments = await this.prisma.payment.findMany({
-      where: { receivedAt: { gte: cutoff } },
+      where: { receivedAt: { gte: cutoff }, ...(tenantId && { sale: { tenantId } }) },
       select: { paymentMethod: true, amount: true },
     });
     const map: Record<string, number> = {};
@@ -156,11 +151,11 @@ export class ReportsService {
     return Object.entries(map).map(([method, total]) => ({ method, total }));
   }
 
-  async categorySales(days = 30) {
+  async categorySales(days = 30, tenantId?: number) {
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - days);
     const lines = await this.prisma.saleLine.findMany({
-      where: { sale: { createdAt: { gte: cutoff }, status: 'COMPLETED' } },
+      where: { sale: { createdAt: { gte: cutoff }, status: 'COMPLETED', ...(tenantId && { tenantId }) } },
       include: { product: { include: { category: true } } },
     });
     const map: Record<string, { category: string; revenue: number; quantity: number }> = {};
@@ -173,7 +168,7 @@ export class ReportsService {
     return Object.values(map).sort((a, b) => b.revenue - a.revenue);
   }
 
-  async monthlySummary(months = 6) {
+  async monthlySummary(months = 6, tenantId?: number) {
     const results: Awaited<ReturnType<typeof this.monthlyProfitSummary>>[] = [];
     const now = new Date();
     for (let i = months - 1; i >= 0; i--) {
@@ -181,23 +176,23 @@ export class ReportsService {
       const month = now.getMonth() + 1 - i;
       const actualYear = month <= 0 ? year - 1 : year;
       const actualMonth = month <= 0 ? 12 + month : month;
-      const data = await this.monthlyProfitSummary(actualYear, actualMonth);
+      const data = await this.monthlyProfitSummary(actualYear, actualMonth, tenantId);
       results.push(data);
     }
     return results;
   }
 
-  async kpiOverview() {
+  async kpiOverview(tenantId?: number) {
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const yesterdayStart = new Date(todayStart); yesterdayStart.setDate(yesterdayStart.getDate() - 1);
     const yesterdayEnd = new Date(todayStart); yesterdayEnd.setMilliseconds(-1);
 
     const [todaySales, yesterdaySales, lowStockItems, allStock] = await Promise.all([
-      this.prisma.sale.findMany({ where: { createdAt: { gte: todayStart }, status: 'COMPLETED' }, select: { grandTotal: true } }),
-      this.prisma.sale.findMany({ where: { createdAt: { gte: yesterdayStart, lte: yesterdayEnd }, status: 'COMPLETED' }, select: { grandTotal: true } }),
-      this.prisma.stockItem.count({ where: { quantityOnHand: { lte: 10 } } }),
-      this.prisma.stockItem.findMany({ include: { product: { include: { units: { where: { isDefault: true } } } } } }),
+      this.prisma.sale.findMany({ where: { createdAt: { gte: todayStart }, status: 'COMPLETED', ...(tenantId && { tenantId }) }, select: { grandTotal: true } }),
+      this.prisma.sale.findMany({ where: { createdAt: { gte: yesterdayStart, lte: yesterdayEnd }, status: 'COMPLETED', ...(tenantId && { tenantId }) }, select: { grandTotal: true } }),
+      this.prisma.stockItem.count({ where: { quantityOnHand: { lte: 10 }, ...(tenantId && { location: { tenantId } }) } }),
+      this.prisma.stockItem.findMany({ where: { ...(tenantId && { location: { tenantId } }) }, include: { product: { include: { units: { where: { isDefault: true } } } } } }),
     ]);
 
     const todayTotal = todaySales.reduce((s, sale) => s + Number(sale.grandTotal), 0);

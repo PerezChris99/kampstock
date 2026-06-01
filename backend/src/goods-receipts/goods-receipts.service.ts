@@ -6,11 +6,12 @@ import { CreateGoodsReceiptDto, CreateSupplierInvoiceDto } from './dto/goods-rec
 export class GoodsReceiptsService {
   constructor(private prisma: PrismaService) {}
 
-  async create(dto: CreateGoodsReceiptDto, actorId: number) {
+  async create(dto: CreateGoodsReceiptDto, actorId: number, tenantId: number) {
     return this.prisma.$transaction(async (tx) => {
       const receipt = await tx.goodsReceipt.create({
         data: {
           purchaseOrderId: dto.purchaseOrderId,
+          tenantId,
           notes: dto.notes,
           receivedById: actorId,
           lines: { create: dto.lines.map(l => ({
@@ -76,8 +77,9 @@ export class GoodsReceiptsService {
     });
   }
 
-  async findAll() {
+  async findAll(tenantId?: number) {
     return this.prisma.goodsReceipt.findMany({
+      where: { ...(tenantId && { tenantId }) },
       include: {
         receivedBy: { select: { id: true, name: true } },
         purchaseOrder: { include: { supplier: true } },

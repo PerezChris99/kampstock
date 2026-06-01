@@ -13,6 +13,7 @@ export class AuditService {
     previousValue: any,
     newValue: any,
     ipAddress?: string,
+    tenantId?: number,
   ) {
     return this.prisma.auditLog.create({
       data: {
@@ -23,15 +24,17 @@ export class AuditService {
         previousValue: previousValue != null ? JSON.stringify(previousValue) : undefined,
         newValue: newValue != null ? JSON.stringify(newValue) : undefined,
         ipAddress,
+        ...(tenantId && { tenantId }),
       },
     });
   }
 
-  async findAll(entityType?: string, entityId?: number) {
+  async findAll(entityType?: string, entityId?: number, tenantId?: number) {
     return this.prisma.auditLog.findMany({
       where: {
         ...(entityType && { entityType }),
         ...(entityId && { entityId }),
+        ...(tenantId && { tenantId }),
       },
       include: { user: { select: { id: true, name: true, username: true } } },
       orderBy: { createdAt: 'desc' },

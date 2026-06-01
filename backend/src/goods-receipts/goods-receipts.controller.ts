@@ -10,13 +10,13 @@ export class GoodsReceiptsController {
 
   @Post()
   @Roles('Admin', 'Manager', 'Storekeeper')
-  create(@Body() dto: CreateGoodsReceiptDto, @CurrentUser('id') actorId: number) {
-    return this.grService.create(dto, actorId);
+  create(@Body() dto: CreateGoodsReceiptDto, @CurrentUser('id') actorId: number, @CurrentUser('tenantId') tenantId: number) {
+    return this.grService.create(dto, actorId, tenantId);
   }
 
   @Get()
-  findAll() {
-    return this.grService.findAll();
+  findAll(@CurrentUser('tenantId') tenantId?: number) {
+    return this.grService.findAll(tenantId);
   }
 
   @Get(':id')

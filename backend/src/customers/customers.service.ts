@@ -6,23 +6,24 @@ import { CreateCustomerDto, UpdateCustomerDto } from './dto/customer.dto';
 export class CustomersService {
   constructor(private prisma: PrismaService) {}
 
-  async create(dto: CreateCustomerDto) {
-    return this.prisma.customer.create({ data: dto });
+  async create(dto: CreateCustomerDto, tenantId: number) {
+    return this.prisma.customer.create({ data: { ...dto, tenantId } });
   }
 
-  async findAll(search?: string) {
+  async findAll(search?: string, tenantId?: number) {
     return this.prisma.customer.findMany({
       where: {
         isActive: true,
+        ...(tenantId && { tenantId }),
         ...(search && { name: { contains: search } }),
       },
       orderBy: { name: 'asc' },
     });
   }
 
-  async findOne(id: number) {
-    const customer = await this.prisma.customer.findUnique({
-      where: { id },
+  async findOne(id: number, tenantId?: number) {
+    const customer = await this.prisma.customer.findFirst({
+      where: { id, ...(tenantId && { tenantId }) },
       include: {
         sales: {
           where: { balance: { gt: 0 } },
@@ -35,15 +36,15 @@ export class CustomersService {
     return customer;
   }
 
-  async update(id: number, dto: UpdateCustomerDto) {
-    await this.findOne(id);
+  async update(id: number, dto: UpdateCustomerDto, tenantId: number) {
+    await this.findOne(id, tenantId);
     return this.prisma.customer.update({ where: { id }, data: dto });
   }
 
-  async getAgeing(id: number) {
+  async getAgeing(id: number, tenantId?: number) {
     const now = new Date();
     const sales = await this.prisma.sale.findMany({
-      where: { customerId: id, balance: { gt: 0 } },
+      where: { customerId: id, balance: { gt: 0 }, ...(tenantId && { tenantId }) },
       select: { id: true, saleNumber: true, grandTotal: true, balance: true, createdAt: true },
     });
 

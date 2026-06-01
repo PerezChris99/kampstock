@@ -10,31 +10,32 @@ export class StockController {
 
   @Post('locations')
   @Roles('Admin', 'Manager')
-  createLocation(@Body() dto: CreateStockLocationDto) {
-    return this.stockService.createLocation(dto);
+  createLocation(@Body() dto: CreateStockLocationDto, @CurrentUser('tenantId') tenantId: number) {
+    return this.stockService.createLocation(dto, tenantId);
   }
 
   @Get('locations')
-  findLocations() {
-    return this.stockService.findAllLocations();
+  findLocations(@CurrentUser('tenantId') tenantId?: number) {
+    return this.stockService.findAllLocations(tenantId);
   }
 
   @Get('items')
-  findItems(@Query('locationId') locationId?: string, @Query('productId') productId?: string) {
+  findItems(@Query('locationId') locationId?: string, @Query('productId') productId?: string, @CurrentUser('tenantId') tenantId?: number) {
     return this.stockService.findStockItems(
       locationId ? parseInt(locationId) : undefined,
       productId ? parseInt(productId) : undefined,
+      tenantId,
     );
   }
 
   @Get('low-stock')
-  getLowStock(@Query('threshold') threshold?: string) {
-    return this.stockService.getLowStockItems(threshold ? parseInt(threshold) : 10);
+  getLowStock(@Query('threshold') threshold?: string, @CurrentUser('tenantId') tenantId?: number) {
+    return this.stockService.getLowStockItems(threshold ? parseInt(threshold) : 10, tenantId);
   }
 
   @Get('expiring')
-  getExpiring(@Query('days') days?: string) {
-    return this.stockService.getExpiringItems(days ? parseInt(days) : 30);
+  getExpiring(@Query('days') days?: string, @CurrentUser('tenantId') tenantId?: number) {
+    return this.stockService.getExpiringItems(days ? parseInt(days) : 30, tenantId);
   }
 
   @Get('movements')

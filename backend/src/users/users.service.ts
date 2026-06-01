@@ -11,13 +11,13 @@ export class UsersService {
     private audit: AuditService,
   ) {}
 
-  async create(dto: CreateUserDto, actorId: number) {
+  async create(dto: CreateUserDto, actorId: number, tenantId: number) {
     const exists = await this.prisma.user.findUnique({ where: { username: dto.username } });
     if (exists) throw new ConflictException('Username already taken');
 
     const passwordHash = await bcrypt.hash(dto.password, 12);
     const user = await this.prisma.user.create({
-      data: { name: dto.name, username: dto.username, passwordHash, phone: dto.phone, roleId: dto.roleId },
+      data: { name: dto.name, username: dto.username, passwordHash, phone: dto.phone, roleId: dto.roleId, tenantId },
       include: { role: true },
     });
     await this.audit.log(actorId, 'CREATE', 'User', user.id, null, { name: user.name, username: user.username });
@@ -25,16 +25,17 @@ export class UsersService {
     return result;
   }
 
-  async findAll() {
+  async findAll(tenantId?: number) {
     return this.prisma.user.findMany({
+      where: { ...(tenantId && { tenantId }) },
       select: { id: true, name: true, username: true, phone: true, isActive: true, createdAt: true, role: true },
       orderBy: { name: 'asc' },
     });
   }
 
-  async findOne(id: number) {
-    const user = await this.prisma.user.findUnique({
-      where: { id },
+  async findOne(id: number, tenantId?: number) {
+    const user = await this.prisma.user.findFirst({
+      where: { id, ...(tenantId && { tenantId }) },
       select: { id: true, name: true, username: true, phone: true, isActive: true, createdAt: true, role: true },
     });
     if (!user) throw new NotFoundException('User not found');

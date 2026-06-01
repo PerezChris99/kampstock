@@ -6,20 +6,21 @@ import { CreatePurchaseOrderDto, UpdatePOStatusDto } from './dto/purchase-order.
 export class PurchaseOrdersService {
   constructor(private prisma: PrismaService) {}
 
-  private async generatePoNumber(): Promise<string> {
-    const count = await this.prisma.purchaseOrder.count();
+  private async generatePoNumber(tenantId: number): Promise<string> {
+    const count = await this.prisma.purchaseOrder.count({ where: { tenantId } });
     const date = new Date();
     const prefix = `PO${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}`;
     return `${prefix}${String(count + 1).padStart(5, '0')}`;
   }
 
-  async create(dto: CreatePurchaseOrderDto, actorId: number) {
+  async create(dto: CreatePurchaseOrderDto, actorId: number, tenantId: number) {
     const { lines, ...poData } = dto;
-    const poNumber = await this.generatePoNumber();
+    const poNumber = await this.generatePoNumber(tenantId);
     return this.prisma.purchaseOrder.create({
       data: {
         ...poData,
         poNumber,
+        tenantId,
         createdById: actorId,
         lines: { create: lines },
       },
@@ -27,9 +28,9 @@ export class PurchaseOrdersService {
     });
   }
 
-  async findAll(supplierId?: number) {
+  async findAll(supplierId?: number, tenantId?: number) {
     return this.prisma.purchaseOrder.findMany({
-      where: { ...(supplierId && { supplierId }) },
+      where: { ...(supplierId && { supplierId }), ...(tenantId && { tenantId }) },
       include: { supplier: true, createdBy: { select: { id: true, name: true } } },
       orderBy: { orderedDate: 'desc' },
     });

@@ -12,40 +12,41 @@ export class StockService {
 
   // ─── Locations ─────────────────────────────────────────────────────────────
 
-  async createLocation(dto: CreateStockLocationDto) {
-    return this.prisma.stockLocation.create({ data: dto });
+  async createLocation(dto: CreateStockLocationDto, tenantId: number) {
+    return this.prisma.stockLocation.create({ data: { ...dto, tenantId } });
   }
 
-  async findAllLocations() {
-    return this.prisma.stockLocation.findMany({ where: { isActive: true }, orderBy: { id: 'asc' } });
+  async findAllLocations(tenantId?: number) {
+    return this.prisma.stockLocation.findMany({ where: { isActive: true, ...(tenantId && { tenantId }) }, orderBy: { id: 'asc' } });
   }
 
   // ─── Stock items ────────────────────────────────────────────────────────────
 
-  async findStockItems(locationId?: number, productId?: number) {
+  async findStockItems(locationId?: number, productId?: number, tenantId?: number) {
     return this.prisma.stockItem.findMany({
       where: {
         ...(locationId && { locationId }),
         ...(productId && { productId }),
+        ...(tenantId && { location: { tenantId } }),
       },
       include: { product: { include: { units: true } }, location: true },
       orderBy: { product: { name: 'asc' } },
     });
   }
 
-  async getLowStockItems(threshold = 10) {
+  async getLowStockItems(threshold = 10, tenantId?: number) {
     return this.prisma.stockItem.findMany({
-      where: { quantityOnHand: { lte: threshold } },
+      where: { quantityOnHand: { lte: threshold }, ...(tenantId && { location: { tenantId } }) },
       include: { product: { include: { units: true } }, location: true },
       orderBy: { quantityOnHand: 'asc' },
     });
   }
 
-  async getExpiringItems(daysAhead = 30) {
+  async getExpiringItems(daysAhead = 30, tenantId?: number) {
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() + daysAhead);
     return this.prisma.stockItem.findMany({
-      where: { expiryDate: { lte: cutoff }, quantityOnHand: { gt: 0 } },
+      where: { expiryDate: { lte: cutoff }, quantityOnHand: { gt: 0 }, ...(tenantId && { location: { tenantId } }) },
       include: { product: true, location: true },
       orderBy: { expiryDate: 'asc' },
     });

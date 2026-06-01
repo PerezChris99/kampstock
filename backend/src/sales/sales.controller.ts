@@ -10,13 +10,13 @@ export class SalesController {
 
   @Post()
   @Roles('Admin', 'Manager', 'Cashier')
-  create(@Body() dto: CreateSaleDto, @CurrentUser('id') actorId: number) {
-    return this.salesService.create(dto, actorId);
+  create(@Body() dto: CreateSaleDto, @CurrentUser('id') actorId: number, @CurrentUser('tenantId') tenantId: number) {
+    return this.salesService.create(dto, actorId, tenantId);
   }
 
   @Get()
-  findAll(@Query('date') date?: string, @Query('cashierId') cashierId?: string) {
-    return this.salesService.findAll(date, cashierId ? parseInt(cashierId) : undefined);
+  findAll(@Query('date') date?: string, @Query('cashierId') cashierId?: string, @CurrentUser('tenantId') tenantId?: number) {
+    return this.salesService.findAll(date, cashierId ? parseInt(cashierId) : undefined, tenantId);
   }
 
   @Get(':id')

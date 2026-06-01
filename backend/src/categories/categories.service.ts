@@ -10,35 +10,36 @@ export class CategoriesService {
     private audit: AuditService,
   ) {}
 
-  async create(dto: CreateCategoryDto, actorId: number) {
-    const existing = await this.prisma.category.findUnique({ where: { name_tenantId: { name: dto.name, tenantId: 1 } } });
+  async create(dto: CreateCategoryDto, actorId: number, tenantId: number) {
+    const existing = await this.prisma.category.findUnique({ where: { name_tenantId: { name: dto.name, tenantId } } });
     if (existing) throw new ConflictException('Category name already exists');
 
-    const category = await this.prisma.category.create({ data: { ...dto, tenantId: 1 } });
+    const category = await this.prisma.category.create({ data: { ...dto, tenantId } });
     await this.audit.log(actorId, 'CREATE', 'Category', category.id, null, dto);
     return category;
   }
 
-  async findAll() {
+  async findAll(tenantId?: number) {
     return this.prisma.category.findMany({
+      where: { ...(tenantId && { tenantId }) },
       include: { children: true, parent: true },
       orderBy: { name: 'asc' },
     });
   }
 
-  async findOne(id: number) {
-    const cat = await this.prisma.category.findUnique({
-      where: { id },
+  async findOne(id: number, tenantId?: number) {
+    const cat = await this.prisma.category.findFirst({
+      where: { id, ...(tenantId && { tenantId }) },
       include: { children: true, parent: true, products: { select: { id: true, name: true, sku: true } } },
     });
     if (!cat) throw new NotFoundException('Category not found');
     return cat;
   }
 
-  async update(id: number, dto: UpdateCategoryDto, actorId: number) {
-    const cat = await this.findOne(id);
+  async update(id: number, dto: UpdateCategoryDto, actorId: number, tenantId: number) {
+    const cat = await this.findOne(id, tenantId);
     if (dto.name && dto.name !== cat.name) {
-      const exists = await this.prisma.category.findUnique({ where: { name_tenantId: { name: dto.name, tenantId: 1 } } });
+      const exists = await this.prisma.category.findUnique({ where: { name_tenantId: { name: dto.name, tenantId } } });
       if (exists) throw new ConflictException('Category name already exists');
     }
     const updated = await this.prisma.category.update({ where: { id }, data: dto });
@@ -46,8 +47,8 @@ export class CategoriesService {
     return updated;
   }
 
-  async remove(id: number, actorId: number) {
-    const cat = await this.findOne(id);
+  async remove(id: number, actorId: number, tenantId: number) {
+    const cat = await this.findOne(id, tenantId);
     await this.prisma.category.delete({ where: { id } });
     await this.audit.log(actorId, 'DELETE', 'Category', id, cat, null);
     return { deleted: true };
