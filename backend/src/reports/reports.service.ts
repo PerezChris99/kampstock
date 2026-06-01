@@ -40,8 +40,9 @@ export class ReportsService {
     };
   }
 
-  async stockValuation() {
+  async stockValuation(tenantId?: number) {
     const items = await this.prisma.stockItem.findMany({
+      where: { ...(tenantId && { location: { tenantId } }) },
       include: { product: { include: { units: true } }, location: true },
     });
 

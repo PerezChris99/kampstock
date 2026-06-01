@@ -54,4 +54,5 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
   get invoiceFiscal(): PC['invoiceFiscal'] { return this._db.invoiceFiscal; }
   get auditLog(): PC['auditLog'] { return this._db.auditLog; }
   get tenant(): PC['tenant'] { return this._db.tenant; }
+  get subscription(): PC['subscription'] { return this._db.subscription; }
 }

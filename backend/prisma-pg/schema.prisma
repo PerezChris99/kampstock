@@ -419,18 +419,43 @@ model AuditLog {
 }
 
 model Tenant {
-    id          Int       @id @default(autoincrement())
-    name        String    @unique
-    subdomain   String    @unique
-    ownerEmail  String?   @map("owner_email")
-    ownerPhone  String?   @map("owner_phone")
-    address     String?
-    plan        String    @default("starter")
-    isActive    Boolean   @default(true) @map("is_active")
-    singleUser  Boolean   @default(false) @map("single_user")
-    trialEndsAt DateTime? @map("trial_ends_at")
-    createdAt   DateTime  @default(now()) @map("created_at")
-    updatedAt   DateTime  @updatedAt @map("updated_at")
+    id            Int       @id @default(autoincrement())
+    name          String    @unique
+    subdomain     String    @unique
+    ownerEmail    String?   @map("owner_email")
+    ownerPhone    String?   @map("owner_phone")
+    address       String?
+    plan          String    @default("starter")
+    isActive      Boolean   @default(true) @map("is_active")
+    singleUser    Boolean   @default(false) @map("single_user")
+    trialEndsAt   DateTime? @map("trial_ends_at")
+    planExpiresAt DateTime? @map("plan_expires_at")
+    createdAt     DateTime  @default(now()) @map("created_at")
+    updatedAt     DateTime  @updatedAt @map("updated_at")
+
+    subscriptions Subscription[]
 
     @@map("tenants")
+}
+
+model Subscription {
+    id            Int       @id @default(autoincrement())
+    tenantId      Int       @map("tenant_id")
+    plan          String
+    amount        Decimal
+    currency      String    @default("UGX")
+    periodMonths  Int       @default(1) @map("period_months")
+    status        String    @default("PENDING")
+    trackingId    String?   @unique @map("tracking_id")
+    merchantRef   String    @unique @map("merchant_ref")
+    ipnId         String?   @map("ipn_id")
+    paymentMethod String?   @map("payment_method")
+    confirmedAt   DateTime? @map("confirmed_at")
+    expiresAt     DateTime? @map("expires_at")
+    createdAt     DateTime  @default(now()) @map("created_at")
+    updatedAt     DateTime  @updatedAt @map("updated_at")
+
+    tenant Tenant @relation(fields: [tenantId], references: [id])
+
+    @@map("subscriptions")
 }
