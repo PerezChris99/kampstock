@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Param, Patch, Body, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Param, Patch, Body, Query, ParseIntPipe } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from '../auth/dto/auth.dto';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -16,8 +16,14 @@ export class UsersController {
 
   @Get()
   @Roles('Admin', 'Manager')
-  findAll(@CurrentUser('tenantId') tenantId?: number) {
-    return this.usersService.findAll(tenantId);
+  findAll(
+    @Query('limit') limitStr?: string,
+    @Query('offset') offsetStr?: string,
+    @CurrentUser('tenantId') tenantId?: number,
+  ) {
+    const limit = Math.min(parseInt(limitStr ?? '100') || 100, 500);
+    const offset = parseInt(offsetStr ?? '0') || 0;
+    return this.usersService.findAll(tenantId, limit, offset);
   }
 
   @Get(':id')

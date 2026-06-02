@@ -41,17 +41,24 @@ export class ProductsService {
     return product;
   }
 
-  async findAll(search?: string, categoryId?: number, tenantId?: number) {
-    return this.prisma.product.findMany({
-      where: {
-        isActive: true,
-        ...(tenantId && { tenantId }),
-        ...(search && { name: { contains: search } }),
-        ...(categoryId && { categoryId }),
-      },
-      include: { units: true, category: true },
-      orderBy: { name: 'asc' },
-    });
+  async findAll(search?: string, categoryId?: number, tenantId?: number, limit = 100, offset = 0) {
+    const where = {
+      isActive: true,
+      ...(tenantId && { tenantId }),
+      ...(search && { name: { contains: search } }),
+      ...(categoryId && { categoryId }),
+    };
+    const [data, total] = await Promise.all([
+      this.prisma.product.findMany({
+        where,
+        include: { units: true, category: true },
+        orderBy: { name: 'asc' },
+        take: Math.min(limit, 500),
+        skip: offset,
+      }),
+      this.prisma.product.count({ where }),
+    ]);
+    return { data, total, limit, offset };
   }
 
   async findOne(id: number, tenantId?: number) {

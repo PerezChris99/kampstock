@@ -10,15 +10,22 @@ export class SuppliersService {
     return this.prisma.supplier.create({ data: { ...dto, tenantId } });
   }
 
-  async findAll(search?: string, tenantId?: number) {
-    return this.prisma.supplier.findMany({
-      where: {
-        isActive: true,
-        ...(tenantId && { tenantId }),
-        ...(search && { name: { contains: search } }),
-      },
-      orderBy: { name: 'asc' },
-    });
+  async findAll(search?: string, tenantId?: number, limit = 100, offset = 0) {
+    const where = {
+      isActive: true,
+      ...(tenantId && { tenantId }),
+      ...(search && { name: { contains: search } }),
+    };
+    const [data, total] = await Promise.all([
+      this.prisma.supplier.findMany({
+        where,
+        orderBy: { name: 'asc' },
+        take: Math.min(limit, 500),
+        skip: offset,
+      }),
+      this.prisma.supplier.count({ where }),
+    ]);
+    return { data, total, limit, offset };
   }
 
   async findOne(id: number, tenantId?: number) {

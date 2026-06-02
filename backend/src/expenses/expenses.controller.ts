@@ -16,8 +16,17 @@ export class ExpensesController {
 
   @Get()
   @Roles('Admin', 'Manager')
-  findAll(@Query('from') from?: string, @Query('to') to?: string, @Query('category') category?: string, @CurrentUser('tenantId') tenantId?: number) {
-    return this.expensesService.findAll(from, to, category, tenantId);
+  findAll(
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('category') category?: string,
+    @Query('limit') limitStr?: string,
+    @Query('offset') offsetStr?: string,
+    @CurrentUser('tenantId') tenantId?: number,
+  ) {
+    const limit = Math.min(parseInt(limitStr ?? '100') || 100, 500);
+    const offset = parseInt(offsetStr ?? '0') || 0;
+    return this.expensesService.findAll(from, to, category, tenantId, limit, offset);
   }
 
   @Get('categories')

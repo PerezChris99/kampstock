@@ -43,10 +43,11 @@ export default function POSPage() {
     return () => window.removeEventListener('online', handleOnline);
   }, [qc]);
 
-  const { data: customers } = useQuery({
+  const { data: customersPage } = useQuery({
     queryKey: ['customers'],
-    queryFn: () => api.get('/customers').then((r) => r.data),
+    queryFn: () => api.get('/customers?limit=500').then((r) => r.data),
   });
+  const customers: any[] = customersPage?.data ?? [];
 
   const { data: locations } = useQuery({
     queryKey: ['locations'],

@@ -6,10 +6,11 @@ export default function ExpensesPage() {
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
 
-  const { data: expenses, isLoading } = useQuery({
+  const { data: expensesPage, isLoading } = useQuery({
     queryKey: ['expenses', from, to],
     queryFn: () => api.get(`/expenses?from=${from}&to=${to}`).then((r) => r.data),
   });
+  const expenses: any[] = expensesPage?.data ?? [];
 
   const { data: totals } = useQuery({
     queryKey: ['expense-totals', from, to],

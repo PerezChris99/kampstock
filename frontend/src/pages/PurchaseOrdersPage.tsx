@@ -2,10 +2,11 @@ import { useQuery } from '@tanstack/react-query';
 import api from '../lib/api';
 
 export default function PurchaseOrdersPage() {
-  const { data: orders, isLoading } = useQuery({
+  const { data: ordersPage, isLoading } = useQuery({
     queryKey: ['purchase-orders'],
     queryFn: () => api.get('/purchase-orders').then((r) => r.data),
   });
+  const orders: any[] = ordersPage?.data ?? [];
 
   const statusColors: Record<string, string> = {
     DRAFT: 'bg-gray-100 text-gray-600',

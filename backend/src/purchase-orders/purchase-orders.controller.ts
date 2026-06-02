@@ -15,8 +15,15 @@ export class PurchaseOrdersController {
   }
 
   @Get()
-  findAll(@Query('supplierId') supplierId?: string, @CurrentUser('tenantId') tenantId?: number) {
-    return this.poService.findAll(supplierId ? parseInt(supplierId) : undefined, tenantId);
+  findAll(
+    @Query('supplierId') supplierId?: string,
+    @Query('limit') limitStr?: string,
+    @Query('offset') offsetStr?: string,
+    @CurrentUser('tenantId') tenantId?: number,
+  ) {
+    const limit = Math.min(parseInt(limitStr ?? '100') || 100, 500);
+    const offset = parseInt(offsetStr ?? '0') || 0;
+    return this.poService.findAll(supplierId ? parseInt(supplierId) : undefined, tenantId, limit, offset);
   }
 
   @Get(':id')

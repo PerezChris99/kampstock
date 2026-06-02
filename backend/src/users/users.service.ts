@@ -25,12 +25,19 @@ export class UsersService {
     return result;
   }
 
-  async findAll(tenantId?: number) {
-    return this.prisma.user.findMany({
-      where: { ...(tenantId && { tenantId }) },
-      select: { id: true, name: true, username: true, phone: true, isActive: true, createdAt: true, role: true },
-      orderBy: { name: 'asc' },
-    });
+  async findAll(tenantId?: number, limit = 100, offset = 0) {
+    const where = { ...(tenantId && { tenantId }) };
+    const [data, total] = await Promise.all([
+      this.prisma.user.findMany({
+        where,
+        select: { id: true, name: true, username: true, phone: true, isActive: true, createdAt: true, lastLoginAt: true, role: true },
+        orderBy: { name: 'asc' },
+        take: Math.min(limit, 500),
+        skip: offset,
+      }),
+      this.prisma.user.count({ where }),
+    ]);
+    return { data, total, limit, offset };
   }
 
   async findOne(id: number, tenantId?: number) {

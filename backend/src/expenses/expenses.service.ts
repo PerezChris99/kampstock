@@ -23,18 +23,23 @@ export class ExpensesService {
     });
   }
 
-  async findAll(from?: string, to?: string, category?: string, tenantId?: number) {
-    return this.prisma.expense.findMany({
-      where: {
-        ...(category && { category }),
-        ...(tenantId && { tenantId }),
-        ...(from && to && {
-          paidAt: { gte: new Date(from), lte: new Date(to) },
-        }),
-      },
-      include: { paidBy: { select: { id: true, name: true } } },
-      orderBy: { paidAt: 'desc' },
-    });
+  async findAll(from?: string, to?: string, category?: string, tenantId?: number, limit = 100, offset = 0) {
+    const where = {
+      ...(category && { category }),
+      ...(tenantId && { tenantId }),
+      ...(from && to && { paidAt: { gte: new Date(from), lte: new Date(to) } }),
+    };
+    const [data, total] = await Promise.all([
+      this.prisma.expense.findMany({
+        where,
+        include: { paidBy: { select: { id: true, name: true } } },
+        orderBy: { paidAt: 'desc' },
+        take: Math.min(limit, 500),
+        skip: offset,
+      }),
+      this.prisma.expense.count({ where }),
+    ]);
+    return { data, total, limit, offset };
   }
 
   async getCategories() {
@@ -42,7 +47,15 @@ export class ExpensesService {
   }
 
   async getTotals(from?: string, to?: string, tenantId?: number) {
-    const expenses = await this.findAll(from, to, undefined, tenantId);
+    // Direct aggregation query — does not use paginated findAll to ensure all expenses are counted
+    const where = {
+      ...(tenantId && { tenantId }),
+      ...(from && to && { paidAt: { gte: new Date(from), lte: new Date(to) } }),
+    };
+    const expenses = await this.prisma.expense.findMany({
+      where,
+      select: { amount: true, category: true },
+    });
     const total = expenses.reduce((s, e) => s + Number(e.amount), 0);
     const byCategory = expenses.reduce((acc, e) => {
       acc[e.category] = (acc[e.category] ?? 0) + Number(e.amount);

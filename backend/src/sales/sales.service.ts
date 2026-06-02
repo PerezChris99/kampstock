@@ -128,27 +128,34 @@ export class SalesService {
     });
   }
 
-  async findAll(date?: string, cashierId?: number, tenantId?: number) {
-    const dateFilter = date ? {
-      createdAt: {
-        gte: new Date(`${date}T00:00:00`),
-        lte: new Date(`${date}T23:59:59`),
-      },
-    } : {};
+  async findAll(date?: string, cashierId?: number, tenantId?: number, limit = 100, offset = 0, from?: string, to?: string) {
+    let dateFilter: any = {};
+    if (from && to) {
+      dateFilter = { createdAt: { gte: new Date(`${from}T00:00:00`), lte: new Date(`${to}T23:59:59`) } };
+    } else if (date) {
+      dateFilter = { createdAt: { gte: new Date(`${date}T00:00:00`), lte: new Date(`${date}T23:59:59`) } };
+    }
 
-    return this.prisma.sale.findMany({
-      where: {
-        ...dateFilter,
-        ...(tenantId && { tenantId }),
-        ...(cashierId && { createdById: cashierId }),
-      },
-      include: {
-        customer: { select: { id: true, name: true } },
-        createdBy: { select: { id: true, name: true } },
-        payments: true,
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+    const where = {
+      ...dateFilter,
+      ...(tenantId && { tenantId }),
+      ...(cashierId && { createdById: cashierId }),
+    };
+    const [data, total] = await Promise.all([
+      this.prisma.sale.findMany({
+        where,
+        include: {
+          customer: { select: { id: true, name: true } },
+          createdBy: { select: { id: true, name: true } },
+          payments: true,
+        },
+        orderBy: { createdAt: 'desc' },
+        take: Math.min(limit, 500),
+        skip: offset,
+      }),
+      this.prisma.sale.count({ where }),
+    ]);
+    return { data, total, limit, offset };
   }
 
   async findOne(id: number) {

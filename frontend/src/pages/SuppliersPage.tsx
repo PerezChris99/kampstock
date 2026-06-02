@@ -2,10 +2,11 @@ import { useQuery } from '@tanstack/react-query';
 import api from '../lib/api';
 
 export default function SuppliersPage() {
-  const { data: suppliers, isLoading } = useQuery({
+  const { data: suppliersPage, isLoading } = useQuery({
     queryKey: ['suppliers'],
     queryFn: () => api.get('/suppliers').then((r) => r.data),
   });
+  const suppliers: any[] = suppliersPage?.data ?? [];
 
   return (
     <div className="p-6">

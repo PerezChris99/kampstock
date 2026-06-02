@@ -21,8 +21,15 @@ export class CustomersController {
   }
 
   @Get()
-  findAll(@Query('search') search?: string, @CurrentUser('tenantId') tenantId?: number) {
-    return this.customersService.findAll(search, tenantId);
+  findAll(
+    @Query('search') search?: string,
+    @Query('limit') limitStr?: string,
+    @Query('offset') offsetStr?: string,
+    @CurrentUser('tenantId') tenantId?: number,
+  ) {
+    const limit = Math.min(parseInt(limitStr ?? '200') || 200, 1000);
+    const offset = parseInt(offsetStr ?? '0') || 0;
+    return this.customersService.findAll(search, tenantId, limit, offset);
   }
 
   @Get(':id')

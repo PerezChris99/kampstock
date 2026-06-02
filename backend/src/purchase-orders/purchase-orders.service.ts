@@ -28,12 +28,19 @@ export class PurchaseOrdersService {
     });
   }
 
-  async findAll(supplierId?: number, tenantId?: number) {
-    return this.prisma.purchaseOrder.findMany({
-      where: { ...(supplierId && { supplierId }), ...(tenantId && { tenantId }) },
-      include: { supplier: true, createdBy: { select: { id: true, name: true } } },
-      orderBy: { orderedDate: 'desc' },
-    });
+  async findAll(supplierId?: number, tenantId?: number, limit = 100, offset = 0) {
+    const where = { ...(supplierId && { supplierId }), ...(tenantId && { tenantId }) };
+    const [data, total] = await Promise.all([
+      this.prisma.purchaseOrder.findMany({
+        where,
+        include: { supplier: true, createdBy: { select: { id: true, name: true } } },
+        orderBy: { orderedDate: 'desc' },
+        take: Math.min(limit, 500),
+        skip: offset,
+      }),
+      this.prisma.purchaseOrder.count({ where }),
+    ]);
+    return { data, total, limit, offset };
   }
 
   async findOne(id: number) {

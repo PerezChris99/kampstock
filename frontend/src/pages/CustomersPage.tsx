@@ -233,10 +233,11 @@ export default function CustomersPage() {
   const [paying, setPaying] = useState<Customer | null>(null);
   const [filter, setFilter] = useState<'all' | 'owing' | 'wholesale'>('all');
 
-  const { data: customers = [], isLoading } = useQuery<Customer[]>({
+  const { data: customersPage, isLoading } = useQuery({
     queryKey: ['customers', search],
     queryFn: () => api.get(`/customers${search ? `?search=${encodeURIComponent(search)}` : ''}`).then(r => r.data),
   });
+  const customers: Customer[] = customersPage?.data ?? [];
 
   const filtered = customers.filter(c => {
     if (filter === 'owing') return Number(c.balance) > 0;

@@ -15,8 +15,18 @@ export class SalesController {
   }
 
   @Get()
-  findAll(@Query('date') date?: string, @Query('cashierId') cashierId?: string, @CurrentUser('tenantId') tenantId?: number) {
-    return this.salesService.findAll(date, cashierId ? parseInt(cashierId) : undefined, tenantId);
+  findAll(
+    @Query('date') date?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('cashierId') cashierId?: string,
+    @Query('limit') limitStr?: string,
+    @Query('offset') offsetStr?: string,
+    @CurrentUser('tenantId') tenantId?: number,
+  ) {
+    const limit = Math.min(parseInt(limitStr ?? '100') || 100, 500);
+    const offset = parseInt(offsetStr ?? '0') || 0;
+    return this.salesService.findAll(date, cashierId ? parseInt(cashierId) : undefined, tenantId, limit, offset, from, to);
   }
 
   @Get(':id')

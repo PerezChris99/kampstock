@@ -28,11 +28,12 @@ export default function SalesPage() {
   const [to, setTo] = useState(() => new Date().toISOString().slice(0, 10));
   const [search, setSearch] = useState('');
 
-  const { data: sales = [], isLoading, isError } = useQuery<any[]>({
+  const { data: salesPage, isLoading, isError } = useQuery({
     queryKey: ['sales', from, to],
     queryFn: () =>
       api.get(`/sales?from=${from}&to=${to}&limit=200`).then(r => r.data),
   });
+  const sales: any[] = salesPage?.data ?? [];
 
   const filtered = sales.filter(s => {
     if (!search) return true;

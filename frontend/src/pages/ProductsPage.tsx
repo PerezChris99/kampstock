@@ -46,10 +46,11 @@ export default function ProductsPage() {
   const [error, setError] = useState('');
   const [expandedUnits, setExpandedUnits] = useState<number | null>(null);
 
-  const { data: products, isLoading } = useQuery({
+  const { data: productsPage, isLoading } = useQuery({
     queryKey: ['products', search],
     queryFn: () => api.get(`/products?search=${search}`).then((r) => r.data),
   });
+  const products: any[] = productsPage?.data ?? [];
 
   const { data: categories } = useQuery({
     queryKey: ['categories'],

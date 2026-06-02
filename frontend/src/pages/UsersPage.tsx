@@ -2,10 +2,11 @@ import { useQuery } from '@tanstack/react-query';
 import api from '../lib/api';
 
 export default function UsersPage() {
-  const { data: users, isLoading } = useQuery({
+  const { data: usersPage, isLoading } = useQuery({
     queryKey: ['users'],
     queryFn: () => api.get('/users').then((r) => r.data),
   });
+  const users: any[] = usersPage?.data ?? [];
 
   return (
     <div className="p-6">
