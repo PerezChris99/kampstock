@@ -2,7 +2,16 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateExpenseDto } from './dto/expense.dto';
 
-export const EXPENSE_CATEGORIES = ['Rent', 'Utilities', 'Wages', 'Transport', 'Stock Purchase', 'Maintenance', 'Marketing', 'Other'];
+export const EXPENSE_CATEGORIES = [
+  'Rent',
+  'Utilities',
+  'Wages',
+  'Transport',
+  'Stock Purchase',
+  'Maintenance',
+  'Marketing',
+  'Other',
+];
 
 @Injectable()
 export class ExpensesService {
@@ -23,7 +32,14 @@ export class ExpensesService {
     });
   }
 
-  async findAll(from?: string, to?: string, category?: string, tenantId?: number, limit = 100, offset = 0) {
+  async findAll(
+    from?: string,
+    to?: string,
+    category?: string,
+    tenantId?: number,
+    limit = 100,
+    offset = 0,
+  ) {
     const where = {
       ...(category && { category }),
       ...(tenantId && { tenantId }),
@@ -42,7 +58,7 @@ export class ExpensesService {
     return { data, total, limit, offset };
   }
 
-  async getCategories() {
+  getCategories() {
     return EXPENSE_CATEGORIES;
   }
 
@@ -57,10 +73,13 @@ export class ExpensesService {
       select: { amount: true, category: true },
     });
     const total = expenses.reduce((s, e) => s + Number(e.amount), 0);
-    const byCategory = expenses.reduce((acc, e) => {
-      acc[e.category] = (acc[e.category] ?? 0) + Number(e.amount);
-      return acc;
-    }, {} as Record<string, number>);
+    const byCategory = expenses.reduce(
+      (acc, e) => {
+        acc[e.category] = (acc[e.category] ?? 0) + Number(e.amount);
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
     return { total, byCategory, count: expenses.length };
   }
 }

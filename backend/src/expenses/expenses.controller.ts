@@ -10,7 +10,11 @@ export class ExpensesController {
 
   @Post()
   @Roles('Admin', 'Manager')
-  create(@Body() dto: CreateExpenseDto, @CurrentUser('id') actorId: number, @CurrentUser('tenantId') tenantId: number) {
+  create(
+    @Body() dto: CreateExpenseDto,
+    @CurrentUser('id') actorId: number,
+    @CurrentUser('tenantId') tenantId: number,
+  ) {
     return this.expensesService.create(dto, actorId, tenantId);
   }
 
@@ -26,7 +30,14 @@ export class ExpensesController {
   ) {
     const limit = Math.min(parseInt(limitStr ?? '100') || 100, 500);
     const offset = parseInt(offsetStr ?? '0') || 0;
-    return this.expensesService.findAll(from, to, category, tenantId, limit, offset);
+    return this.expensesService.findAll(
+      from,
+      to,
+      category,
+      tenantId,
+      limit,
+      offset,
+    );
   }
 
   @Get('categories')
@@ -36,7 +47,11 @@ export class ExpensesController {
 
   @Get('totals')
   @Roles('Admin', 'Manager')
-  getTotals(@Query('from') from?: string, @Query('to') to?: string, @CurrentUser('tenantId') tenantId?: number) {
+  getTotals(
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @CurrentUser('tenantId') tenantId?: number,
+  ) {
     return this.expensesService.getTotals(from, to, tenantId);
   }
 }

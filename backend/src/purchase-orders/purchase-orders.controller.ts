@@ -1,6 +1,18 @@
-import { Controller, Get, Post, Patch, Param, Body, Query, ParseIntPipe } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Param,
+  Body,
+  Query,
+  ParseIntPipe,
+} from '@nestjs/common';
 import { PurchaseOrdersService } from './purchase-orders.service';
-import { CreatePurchaseOrderDto, UpdatePOStatusDto } from './dto/purchase-order.dto';
+import {
+  CreatePurchaseOrderDto,
+  UpdatePOStatusDto,
+} from './dto/purchase-order.dto';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
@@ -10,7 +22,11 @@ export class PurchaseOrdersController {
 
   @Post()
   @Roles('Admin', 'Manager')
-  create(@Body() dto: CreatePurchaseOrderDto, @CurrentUser('id') actorId: number, @CurrentUser('tenantId') tenantId: number) {
+  create(
+    @Body() dto: CreatePurchaseOrderDto,
+    @CurrentUser('id') actorId: number,
+    @CurrentUser('tenantId') tenantId: number,
+  ) {
     return this.poService.create(dto, actorId, tenantId);
   }
 
@@ -23,7 +39,12 @@ export class PurchaseOrdersController {
   ) {
     const limit = Math.min(parseInt(limitStr ?? '100') || 100, 500);
     const offset = parseInt(offsetStr ?? '0') || 0;
-    return this.poService.findAll(supplierId ? parseInt(supplierId) : undefined, tenantId, limit, offset);
+    return this.poService.findAll(
+      supplierId ? parseInt(supplierId) : undefined,
+      tenantId,
+      limit,
+      offset,
+    );
   }
 
   @Get(':id')
@@ -33,7 +54,10 @@ export class PurchaseOrdersController {
 
   @Patch(':id/status')
   @Roles('Admin', 'Manager')
-  updateStatus(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdatePOStatusDto) {
+  updateStatus(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdatePOStatusDto,
+  ) {
     return this.poService.updateStatus(id, dto);
   }
 }
