@@ -6,6 +6,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { SubdomainTenantMiddleware } from './common/middleware/subdomain-tenant.middleware';
 import { TenantLockMiddleware } from './common/middleware/tenant-lock.middleware';
 import { CsrfMiddleware } from './common/middleware/csrf.middleware';
+import { envValidationSchema } from './config/env.validation';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { CategoriesModule } from './categories/categories.module';
@@ -28,7 +29,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({ isGlobal: true, validationSchema: envValidationSchema }),
     ThrottlerModule.forRoot([
       { name: 'short', ttl: 60_000,   limit: 60 },   // 60 req/min  per IP  (general)
       { name: 'long',  ttl: 3_600_000, limit: 600 },  // 600 req/hr  per IP  (general)
