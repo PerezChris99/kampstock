@@ -1,6 +1,6 @@
 import {
-  Controller, Get, Patch, Post, Param, Body,
-  ParseIntPipe, UseGuards, Query, ParseIntPipe as PIP,
+  Controller, Get, Patch, Post, Delete, Param, Body,
+  ParseIntPipe, UseGuards, Query,
 } from '@nestjs/common';
 import { SuperAdminService } from './super-admin.service';
 import { SuperAdminGuard } from '../common/guards/super-admin.guard';
@@ -54,5 +54,38 @@ export class SuperAdminController {
       page ? parseInt(page, 10) : 1,
       limit ? Math.min(parseInt(limit, 10), 100) : 50,
     );
+  }
+
+  /** GET /super-admin/analytics/mrr — MRR + signups trend */
+  @Get('analytics/mrr')
+  mrrAnalytics() {
+    return this.service.mrrAnalytics();
+  }
+
+  /** GET /super-admin/announcements */
+  @Get('announcements')
+  getAnnouncements() {
+    return this.service.getAnnouncements();
+  }
+
+  /** POST /super-admin/announcements */
+  @Post('announcements')
+  createAnnouncement(@Body() body: { title: string; body: string; severity?: string; targetPlan?: string; expiresAt?: string }) {
+    return this.service.createAnnouncement(body);
+  }
+
+  /** PATCH /super-admin/announcements/:id */
+  @Patch('announcements/:id')
+  updateAnnouncement(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { title?: string; body?: string; severity?: string; targetPlan?: string; isActive?: boolean; expiresAt?: string },
+  ) {
+    return this.service.updateAnnouncement(id, body);
+  }
+
+  /** DELETE /super-admin/announcements/:id */
+  @Delete('announcements/:id')
+  deleteAnnouncement(@Param('id', ParseIntPipe) id: number) {
+    return this.service.deleteAnnouncement(id);
   }
 }

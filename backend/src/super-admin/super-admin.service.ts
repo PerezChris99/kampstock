@@ -147,4 +147,77 @@ export class SuperAdminService {
     ]);
     return { logs, total, page, pages: Math.ceil(total / limit) };
   }
+
+  /** MRR + signup trend for last 12 months */
+  async mrrAnalytics() {
+    const months: { month: string; mrr: number; signups: number; churn: number }[] = [];
+    const now = new Date();
+
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const start = new Date(d.getFullYear(), d.getMonth(), 1);
+      const end = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59);
+      const label = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+
+      const [revenue, signups, expired] = await Promise.all([
+        this.prisma.subscription.aggregate({
+          where: { status: 'PAID', confirmedAt: { gte: start, lte: end } },
+          _sum: { amount: true },
+        }),
+        this.prisma.tenant.count({ where: { createdAt: { gte: start, lte: end } } }),
+        this.prisma.tenant.count({
+          where: {
+            planExpiresAt: { gte: start, lte: end },
+            subscriptions: { none: { status: 'PAID', confirmedAt: { gte: start } } },
+          },
+        }),
+      ]);
+
+      months.push({
+        month: label,
+        mrr: Number(revenue._sum.amount ?? 0),
+        signups,
+        churn: expired,
+      });
+    }
+
+    return months;
+  }
+
+  /** Announcements CRUD */
+  async getAnnouncements() {
+    return this.prisma.announcement.findMany({ orderBy: { createdAt: 'desc' } });
+  }
+
+  async createAnnouncement(data: { title: string; body: string; severity?: string; targetPlan?: string; expiresAt?: string }) {
+    return this.prisma.announcement.create({
+      data: {
+        title: data.title,
+        body: data.body,
+        severity: data.severity ?? 'info',
+        targetPlan: data.targetPlan,
+        expiresAt: data.expiresAt ? new Date(data.expiresAt) : undefined,
+      },
+    });
+  }
+
+  async updateAnnouncement(id: number, data: { title?: string; body?: string; severity?: string; targetPlan?: string; isActive?: boolean; expiresAt?: string }) {
+    return this.prisma.announcement.update({
+      where: { id },
+      data: {
+        ...(data.title !== undefined && { title: data.title }),
+        ...(data.body !== undefined && { body: data.body }),
+        ...(data.severity !== undefined && { severity: data.severity }),
+        ...(data.targetPlan !== undefined && { targetPlan: data.targetPlan }),
+        ...(data.isActive !== undefined && { isActive: data.isActive }),
+        ...(data.expiresAt !== undefined && { expiresAt: data.expiresAt ? new Date(data.expiresAt) : null }),
+      },
+    });
+  }
+
+  async deleteAnnouncement(id: number) {
+    await this.prisma.announcement.delete({ where: { id } });
+    return { deleted: true };
+  }
 }
+

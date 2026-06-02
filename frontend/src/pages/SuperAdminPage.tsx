@@ -1,13 +1,16 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
+import {
+  ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+} from 'recharts';
 import api from '../lib/api';
 import {
   Users, Building2, ShoppingBag, TrendingUp,
   ToggleLeft, ToggleRight, ChevronDown, ChevronUp,
   Shield, AlertTriangle, CalendarDays, Search,
   Phone, Mail, MapPin, Clock, Star, Layers, BadgeCheck,
-  Package,
+  Package, Megaphone, Plus, X, Trash2,
 } from 'lucide-react';
 
 // ─── types ────────────────────────────────────────────────────────────────────
@@ -26,6 +29,13 @@ interface SubRecord {
   id: number; status: string; plan: string;
   amount: number; periodMonths: number;
   confirmedAt: string | null; expiresAt: string | null;
+}
+
+interface MrrRow { month: string; mrr: number; signups: number; churn: number; }
+
+interface Announcement {
+  id: number; title: string; body: string; severity: string;
+  targetPlan: string | null; isActive: boolean; expiresAt: string | null; createdAt: string;
 }
 
 interface TenantRow {
@@ -128,7 +138,11 @@ export default function SuperAdminPage() {
   const [filterPlan, setFilterPlan] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterBizType, setFilterBizType] = useState('all');
-  const [activeTab, setActiveTab] = useState<'directory' | 'overview'>('overview');
+  const [activeTab, setActiveTab] = useState<'directory' | 'overview' | 'analytics' | 'announcements'>('overview');
+
+  // Announcement form state
+  const [annForm, setAnnForm] = useState({ title: '', body: '', severity: 'info', targetPlan: '', expiresAt: '' });
+  const [showAnnForm, setShowAnnForm] = useState(false);
 
   const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
     queryKey: ['sa-dashboard'],
@@ -152,6 +166,35 @@ export default function SuperAdminPage() {
     mutationFn: ({ id, plan }: { id: number; plan: string }) =>
       api.patch(`/super-admin/tenants/${id}/plan`, { plan }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['sa-tenants'] }),
+  });
+
+  const { data: mrrData = [] } = useQuery<MrrRow[]>({
+    queryKey: ['sa-mrr'],
+    queryFn: () => api.get('/super-admin/analytics/mrr').then(r => r.data),
+    enabled: activeTab === 'analytics',
+  });
+
+  const { data: announcements = [] } = useQuery<Announcement[]>({
+    queryKey: ['sa-announcements'],
+    queryFn: () => api.get('/super-admin/announcements').then(r => r.data),
+    enabled: activeTab === 'announcements',
+  });
+
+  const createAnn = useMutation({
+    mutationFn: (d: typeof annForm) => api.post('/super-admin/announcements', {
+      ...d, targetPlan: d.targetPlan || null, expiresAt: d.expiresAt || null,
+    }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['sa-announcements'] }); setShowAnnForm(false); setAnnForm({ title: '', body: '', severity: 'info', targetPlan: '', expiresAt: '' }); },
+  });
+
+  const deleteAnn = useMutation({
+    mutationFn: (id: number) => api.delete(`/super-admin/announcements/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['sa-announcements'] }),
+  });
+
+  const toggleAnn = useMutation({
+    mutationFn: ({ id, isActive }: { id: number; isActive: boolean }) => api.patch(`/super-admin/announcements/${id}`, { isActive: !isActive }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['sa-announcements'] }),
   });
 
   const filtered = useMemo(() => {
@@ -207,8 +250,8 @@ export default function SuperAdminPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1 w-fit">
-        {(['overview', 'directory'] as const).map((tab) => (
+      <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1 w-fit flex-wrap">
+        {(['overview', 'directory', 'analytics', 'announcements'] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -218,7 +261,7 @@ export default function SuperAdminPage() {
                 : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
             }`}
           >
-            {tab === 'overview' ? 'Platform Overview' : 'Business Directory'}
+            {tab === 'overview' ? 'Platform Overview' : tab === 'directory' ? 'Business Directory' : tab === 'analytics' ? 'Revenue Analytics' : 'Announcements'}
           </button>
         ))}
       </div>
@@ -587,6 +630,139 @@ export default function SuperAdminPage() {
             )}
           </div>
         </>
+      )}
+
+      {/* ====== REVENUE ANALYTICS TAB ====== */}
+      {activeTab === 'analytics' && (
+        <div className="space-y-6">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Monthly Recurring Revenue (12 months)</h2>
+          {mrrData.length === 0 ? (
+            <p className="text-gray-400 text-sm">No data yet.</p>
+          ) : (
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4">
+                <p className="text-sm font-medium text-gray-500 mb-4">MRR (UGX)</p>
+                <ResponsiveContainer width="100%" height={220}>
+                  <LineChart data={mrrData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => (v >= 1000 ? `${(v/1000).toFixed(0)}k` : v)} />
+                    <Tooltip formatter={(v: number) => fmtUGX(v)} />
+                    <Line type="monotone" dataKey="mrr" stroke="#6366f1" strokeWidth={2} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4">
+                <p className="text-sm font-medium text-gray-500 mb-4">New Signups vs Churn</p>
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={mrrData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="signups" fill="#22c55e" radius={[3,3,0,0]} />
+                    <Bar dataKey="churn" fill="#ef4444" radius={[3,3,0,0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ====== ANNOUNCEMENTS TAB ====== */}
+      {activeTab === 'announcements' && (
+        <div className="space-y-5">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Broadcast Announcements</h2>
+            <button onClick={() => setShowAnnForm(v => !v)}
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold">
+              <Plus className="w-4 h-4" /> New Announcement
+            </button>
+          </div>
+
+          {showAnnForm && (
+            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 space-y-3">
+              <h3 className="font-medium text-gray-900 dark:text-white">Create Announcement</h3>
+              <div>
+                <label className="text-xs text-gray-500">Title</label>
+                <input value={annForm.title} onChange={e => setAnnForm(f => ({ ...f, title: e.target.value }))}
+                  className="w-full mt-0.5 px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500">Body</label>
+                <textarea rows={3} value={annForm.body} onChange={e => setAnnForm(f => ({ ...f, body: e.target.value }))}
+                  className="w-full mt-0.5 px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="text-xs text-gray-500">Severity</label>
+                  <select value={annForm.severity} onChange={e => setAnnForm(f => ({ ...f, severity: e.target.value }))}
+                    className="w-full mt-0.5 px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="info">Info</option>
+                    <option value="warning">Warning</option>
+                    <option value="critical">Critical</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500">Target Plan (blank = all)</label>
+                  <select value={annForm.targetPlan} onChange={e => setAnnForm(f => ({ ...f, targetPlan: e.target.value }))}
+                    className="w-full mt-0.5 px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="">All plans</option>
+                    {PLANS.map(p => <option key={p} value={p}>{p}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500">Expires At</label>
+                  <input type="date" value={annForm.expiresAt} onChange={e => setAnnForm(f => ({ ...f, expiresAt: e.target.value }))}
+                    className="w-full mt-0.5 px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <button onClick={() => setShowAnnForm(false)} className="px-4 py-2 rounded-xl border text-sm text-gray-600 hover:bg-gray-50">Cancel</button>
+                <button disabled={!annForm.title || !annForm.body || createAnn.isPending}
+                  onClick={() => createAnn.mutate(annForm)}
+                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold disabled:opacity-40">
+                  {createAnn.isPending ? 'Saving...' : 'Publish'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-3">
+            {announcements.length === 0 && <p className="text-sm text-gray-400">No announcements yet.</p>}
+            {announcements.map(ann => (
+              <div key={ann.id} className={`bg-white dark:bg-gray-800 rounded-2xl border p-4 flex gap-4 items-start ${!ann.isActive ? 'opacity-60' : ''} ${ann.severity === 'critical' ? 'border-red-200' : ann.severity === 'warning' ? 'border-amber-200' : 'border-gray-100 dark:border-gray-700'}`}>
+                <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${ann.severity === 'critical' ? 'bg-red-100' : ann.severity === 'warning' ? 'bg-amber-100' : 'bg-blue-100'}`}>
+                  <Megaphone className={`w-4 h-4 ${ann.severity === 'critical' ? 'text-red-600' : ann.severity === 'warning' ? 'text-amber-600' : 'text-blue-600'}`} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 mb-1">
+                    <p className="font-semibold text-gray-900 dark:text-white text-sm">{ann.title}</p>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${ann.severity === 'critical' ? 'bg-red-100 text-red-700' : ann.severity === 'warning' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>
+                      {ann.severity}
+                    </span>
+                    {ann.targetPlan && <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">{ann.targetPlan}</span>}
+                    {!ann.isActive && <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">Inactive</span>}
+                  </div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">{ann.body}</p>
+                  {ann.expiresAt && <p className="text-xs text-gray-400 mt-1">Expires: {fmtDate(ann.expiresAt)}</p>}
+                </div>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <button onClick={() => toggleAnn.mutate({ id: ann.id, isActive: ann.isActive })}
+                    className="p-1.5 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors" title={ann.isActive ? 'Deactivate' : 'Activate'}>
+                    {ann.isActive ? <ToggleRight className="w-4 h-4 text-green-500" /> : <ToggleLeft className="w-4 h-4" />}
+                  </button>
+                  <button onClick={() => { if (confirm('Delete this announcement?')) deleteAnn.mutate(ann.id); }}
+                    className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );

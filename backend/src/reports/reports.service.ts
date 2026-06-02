@@ -209,4 +209,36 @@ export class ReportsService {
       totalStockValue,
     };
   }
+
+  async expiringItems(days = 30, tenantId?: number) {
+    const soon = new Date();
+    soon.setDate(soon.getDate() + days);
+
+    const items = await this.prisma.stockItem.findMany({
+      where: {
+        expiryDate: { lte: soon },
+        quantityOnHand: { gt: 0 },
+        ...(tenantId && { location: { tenantId } }),
+      },
+      include: {
+        product: { select: { id: true, name: true, sku: true } },
+        location: { select: { name: true } },
+      },
+      orderBy: { expiryDate: 'asc' },
+    });
+
+    return items.map((i) => ({
+      productId: i.productId,
+      productName: i.product.name,
+      sku: i.product.sku,
+      location: i.location.name,
+      batchNo: i.batchNo,
+      quantityOnHand: Number(i.quantityOnHand),
+      expiryDate: i.expiryDate,
+      daysLeft: i.expiryDate
+        ? Math.ceil((i.expiryDate.getTime() - Date.now()) / 86_400_000)
+        : null,
+    }));
+  }
 }
+

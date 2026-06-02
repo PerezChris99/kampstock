@@ -4,6 +4,7 @@ import { CreateTenantDto } from './dto/create-tenant.dto';
 import { Public } from '../auth/decorators/public.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @Controller('tenants')
 export class TenantsController {
@@ -50,5 +51,20 @@ export class TenantsController {
   @Patch(':id/toggle')
   toggle(@Param('id', ParseIntPipe) id: number) {
     return this.service.toggleActive(id);
+  }
+
+  /** Tenant owner updates their own business profile */
+  @Patch('profile')
+  updateProfile(
+    @Body() dto: { ownerEmail?: string; ownerPhone?: string; address?: string; businessType?: string; description?: string },
+    @CurrentUser('tenantId') tenantId: number,
+  ) {
+    return this.service.updateProfile(tenantId, dto);
+  }
+
+  /** GET /tenants/profile — current tenant profile */
+  @Get('profile')
+  getProfile(@CurrentUser('tenantId') tenantId: number) {
+    return this.service.findOne(tenantId);
   }
 }

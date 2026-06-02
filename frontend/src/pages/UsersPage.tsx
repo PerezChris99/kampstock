@@ -18,6 +18,7 @@ export default function UsersPage() {
                 <th className="text-left px-5 py-3">Name</th>
                 <th className="text-left px-5 py-3">Username</th>
                 <th className="text-left px-5 py-3">Role</th>
+                <th className="text-left px-5 py-3">Last Login</th>
                 <th className="text-left px-5 py-3">Status</th>
               </tr>
             </thead>
@@ -27,6 +28,7 @@ export default function UsersPage() {
                   <td className="px-5 py-3 font-medium">{u.name}</td>
                   <td className="px-5 py-3 text-gray-500">{u.username}</td>
                   <td className="px-5 py-3">{u.role?.name ?? '-'}</td>
+                  <td className="px-5 py-3 text-gray-500">{u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : <span className="text-gray-300">Never</span>}</td>
                   <td className="px-5 py-3">
                     <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${u.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
                       {u.isActive ? 'Active' : 'Inactive'}

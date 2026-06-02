@@ -8,17 +8,18 @@ datasource db {
 }
 
 model User {
-    id           Int      @id @default(autoincrement())
+    id           Int       @id @default(autoincrement())
     name         String
-    username     String   @unique
-    passwordHash String   @map("password_hash")
+    username     String    @unique
+    passwordHash String    @map("password_hash")
     phone        String?
-    roleId       Int      @map("role_id")
-    tenantId     Int      @default(1) @map("tenant_id")
-    isActive     Boolean  @default(true) @map("is_active")
-    isSuperAdmin Boolean  @default(false) @map("is_super_admin")
-    createdAt    DateTime @default(now()) @map("created_at")
-    updatedAt    DateTime @updatedAt @map("updated_at")
+    roleId       Int       @map("role_id")
+    tenantId     Int       @default(1) @map("tenant_id")
+    isActive     Boolean   @default(true) @map("is_active")
+    isSuperAdmin Boolean   @default(false) @map("is_super_admin")
+    lastLoginAt  DateTime? @map("last_login_at")
+    createdAt    DateTime  @default(now()) @map("created_at")
+    updatedAt    DateTime  @updatedAt @map("updated_at")
 
     role             Role            @relation(fields: [roleId], references: [id])
     sales            Sale[]
@@ -78,6 +79,7 @@ model Product {
     unitOfMeasure   String   @default("piece") @map("unit_of_measure")
     allowFractional Boolean  @default(false) @map("allow_fractional")
     hasExpiry       Boolean  @default(false) @map("has_expiry")
+    reorderLevel    Decimal  @default(0) @map("reorder_level")
     defaultTaxRate  Decimal  @default(0) @map("default_tax_rate")
     isActive        Boolean  @default(true) @map("is_active")
     createdAt       DateTime @default(now()) @map("created_at")
@@ -446,6 +448,21 @@ model AuditLog {
     @@map("audit_logs")
 }
 
+model Notification {
+    id         Int      @id @default(autoincrement())
+    tenantId   Int      @map("tenant_id")
+    type       String // LOW_STOCK|EXPIRY|SUBSCRIPTION|ANNOUNCEMENT
+    title      String
+    body       String
+    entityType String?  @map("entity_type")
+    entityId   Int?     @map("entity_id")
+    isRead     Boolean  @default(false) @map("is_read")
+    createdAt  DateTime @default(now()) @map("created_at")
+
+    @@index([tenantId, isRead])
+    @@map("notifications")
+}
+
 model Tenant {
     id            Int       @id @default(autoincrement())
     name          String    @unique
@@ -490,4 +507,17 @@ model Subscription {
 
     @@index([tenantId, status])
     @@map("subscriptions")
+}
+
+model Announcement {
+    id         Int       @id @default(autoincrement())
+    title      String
+    body       String
+    severity   String    @default("info") // info|warning|critical
+    targetPlan String?   @map("target_plan") // null = all plans
+    isActive   Boolean   @default(true) @map("is_active")
+    expiresAt  DateTime? @map("expires_at")
+    createdAt  DateTime  @default(now()) @map("created_at")
+
+    @@map("announcements")
 }

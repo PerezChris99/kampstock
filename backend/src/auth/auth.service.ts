@@ -81,6 +81,10 @@ export class AuthService {
 
     this.clearAttempts(`user:${dto.username}`);
     this.clearAttempts(`ip:${ip}`);
+
+    // Record last login (fire-and-forget — don't block the response)
+    this.prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } }).catch(() => {});
+
     return this.generateTokens(user);
   }
 

@@ -112,4 +112,29 @@ export class TenantsService {
     if (!tenant || !tenant.isActive) throw new NotFoundException('Tenant not found');
     return tenant;
   }
+
+  /** Tenant updates their own profile fields */
+  async updateProfile(
+    tenantId: number,
+    dto: {
+      ownerEmail?: string;
+      ownerPhone?: string;
+      address?: string;
+      businessType?: string;
+      description?: string;
+    },
+  ) {
+    return this.prisma.tenant.update({
+      where: { id: tenantId },
+      data: {
+        ...(dto.ownerEmail !== undefined && { ownerEmail: dto.ownerEmail }),
+        ...(dto.ownerPhone !== undefined && { ownerPhone: dto.ownerPhone }),
+        ...(dto.address !== undefined && { address: dto.address }),
+        ...(dto.businessType !== undefined && { businessType: dto.businessType }),
+        ...(dto.description !== undefined && { description: dto.description }),
+      },
+      select: { id: true, name: true, subdomain: true, plan: true, ownerEmail: true, ownerPhone: true, address: true, businessType: true, description: true, createdAt: true },
+    });
+  }
 }
+

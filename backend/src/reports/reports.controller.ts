@@ -72,4 +72,10 @@ export class ReportsController {
   kpiOverview(@CurrentUser('tenantId') tenantId?: number) {
     return this.reportsService.kpiOverview(tenantId);
   }
+
+  @Get('expiring-items')
+  @Roles('Admin', 'Manager', 'Storekeeper')
+  expiringItems(@Query('days') days?: string, @CurrentUser('tenantId') tenantId?: number) {
+    return this.reportsService.expiringItems(days ? parseInt(days) : 30, tenantId);
+  }
 }

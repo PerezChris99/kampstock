@@ -4,7 +4,7 @@ import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   LineChart, Line, PieChart, Pie, Cell,
 } from "recharts";
-import { Download, TrendingUp, TrendingDown, DollarSign, Package, BarChart2 } from "lucide-react";
+import { Download, TrendingUp, TrendingDown, DollarSign, Package, BarChart2, AlertTriangle } from "lucide-react";
 import api from "../lib/api";
 import { generatePLReport, generateStockReport, generateSlowMoversReport } from "../lib/pdf";
 
@@ -41,6 +41,7 @@ export default function ReportsPage() {
   const now = new Date();
   const [selYear, setSelYear] = useState(now.getFullYear());
   const [selMonth, setSelMonth] = useState(now.getMonth() + 1);
+  const [activeTab, setActiveTab] = useState<'overview' | 'expiry'>('overview');
 
   const { data: plData } = useQuery({
     queryKey: ["monthly-profit", selYear, selMonth],
@@ -66,6 +67,22 @@ export default function ReportsPage() {
     queryKey: ["payment-breakdown-reports"],
     queryFn: () => api.get("/reports/payment-breakdown?days=30").then(r => r.data),
   });
+
+  const { data: expiringItems = [] } = useQuery<any[]>({
+    queryKey: ["expiring-items"],
+    queryFn: () => api.get("/reports/expiring-items?days=30").then(r => r.data),
+    enabled: activeTab === 'expiry',
+  });
+
+  function exportCSV(rows: any[], filename: string) {
+    if (!rows.length) return;
+    const headers = Object.keys(rows[0]).join(',');
+    const body = rows.map(r => Object.values(r).map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([headers + '\n' + body], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = filename; a.click();
+    URL.revokeObjectURL(url);
+  }
 
   const monthlyBarData = (monthlySummary ?? []).map((m: any) => ({
     month: (m.period ?? "").slice(0, 7),
@@ -113,7 +130,18 @@ export default function ReportsPage() {
         </div>
       </div>
 
+      {/* Tabs */}
+      <div className="flex gap-1 bg-gray-100 rounded-xl p-1 w-fit">
+        {(['overview', 'expiry'] as const).map(t => (
+          <button key={t} onClick={() => setActiveTab(t)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors capitalize ${activeTab === t ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+            {t === 'overview' ? 'Overview' : 'Expiry Tracker'}
+          </button>
+        ))}
+      </div>
+
       {/* Month selector */}
+      {activeTab === 'overview' && (<>
       <div className="flex items-center gap-3 bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
         <span className="text-sm font-medium text-slate-600">P&L Period:</span>
         <select value={selMonth} onChange={e => setSelMonth(Number(e.target.value))} className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300">
@@ -288,6 +316,50 @@ export default function ReportsPage() {
           </table>
         </div>
       </ChartCard>
+      </>)}
+
+      {/* ====== EXPIRY TAB ====== */}
+      {activeTab === 'expiry' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold text-gray-900">Items Expiring Within 30 Days</h2>
+            <button onClick={() => exportCSV(expiringItems.map(i => ({ Product: i.productName, Batch: i.batchNumber ?? '', Qty: i.quantity, ExpiresOn: i.expiryDate, DaysLeft: i.daysLeft })), 'expiring-items.csv')}
+              className="flex items-center gap-2 px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg">
+              <Download className="w-4 h-4" /> Export CSV
+            </button>
+          </div>
+          {expiringItems.length === 0 ? (
+            <div className="bg-green-50 border border-green-200 rounded-xl px-5 py-8 text-center text-green-700">
+              No items expiring within 30 days. 
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50">
+                  <tr>{['Product', 'Batch', 'Qty', 'Expires On', 'Days Left'].map(h => (
+                    <th key={h} className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">{h}</th>
+                  ))}</tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {expiringItems.map((item: any) => (
+                    <tr key={item.id} className="hover:bg-slate-50">
+                      <td className="px-4 py-3 font-medium text-slate-900">{item.productName}</td>
+                      <td className="px-4 py-3 text-slate-500">{item.batchNumber ?? '—'}</td>
+                      <td className="px-4 py-3 text-slate-700">{item.quantity}</td>
+                      <td className="px-4 py-3 text-slate-700">{new Date(item.expiryDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full ${item.daysLeft <= 7 ? 'bg-red-100 text-red-700' : item.daysLeft <= 14 ? 'bg-amber-100 text-amber-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                          <AlertTriangle className="w-3 h-3" /> {item.daysLeft}d
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

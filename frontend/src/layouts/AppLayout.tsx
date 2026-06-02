@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '../store/auth.store';
 import ExpiryWarningBanner from '../components/ExpiryWarningBanner';
+import NotificationBell from '../components/NotificationBell';
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -21,6 +22,7 @@ const navItems = [
   { to: '/reports', label: 'Reports', icon: BarChart3 },
   { to: '/users', label: 'Users', icon: Settings },
   { to: '/billing', label: 'Billing', icon: CreditCard },
+  { to: '/settings', label: 'Settings', icon: Settings },
 ];
 
 export default function AppLayout() {
@@ -146,9 +148,7 @@ export default function AppLayout() {
             <span className="font-medium text-slate-800">{currentPage}</span>
           </div>
           <div className="ml-auto flex items-center gap-2">
-            <button className="relative p-2 rounded-md text-slate-500 hover:bg-slate-100 transition">
-              <Bell className="w-4 h-4" />
-            </button>
+            <NotificationBell />
             <div className="hidden sm:flex items-center gap-2 pl-2 border-l border-slate-200">
               <div className="w-7 h-7 rounded-full bg-indigo-100 flex items-center justify-center">
                 <span className="text-xs font-semibold text-indigo-600 uppercase">
