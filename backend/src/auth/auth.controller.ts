@@ -1,4 +1,4 @@
-import { Controller, Post, Body, HttpCode, HttpStatus, Req, Res } from '@nestjs/common';
+import { Controller, Post, Get, Body, HttpCode, HttpStatus, Req, Res } from '@nestjs/common';
 import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
@@ -6,6 +6,7 @@ import { LoginDto } from './dto/auth.dto';
 import { Public } from './decorators/public.decorator';
 
 const isDev = process.env.NODE_ENV !== 'production';
+const CSRF_COOKIE = 'csrf_token';
 
 /** Cookie TTLs in milliseconds */
 const ACCESS_TOKEN_MS  = 15  * 60 * 1000;        // 15 minutes
@@ -61,5 +62,18 @@ export class AuthController {
   logout(@Res({ passthrough: true }) res: Response) {
     res.clearCookie('access_token');
     res.clearCookie('refresh_token', { path: '/api/auth' });
+  }
+
+  /**
+   * GET /auth/csrf
+   * Returns the CSRF token that the frontend must attach as X-CSRF-Token header
+   * on all state-changing requests. The middleware already set the csrf_token cookie;
+   * this endpoint simply returns it so JS can read it.
+   */
+  @Public()
+  @Get('csrf')
+  @SkipThrottle()
+  getCsrfToken(@Req() req: Request) {
+    return { csrfToken: req.cookies?.[CSRF_COOKIE] ?? null };
   }
 }

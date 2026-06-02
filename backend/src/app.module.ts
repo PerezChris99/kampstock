@@ -5,6 +5,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { PrismaModule } from './prisma/prisma.module';
 import { SubdomainTenantMiddleware } from './common/middleware/subdomain-tenant.middleware';
 import { TenantLockMiddleware } from './common/middleware/tenant-lock.middleware';
+import { CsrfMiddleware } from './common/middleware/csrf.middleware';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { CategoriesModule } from './categories/categories.module';
@@ -61,5 +62,6 @@ export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     consumer.apply(SubdomainTenantMiddleware).forRoutes('*');
     consumer.apply(TenantLockMiddleware).forRoutes('*');
+    consumer.apply(CsrfMiddleware).forRoutes('*');
   }
 }
