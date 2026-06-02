@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { randomBytes } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreatePurchaseOrderDto, UpdatePOStatusDto } from './dto/purchase-order.dto';
 
@@ -6,16 +7,20 @@ import { CreatePurchaseOrderDto, UpdatePOStatusDto } from './dto/purchase-order.
 export class PurchaseOrdersService {
   constructor(private prisma: PrismaService) {}
 
-  private async generatePoNumber(tenantId: number): Promise<string> {
-    const count = await this.prisma.purchaseOrder.count({ where: { tenantId } });
+  /**
+   * Collision-safe PO number using random hex suffix.
+   * Replaces the count+1 approach that had a race condition under concurrent load.
+   */
+  private generatePoNumber(): string {
     const date = new Date();
     const prefix = `PO${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}`;
-    return `${prefix}${String(count + 1).padStart(5, '0')}`;
+    const suffix = randomBytes(3).toString('hex').toUpperCase();
+    return `${prefix}-${suffix}`;
   }
 
   async create(dto: CreatePurchaseOrderDto, actorId: number, tenantId: number) {
     const { lines, ...poData } = dto;
-    const poNumber = await this.generatePoNumber(tenantId);
+    const poNumber = this.generatePoNumber();
     return this.prisma.purchaseOrder.create({
       data: {
         ...poData,

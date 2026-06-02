@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
+import { randomBytes } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateSaleDto, AddPaymentDto } from './dto/sale.dto';
 
@@ -10,18 +11,23 @@ import { CreateSaleDto, AddPaymentDto } from './dto/sale.dto';
 export class SalesService {
   constructor(private prisma: PrismaService) {}
 
-  private async generateSaleNumber(tenantId: number): Promise<string> {
-    const count = await this.prisma.sale.count({ where: { tenantId } });
+  /**
+   * Generate a collision-safe sale number using random hex suffix.
+   * Replaces the count+1 approach which had a race condition under concurrent load.
+   * The DB unique index on (saleNumber, tenantId) guarantees uniqueness.
+   */
+  private generateSaleNumber(): string {
     const date = new Date();
     const prefix = `KS${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}`;
-    return `${prefix}${String(count + 1).padStart(5, '0')}`;
+    const suffix = randomBytes(4).toString('hex').toUpperCase();
+    return `${prefix}-${suffix}`;
   }
 
   async create(dto: CreateSaleDto, actorId: number, tenantId: number) {
     return this.prisma.$transaction(async (tx) => {
       const locationId = dto.locationId ?? 1; // Default to first location
 
-      // Validate and compute totals
+      // Validate products and compute totals (read-only pass — no stock modifications yet)
       let subtotal = 0;
       const lineData: any[] = [];
 
@@ -32,13 +38,14 @@ export class SalesService {
         });
         if (!product) throw new NotFoundException(`Product ${line.productId} not found`);
 
-        // Check stock
         const stockItem = await tx.stockItem.findFirst({
           where: { productId: line.productId, locationId },
         });
         const onHand = stockItem ? Number(stockItem.quantityOnHand) : 0;
         if (!dto.allowNegativeStock && onHand < line.quantity) {
-          throw new BadRequestException(`Insufficient stock for product "${product.name}". Available: ${onHand}`);
+          throw new BadRequestException(
+            `Insufficient stock for product "${product.name}". Available: ${onHand}`,
+          );
         }
 
         const lineTotal = line.quantity * line.unitPrice - (line.discount ?? 0);
@@ -48,12 +55,12 @@ export class SalesService {
       }
 
       const discountTotal = dto.discountTotal ?? 0;
-      const taxTotal = 0; // Computed per product in real scenario
+      const taxTotal = 0;
       const grandTotal = subtotal - discountTotal + taxTotal;
       const paidAmount = dto.payments.reduce((s, p) => s + p.amount, 0);
       const balance = Math.max(0, grandTotal - paidAmount);
 
-      const saleNumber = await this.generateSaleNumber(tenantId);
+      const saleNumber = this.generateSaleNumber();
 
       const sale = await tx.sale.create({
         data: {
@@ -71,7 +78,7 @@ export class SalesService {
           notes: dto.notes,
           createdById: actorId,
           lines: {
-            create: lineData.map(l => ({
+            create: lineData.map((l) => ({
               productId: l.productId,
               quantity: l.quantity,
               unitPrice: l.unitPrice,
@@ -81,7 +88,7 @@ export class SalesService {
             })),
           },
           payments: {
-            create: dto.payments.map(p => ({
+            create: dto.payments.map((p) => ({
               paymentMethod: p.paymentMethod,
               amount: p.amount,
               paymentReference: p.paymentReference,
@@ -92,17 +99,38 @@ export class SalesService {
         include: { lines: { include: { product: true } }, payments: true },
       });
 
-      // Decrement stock and create movements
+      // ── Atomic stock deduction ──────────────────────────────────────────────
+      // updateMany with a WHERE quantityOnHand >= qty is evaluated atomically
+      // in the DB. If another concurrent transaction already consumed the stock,
+      // count === 0 and we throw — preventing overselling without a separate lock.
       for (const line of lineData) {
-        const stockItem = await tx.stockItem.findFirst({
-          where: { productId: line.productId, locationId },
-        });
-        if (stockItem) {
-          await tx.stockItem.update({
-            where: { id: stockItem.id },
-            data: { quantityOnHand: Math.max(0, Number(stockItem.quantityOnHand) - line.quantity) },
+        if (!dto.allowNegativeStock) {
+          const updated = await tx.stockItem.updateMany({
+            where: {
+              productId: line.productId,
+              locationId,
+              quantityOnHand: { gte: line.quantity },
+            },
+            data: { quantityOnHand: { decrement: line.quantity } },
+          });
+          if (updated.count === 0) {
+            // Re-fetch current stock for a helpful error message
+            const current = await tx.stockItem.findFirst({
+              where: { productId: line.productId, locationId },
+            });
+            throw new BadRequestException(
+              `Concurrent stock conflict: insufficient stock for product id ${line.productId}. ` +
+                `Available: ${current ? Number(current.quantityOnHand) : 0}.`,
+            );
+          }
+        } else {
+          // Negative stock allowed — just decrement without the floor check
+          await tx.stockItem.updateMany({
+            where: { productId: line.productId, locationId },
+            data: { quantityOnHand: { decrement: line.quantity } },
           });
         }
+
         await tx.stockMovement.create({
           data: {
             productId: line.productId,
