@@ -1,9 +1,15 @@
 import { NestFactory, HttpAdapterHost } from '@nestjs/core';
 import { ValidationPipe, HttpException, HttpStatus, ArgumentsHost, ExceptionFilter, Catch } from '@nestjs/common';
+import { WinstonModule } from 'nest-winston';
 import { AppModule } from './app.module';
+import { winstonLogger } from './config/logger';
+import { initSentry, captureException } from './config/sentry';
 import helmet from 'helmet';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
+
+// Initialise Sentry BEFORE any NestJS code runs
+initSentry();
 
 /** Sanitize all error responses — never expose stack traces or Prisma internals */
 @Catch()
@@ -21,9 +27,12 @@ class GlobalExceptionFilter implements ExceptionFilter {
       status = exception.getStatus();
       const res = exception.getResponse();
       message = typeof res === 'string' ? res : (res as any)?.message ?? message;
-    } else if (!isProd) {
-      // In dev, surface the raw error so developers see it
-      message = (exception as any)?.message ?? message;
+    } else {
+      // Unexpected error — report to Sentry
+      captureException(exception);
+      if (!isProd) {
+        message = (exception as any)?.message ?? message;
+      }
     }
 
     httpAdapter.reply(ctx.getResponse(), { statusCode: status, message }, status);
@@ -32,9 +41,7 @@ class GlobalExceptionFilter implements ExceptionFilter {
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
-    logger: process.env.NODE_ENV === 'production'
-      ? ['error', 'warn']
-      : ['log', 'error', 'warn', 'debug'],
+    logger: WinstonModule.createLogger({ instance: winstonLogger }),
   });
 
   const isProd = process.env.NODE_ENV === 'production';

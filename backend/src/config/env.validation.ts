@@ -77,4 +77,7 @@ export const envValidationSchema = Joi.object({
     then: Joi.required(),
     otherwise: Joi.optional().default('http://localhost:5173'),
   }),
+
+  // ── Observability (optional) ─────────────────────────────────────────────────
+  SENTRY_DSN: Joi.string().uri().optional(),
 }).options({ allowUnknown: true }); // Allow extra vars (e.g. CI system vars)
