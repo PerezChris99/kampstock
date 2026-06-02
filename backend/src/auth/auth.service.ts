@@ -7,6 +7,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditService } from '../audit/audit.service';
 import { LoginDto } from './dto/auth.dto';
 
 interface AttemptRecord {
@@ -20,6 +21,7 @@ export class AuthService {
     private prisma: PrismaService,
     private jwtService: JwtService,
     private config: ConfigService,
+    private audit: AuditService,
   ) {}
 
   /** Per-username brute-force tracking (in-memory, suitable for single-instance) */
@@ -69,6 +71,8 @@ export class AuthService {
     if (!user || !user.isActive || !passwordMatch) {
       this.recordFail(`user:${dto.username}`);
       this.recordFail(`ip:${ip}`);
+      // Log failed attempt (fire-and-forget — never blocks login)
+      this.audit.log(null, 'LOGIN_FAIL', 'User', null, null, { username: dto.username, ip }, ip).catch(() => {});
       // Identical message regardless of whether user exists (prevents user enumeration)
       throw new UnauthorizedException('Invalid credentials');
     }
@@ -82,8 +86,9 @@ export class AuthService {
     this.clearAttempts(`user:${dto.username}`);
     this.clearAttempts(`ip:${ip}`);
 
-    // Record last login (fire-and-forget — don't block the response)
+    // Record last login + audit (fire-and-forget — don't block the response)
     this.prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } }).catch(() => {});
+    this.audit.log(user.id, 'LOGIN_SUCCESS', 'User', user.id, null, { ip }, ip, user.tenantId).catch(() => {});
 
     return this.generateTokens(user);
   }

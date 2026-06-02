@@ -3,9 +3,14 @@ import { MulterModule } from '@nestjs/platform-express';
 import { BackupController } from './backup.controller';
 import { BackupService } from './backup.service';
 import { PrismaModule } from '../prisma/prisma.module';
+import { AuditModule } from '../audit/audit.module';
 
 @Module({
-  imports: [PrismaModule, MulterModule.register({ limits: { fileSize: 100 * 1024 * 1024 } })],
+  imports: [
+    PrismaModule,
+    AuditModule,
+    MulterModule.register({ limits: { fileSize: 20 * 1024 * 1024 } }),
+  ],
   controllers: [BackupController],
   providers: [BackupService],
 })

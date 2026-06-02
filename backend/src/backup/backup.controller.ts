@@ -1,9 +1,10 @@
-import { Controller, Get, Post, UseInterceptors, UploadedFile, Res, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, UseInterceptors, UploadedFile, Res, UseGuards, BadRequestException, Request } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { Response } from 'express';
+import { Response, Request as Req } from 'express';
 import { BackupService } from './backup.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @UseGuards(JwtAuthGuard)
 @Controller('backup')
@@ -12,19 +13,46 @@ export class BackupController {
 
   @Get('export')
   @Roles('Admin')
-  async exportBackup(@Res() res: Response) {
-    const { data, filename } = await this.backupService.exportBackup();
+  async exportBackup(
+    @Res() res: Response,
+    @Request() req: Req,
+    @CurrentUser('id') actorId: number,
+  ) {
+    const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ?? req.ip ?? 'unknown';
+    const { data, filename } = await this.backupService.exportBackup(actorId, ip);
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('X-Sensitive-Data', 'true');
     res.send(JSON.stringify(data, null, 2));
   }
 
   @Post('restore')
   @Roles('Admin')
   @UseInterceptors(FileInterceptor('backup'))
-  async restoreBackup(@UploadedFile() file: Express.Multer.File) {
-    const data = JSON.parse(file.buffer.toString());
-    return this.backupService.restoreBackup(data);
+  async restoreBackup(
+    @UploadedFile() file: Express.Multer.File,
+    @Request() req: Req,
+    @CurrentUser('id') actorId: number,
+  ) {
+    if (!file) throw new BadRequestException('No backup file provided');
+    // Validate MIME type
+    const allowedMime = ['application/json', 'text/plain', 'application/octet-stream'];
+    if (!allowedMime.includes(file.mimetype) && !file.originalname.endsWith('.json')) {
+      throw new BadRequestException('Invalid file type — JSON backup files only');
+    }
+    // Validate size (belt-and-suspenders alongside MulterModule limit)
+    if (file.size > 20 * 1024 * 1024) {
+      throw new BadRequestException('File too large — maximum 20 MB');
+    }
+    // Parse and validate JSON structure
+    let data: any;
+    try {
+      data = JSON.parse(file.buffer.toString('utf-8'));
+    } catch {
+      throw new BadRequestException('Invalid JSON — file could not be parsed');
+    }
+    const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ?? req.ip ?? 'unknown';
+    return this.backupService.restoreBackup(data, actorId, ip);
   }
 
   @Get('status')

@@ -24,7 +24,10 @@ export class CreateUserDto {
   username: string;
 
   @IsString()
-  @MinLength(6)
+  @MinLength(8, { message: 'Password must be at least 8 characters' })
+  @Matches(/^(?=.*[A-Z])(?=.*[0-9]).+$/, {
+    message: 'Password must contain at least one uppercase letter and one number',
+  })
   password: string;
 
   @IsOptional()

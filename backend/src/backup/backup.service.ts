@@ -1,18 +1,25 @@
 import { Injectable } from '@nestjs/common';
+import * as bcrypt from 'bcryptjs';
+import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditService } from '../audit/audit.service';
 
 @Injectable()
 export class BackupService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private audit: AuditService,
+  ) {}
 
-  async exportBackup() {
+  async exportBackup(actorId: number, ip: string) {
     const [
       roles, users, categories, products, productUnits,
       stockLocations, stockItems, suppliers, customers,
       purchaseOrders, purchaseOrderLines, expenses, sales, saleLines, payments,
     ] = await Promise.all([
       this.prisma.role.findMany(),
-      this.prisma.user.findMany({ select: { id: true, name: true, username: true, passwordHash: true, phone: true, roleId: true, isActive: true, createdAt: true } }),
+      // passwordHash intentionally excluded — restore issues temp passwords for security
+      this.prisma.user.findMany({ select: { id: true, name: true, username: true, phone: true, roleId: true, isActive: true, createdAt: true } }),
       this.prisma.category.findMany(),
       this.prisma.product.findMany(),
       this.prisma.productUnit.findMany(),
@@ -40,15 +47,18 @@ export class BackupService {
     };
 
     const filename = `kampstock-backup-${new Date().toISOString().split('T')[0]}.json`;
+    // Audit log — fire-and-forget
+    this.audit.log(actorId, 'BACKUP_EXPORT', 'System', null, null, { filename, tables: Object.keys(data.tables) }, ip).catch(() => {});
     return { data, filename };
   }
 
-  async restoreBackup(data: any): Promise<{ message: string; summary: Record<string, number> }> {
+  async restoreBackup(data: any, actorId: number, ip: string): Promise<{ message: string; summary: Record<string, number>; tempPasswords: Record<string, string> }> {
     if (!data?.tables || data?.system !== 'KampStock') {
       throw new Error('Invalid backup file format');
     }
 
     const summary: Record<string, number> = {};
+    const tempPasswords: Record<string, string> = {};
 
     // Restore in dependency order — wipe and re-insert
     await this.prisma.$transaction(async (tx) => {
@@ -73,7 +83,13 @@ export class BackupService {
       for (const role of data.tables.roles ?? []) { await tx.role.create({ data: role }); }
       summary.roles = (data.tables.roles ?? []).length;
 
-      for (const user of data.tables.users ?? []) { await tx.user.create({ data: user }); }
+      // Restore users with fresh temp passwords (export excludes passwordHash for security)
+      for (const user of data.tables.users ?? []) {
+        const tempPwd = `Ks${crypto.randomBytes(4).toString('hex').toUpperCase()}!`;
+        const hash = await bcrypt.hash(tempPwd, 10);
+        tempPasswords[user.username] = tempPwd;
+        await tx.user.create({ data: { id: user.id, name: user.name, username: user.username, phone: user.phone ?? null, roleId: user.roleId, isActive: user.isActive, createdAt: user.createdAt ? new Date(user.createdAt) : new Date(), passwordHash: hash } });
+      }
       summary.users = (data.tables.users ?? []).length;
 
       for (const cat of data.tables.categories ?? []) { await tx.category.create({ data: { id: cat.id, name: cat.name, parentId: cat.parentId, createdAt: new Date(cat.createdAt), updatedAt: new Date(cat.updatedAt) } }); }
@@ -107,7 +123,8 @@ export class BackupService {
       summary.sales = (data.tables.sales ?? []).length;
     });
 
-    return { message: `Backup restored successfully from ${data.exportedAt}`, summary };
+    this.audit.log(actorId, 'BACKUP_RESTORE', 'System', null, null, { exportedAt: data.exportedAt, summary }, ip).catch(() => {});
+    return { message: `Backup restored successfully from ${data.exportedAt}. All user passwords have been reset — distribute the tempPasswords map and ask users to change immediately.`, summary, tempPasswords };
   }
 
   async getStatus() {
