@@ -80,4 +80,7 @@ export const envValidationSchema = Joi.object({
 
   // ── Observability (optional) ─────────────────────────────────────────────────
   SENTRY_DSN: Joi.string().uri().optional(),
+
+  // ── Cache (optional — app degrades gracefully without Redis) ─────────────────
+  REDIS_URL: Joi.string().uri({ scheme: ['redis', 'rediss'] }).optional(),
 }).options({ allowUnknown: true }); // Allow extra vars (e.g. CI system vars)

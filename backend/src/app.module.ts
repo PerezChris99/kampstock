@@ -28,6 +28,7 @@ import { TenantsModule } from './tenants/tenants.module';
 import { BillingModule } from './billing/billing.module';
 import { SuperAdminModule } from './super-admin/super-admin.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { CacheModule } from './cache/cache.module';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { NotificationsModule } from './notifications/notifications.module';
     HealthModule,
     BackupModule,
     TenantsModule,
+    CacheModule,
     BillingModule,
     SuperAdminModule,
     NotificationsModule,

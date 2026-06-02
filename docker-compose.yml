@@ -17,6 +17,17 @@ services:
       timeout: 5s
       retries: 5
 
+  # ── Redis (cache) ───────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --save "" --appendonly no --maxmemory 128mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # ── Backend (NestJS) ────────────────────────────────────────────
   backend:
     build:
@@ -33,11 +44,14 @@ services:
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost}
       PESAPAL_CONSUMER_KEY: ${PESAPAL_CONSUMER_KEY:-}
       PESAPAL_CONSUMER_SECRET: ${PESAPAL_CONSUMER_SECRET:-}
+      REDIS_URL: redis://redis:6379
       PORT: 3000
     ports:
       - "${BACKEND_PORT:-3000}:3000"
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
   # ── Frontend (React + nginx) ────────────────────────────────────

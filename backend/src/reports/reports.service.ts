@@ -1,9 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { CacheService } from '../cache/cache.service';
+
+const REPORT_TTL = 300; // 5 minutes
 
 @Injectable()
 export class ReportsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private cache: CacheService,
+  ) {}
 
   async dailySalesSummary(date: string, tenantId?: number) {
     const start = new Date(`${date}T00:00:00`);
@@ -82,6 +88,15 @@ export class ReportsService {
   }
 
   async monthlyProfitSummary(year: number, month: number, tenantId?: number) {
+    const cacheKey = `report:monthlyProfit:${tenantId ?? 'global'}:${year}-${month}`;
+    const cached = await this.cache.get<ReturnType<typeof this._monthlyProfitSummary>>(cacheKey);
+    if (cached) return cached;
+    const result = await this._monthlyProfitSummary(year, month, tenantId);
+    await this.cache.set(cacheKey, result, REPORT_TTL);
+    return result;
+  }
+
+  private async _monthlyProfitSummary(year: number, month: number, tenantId?: number) {
     const start = new Date(year, month - 1, 1);
     const end = new Date(year, month, 0, 23, 59, 59);
     const tenantFilter = tenantId ? { tenantId } : {};
@@ -120,6 +135,15 @@ export class ReportsService {
   }
 
   async salesTrend(days = 30, tenantId?: number) {
+    const cacheKey = `report:salesTrend:${tenantId ?? 'global'}:${days}`;
+    const cached = await this.cache.get<ReturnType<typeof this._salesTrend>>(cacheKey);
+    if (cached) return cached;
+    const result = await this._salesTrend(days, tenantId);
+    await this.cache.set(cacheKey, result, REPORT_TTL);
+    return result;
+  }
+
+  private async _salesTrend(days = 30, tenantId?: number) {
     // Single query instead of N sequential queries (one per day)
     const start = new Date();
     start.setDate(start.getDate() - (days - 1));
