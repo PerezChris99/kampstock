@@ -2,7 +2,8 @@ import { useState, useRef, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../lib/api';
 import { useAuthStore } from '../store/auth.store';
-import { enqueueOfflineSale, flushOfflineQueue } from '../lib/offlineQueue';
+import { enqueueOfflineSale } from '../lib/offlineQueue';
+import { useOnlineStatus } from '../hooks/useOnlineStatus';
 
 interface CartLine {
   productId: number;
@@ -28,18 +29,17 @@ export default function POSPage() {
   const { user } = useAuthStore();
   const qc = useQueryClient();
 
-  // Flush queued offline sales when connection is restored
+  // Track online status and auto-flush offline queue on reconnect
+  const { isOnline, pendingCount } = useOnlineStatus({
+    onReconnect: (synced) => {
+      if (synced > 0) setOfflineBanner(false);
+    },
+  });
+
+  // Keep offlineBanner in sync with isOnline
   useEffect(() => {
-    const handleOnline = async () => {
-      const synced = await flushOfflineQueue();
-      if (synced > 0) {
-        qc.invalidateQueries({ queryKey: ['daily-sales'] });
-        setOfflineBanner(false);
-      }
-    };
-    window.addEventListener('online', handleOnline);
-    return () => window.removeEventListener('online', handleOnline);
-  }, [qc]);
+    if (!isOnline) setOfflineBanner(true);
+  }, [isOnline]);
 
   const { data: customersPage } = useQuery({
     queryKey: ['customers'],
@@ -182,6 +182,7 @@ export default function POSPage() {
       {offlineBanner && (
         <div className="bg-yellow-500 text-white text-sm text-center py-1.5 font-medium">
           OFFLINE MODE — Sales are queued locally and will sync when connection is restored.
+          {pendingCount > 0 && <span className="ml-2 bg-white text-yellow-700 rounded-full px-2 py-0.5 text-xs font-bold">{pendingCount} pending</span>}
         </div>
       )}
       <div className="flex flex-1 overflow-hidden">
