@@ -78,7 +78,7 @@ describe('BackupService', () => {
 
   describe('exportBackup', () => {
     it('should NOT include passwordHash in any user record', async () => {
-      const { data } = await service.exportBackup(1, '127.0.0.1');
+      const { data } = await service.exportBackup(1, '127.0.0.1', 1);
       const json = JSON.stringify(data);
       expect(json).not.toContain('passwordHash');
 
@@ -88,30 +88,30 @@ describe('BackupService', () => {
     });
 
     it('should include system = KampStock', async () => {
-      const { data } = await service.exportBackup(1, '127.0.0.1');
+      const { data } = await service.exportBackup(1, '127.0.0.1', 1);
       expect(data.system).toBe('KampStock');
     });
 
     it('should include a version field', async () => {
-      const { data } = await service.exportBackup(1, '127.0.0.1');
+      const { data } = await service.exportBackup(1, '127.0.0.1', 1);
       expect(data.version).toBeDefined();
     });
 
     it('should include a valid exportedAt ISO timestamp', async () => {
-      const { data } = await service.exportBackup(1, '127.0.0.1');
+      const { data } = await service.exportBackup(1, '127.0.0.1', 1);
       expect(() => new Date(data.exportedAt)).not.toThrow();
       expect(new Date(data.exportedAt).getTime()).toBeGreaterThan(0);
     });
 
     it('should produce a filename with today\'s date', async () => {
-      const { filename } = await service.exportBackup(1, '127.0.0.1');
+      const { filename } = await service.exportBackup(1, '127.0.0.1', 1);
       const today = new Date().toISOString().split('T')[0];
       expect(filename).toContain(today);
       expect(filename).toContain('kampstock-backup');
     });
 
     it('should call audit.log on export', async () => {
-      await service.exportBackup(1, '192.168.0.1');
+      await service.exportBackup(1, '192.168.0.1', 1);
       await new Promise((r) => setTimeout(r, 10)); // flush microtasks
       expect(mockAudit.log).toHaveBeenCalledWith(
         1,
@@ -121,14 +121,27 @@ describe('BackupService', () => {
         null,
         expect.objectContaining({ filename: expect.stringContaining('kampstock-backup') }),
         '192.168.0.1',
+        1,
       );
     });
 
     it('should include a tables object with expected keys', async () => {
-      const { data } = await service.exportBackup(1, '127.0.0.1');
+      const { data } = await service.exportBackup(1, '127.0.0.1', 1);
       expect(data.tables).toBeDefined();
       expect(typeof data.tables).toBe('object');
       expect(Array.isArray(data.tables.users)).toBe(true);
+    });
+
+    it('should include tenantId in the backup data', async () => {
+      const { data } = await service.exportBackup(1, '127.0.0.1', 42);
+      expect(data.tenantId).toBe(42);
+    });
+
+    it('should include a checksum field', async () => {
+      const { data } = await service.exportBackup(1, '127.0.0.1', 1);
+      expect(data.checksum).toBeDefined();
+      expect(typeof data.checksum).toBe('string');
+      expect(data.checksum.length).toBe(64); // SHA-256 hex = 64 chars
     });
   });
 
@@ -137,25 +150,53 @@ describe('BackupService', () => {
   describe('restoreBackup', () => {
     it('should throw for missing tables property', async () => {
       await expect(
-        service.restoreBackup({ system: 'KampStock' }, 1, '127.0.0.1'),
+        service.restoreBackup({ system: 'KampStock' }, 1, '127.0.0.1', 1),
       ).rejects.toThrow('Invalid backup file format');
     });
 
     it('should throw for wrong system identifier', async () => {
       await expect(
-        service.restoreBackup({ system: 'OtherApp', tables: {} }, 1, '127.0.0.1'),
+        service.restoreBackup({ system: 'OtherApp', tables: {} }, 1, '127.0.0.1', 1),
       ).rejects.toThrow('Invalid backup file format');
     });
 
     it('should throw for null/undefined data', async () => {
-      await expect(service.restoreBackup(null, 1, '127.0.0.1')).rejects.toThrow('Invalid backup file format');
-      await expect(service.restoreBackup(undefined, 1, '127.0.0.1')).rejects.toThrow('Invalid backup file format');
+      await expect(service.restoreBackup(null, 1, '127.0.0.1', 1)).rejects.toThrow('Invalid backup file format');
+      await expect(service.restoreBackup(undefined, 1, '127.0.0.1', 1)).rejects.toThrow('Invalid backup file format');
     });
 
     it('should throw for missing system key', async () => {
       await expect(
-        service.restoreBackup({ tables: { roles: [], users: [] } }, 1, '127.0.0.1'),
+        service.restoreBackup({ tables: { roles: [], users: [] } }, 1, '127.0.0.1', 1),
       ).rejects.toThrow('Invalid backup file format');
+    });
+
+    it('should throw when backup tenantId does not match requesting tenantId', async () => {
+      await expect(
+        service.restoreBackup(
+          { system: 'KampStock', tables: {}, tenantId: 99 },
+          1,
+          '127.0.0.1',
+          1,
+        ),
+      ).rejects.toThrow('This backup belongs to a different tenant');
+    });
+
+    it('should throw on checksum mismatch for v2.0 backup', async () => {
+      await expect(
+        service.restoreBackup(
+          {
+            system: 'KampStock',
+            version: '2.0',
+            tenantId: 1,
+            checksum: 'aabbcc',
+            tables: { roles: [], users: [] },
+          },
+          1,
+          '127.0.0.1',
+          1,
+        ),
+      ).rejects.toThrow('Backup integrity check failed');
     });
 
     it('should execute $transaction when input is valid', async () => {
@@ -165,8 +206,23 @@ describe('BackupService', () => {
         { system: 'KampStock', exportedAt: '2024-01-01T00:00:00Z', tables: { roles: [], users: [], categories: [], products: [], productUnits: [], stockLocations: [], stockItems: [], suppliers: [], customers: [], purchaseOrders: [], purchaseOrderLines: [], expenses: [], sales: [], saleLines: [], payments: [] } },
         1,
         '127.0.0.1',
+        1,
       );
       expect(mockPrisma.$transaction).toHaveBeenCalledTimes(1);
+    });
+
+    it('should only delete tenant-scoped records (deleteMany called with tenantId filter)', async () => {
+      const tx = makeTx();
+      mockPrisma.$transaction.mockImplementationOnce(async (fn: any) => fn(tx));
+      await service.restoreBackup(
+        { system: 'KampStock', exportedAt: '2024-01-01T00:00:00Z', tenantId: 5, tables: { roles: [], users: [], categories: [], products: [], productUnits: [], stockLocations: [], stockItems: [], suppliers: [], customers: [], purchaseOrders: [], purchaseOrderLines: [], expenses: [], sales: [], saleLines: [], payments: [] } },
+        1,
+        '127.0.0.1',
+        5,
+      );
+      // sale.deleteMany must have been called with a filter that scopes to tenantId
+      const saleDeleteCall = (tx.sale.deleteMany as jest.Mock).mock.calls[0]?.[0];
+      expect(JSON.stringify(saleDeleteCall)).toContain('5');
     });
 
     it('should return tempPasswords map for each restored user', async () => {
@@ -186,6 +242,7 @@ describe('BackupService', () => {
         },
         1,
         '127.0.0.1',
+        1,
       );
       expect(result.tempPasswords).toBeDefined();
       expect(result.tempPasswords['alice']).toBeDefined();
@@ -200,6 +257,7 @@ describe('BackupService', () => {
         { system: 'KampStock', exportedAt: '2024-06-01T00:00:00Z', tables: { roles: [], users: [], categories: [], products: [], productUnits: [], stockLocations: [], stockItems: [], suppliers: [], customers: [], purchaseOrders: [], purchaseOrderLines: [], expenses: [], sales: [], saleLines: [], payments: [] } },
         2,
         '10.0.0.1',
+        3,
       );
       await new Promise((r) => setTimeout(r, 10));
       expect(mockAudit.log).toHaveBeenCalledWith(
@@ -210,6 +268,7 @@ describe('BackupService', () => {
         null,
         expect.objectContaining({ exportedAt: '2024-06-01T00:00:00Z' }),
         '10.0.0.1',
+        3,
       );
     });
   });

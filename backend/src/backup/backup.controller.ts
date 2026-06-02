@@ -17,9 +17,10 @@ export class BackupController {
     @Res() res: Response,
     @Request() req: Req,
     @CurrentUser('id') actorId: number,
+    @CurrentUser('tenantId') tenantId: number,
   ) {
     const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ?? req.ip ?? 'unknown';
-    const { data, filename } = await this.backupService.exportBackup(actorId, ip);
+    const { data, filename } = await this.backupService.exportBackup(actorId, ip, tenantId);
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.setHeader('X-Sensitive-Data', 'true');
@@ -33,6 +34,7 @@ export class BackupController {
     @UploadedFile() file: Express.Multer.File,
     @Request() req: Req,
     @CurrentUser('id') actorId: number,
+    @CurrentUser('tenantId') tenantId: number,
   ) {
     if (!file) throw new BadRequestException('No backup file provided');
     // Validate MIME type
@@ -52,12 +54,12 @@ export class BackupController {
       throw new BadRequestException('Invalid JSON — file could not be parsed');
     }
     const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ?? req.ip ?? 'unknown';
-    return this.backupService.restoreBackup(data, actorId, ip);
+    return this.backupService.restoreBackup(data, actorId, ip, tenantId);
   }
 
   @Get('status')
   @Roles('Admin', 'Manager')
-  async getBackupStatus() {
-    return this.backupService.getStatus();
+  async getBackupStatus(@CurrentUser('tenantId') tenantId: number) {
+    return this.backupService.getStatus(tenantId);
   }
 }
