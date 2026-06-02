@@ -25,6 +25,12 @@ export class CreateTenantDto {
   @IsOptional() @IsString()
   address?: string;
 
+  @IsOptional() @IsIn(['retail', 'wholesale', 'pharmacy', 'restaurant', 'electronics', 'hardware', 'clothing', 'supermarket', 'agriculture', 'other'])
+  businessType?: string;
+
+  @IsOptional() @IsString() @MaxLength(300)
+  description?: string;
+
   @IsOptional() @IsIn(['starter', 'professional', 'enterprise'])
   plan?: string;
 }

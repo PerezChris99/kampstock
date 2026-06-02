@@ -1,3 +1,6 @@
+import pathlib, textwrap
+
+content = textwrap.dedent("""\
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
@@ -95,12 +98,12 @@ function fmtUGX(n: number) {
 }
 
 function fmtDate(d: string | null) {
-  if (!d) return '—';
+  if (!d) return '\u2014';
   return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
 function fmtDateTime(d: string | null) {
-  if (!d) return '—';
+  if (!d) return '\u2014';
   return new Date(d).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
@@ -170,7 +173,7 @@ export default function SuperAdminPage() {
   }, [tenants, search, filterPlan, filterStatus, filterBizType]);
 
   const statCards = stats ? [
-    { label: 'Total Businesses', value: stats.totals.tenants, sub: `${stats.totals.activeTenants} active · ${stats.totals.suspendedTenants} suspended`, icon: Building2, color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-900/20' },
+    { label: 'Total Businesses', value: stats.totals.tenants, sub: `${stats.totals.activeTenants} active \u00b7 ${stats.totals.suspendedTenants} suspended`, icon: Building2, color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-900/20' },
     { label: 'On Trial', value: stats.totals.trialTenants, sub: 'active free trials', icon: Clock, color: 'text-amber-500', bg: 'bg-amber-50 dark:bg-amber-900/20' },
     { label: 'Total Users', value: stats.totals.users, sub: 'registered across all tenants', icon: Users, color: 'text-green-500', bg: 'bg-green-50 dark:bg-green-900/20' },
     { label: 'Products Listed', value: stats.totals.products.toLocaleString(), sub: 'across all businesses', icon: Package, color: 'text-indigo-500', bg: 'bg-indigo-50 dark:bg-indigo-900/20' },
@@ -378,8 +381,8 @@ export default function SuperAdminPage() {
                         </div>
                         <p className="text-xs text-gray-400 mt-0.5">
                           {t.subdomain}.kampstock.com
-                          {t.ownerEmail ? ` · ${t.ownerEmail}` : ''}
-                          {t.ownerPhone ? ` · ${t.ownerPhone}` : ''}
+                          {t.ownerEmail ? ` \u00b7 ${t.ownerEmail}` : ''}
+                          {t.ownerPhone ? ` \u00b7 ${t.ownerPhone}` : ''}
                         </p>
                       </div>
 
@@ -591,3 +594,8 @@ export default function SuperAdminPage() {
     </div>
   );
 }
+""")
+
+out = pathlib.Path(r"d:/NEW PROJECTS/Kampstock/frontend/src/pages/SuperAdminPage.tsx")
+out.write_text(content, encoding="utf-8")
+print("OK:", len(content), "chars,", len(content.splitlines()), "lines")

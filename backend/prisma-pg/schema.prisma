@@ -454,6 +454,8 @@ model Tenant {
     ownerEmail    String?   @map("owner_email")
     ownerPhone    String?   @map("owner_phone")
     address       String?
+    businessType  String?   @default("retail") @map("business_type")
+    description   String?
     plan          String    @default("starter")
     isActive      Boolean   @default(true) @map("is_active")
     singleUser    Boolean   @default(false) @map("single_user")

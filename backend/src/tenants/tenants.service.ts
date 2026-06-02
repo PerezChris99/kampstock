@@ -29,6 +29,8 @@ export class TenantsService {
         ownerEmail: dto.ownerEmail,
         ownerPhone: dto.ownerPhone,
         address: dto.address,
+        businessType: dto.businessType ?? 'retail',
+        description: dto.description,
         plan: dto.plan ?? 'starter',
         trialEndsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30-day trial
       },

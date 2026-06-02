@@ -453,6 +453,8 @@ model Tenant {
     ownerEmail    String?   @map("owner_email")
     ownerPhone    String?   @map("owner_phone")
     address       String?
+    businessType  String?   @default("retail") @map("business_type") // retail|wholesale|pharmacy|restaurant|electronics|hardware|clothing|supermarket|agriculture|other
+    description   String? // brief description of the business
     plan          String    @default("starter") // starter|professional|enterprise
     isActive      Boolean   @default(true) @map("is_active")
     singleUser    Boolean   @default(false) @map("single_user") // single-owner mode

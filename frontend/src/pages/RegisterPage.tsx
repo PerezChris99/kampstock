@@ -2,11 +2,25 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../lib/api';
 
+const BUSINESS_TYPES = [
+  { value: 'retail', label: 'Retail Shop' },
+  { value: 'wholesale', label: 'Wholesale / Distribution' },
+  { value: 'pharmacy', label: 'Pharmacy / Medical' },
+  { value: 'restaurant', label: 'Restaurant / Food & Beverage' },
+  { value: 'electronics', label: 'Electronics Store' },
+  { value: 'hardware', label: 'Hardware / Building Materials' },
+  { value: 'clothing', label: 'Clothing / Apparel' },
+  { value: 'supermarket', label: 'Supermarket / Grocery' },
+  { value: 'agriculture', label: 'Agriculture / Farm Supply' },
+  { value: 'other', label: 'Other' },
+] as const;
+
 interface RegisterForm {
   name: string;
   subdomain: string;
   ownerEmail: string;
   ownerPhone: string;
+  businessType: string;
   adminName: string;
   adminUsername: string;
   adminPassword: string;
@@ -26,6 +40,7 @@ export default function RegisterPage() {
     subdomain: '',
     ownerEmail: '',
     ownerPhone: '',
+    businessType: 'retail',
     adminName: '',
     adminUsername: '',
     adminPassword: '',
@@ -60,6 +75,7 @@ export default function RegisterPage() {
         adminUsername: form.adminUsername,
         adminPassword: form.adminPassword,
         plan: form.plan,
+        businessType: form.businessType,
         ...(form.ownerEmail && { ownerEmail: form.ownerEmail }),
         ...(form.ownerPhone && { ownerPhone: form.ownerPhone }),
       };
@@ -191,6 +207,21 @@ export default function RegisterPage() {
                 <label className="ks-label">Phone (optional)</label>
                 <input className="ks-input" type="tel" placeholder="+256 7XX XXX XXX" value={form.ownerPhone} onChange={set('ownerPhone')} />
               </div>
+            </div>
+
+            <div className="ks-input-group">
+              <label className="ks-label">Nature of Business <span style={{ color: '#ef4444' }}>*</span></label>
+              <select
+                className="ks-input"
+                value={form.businessType}
+                onChange={set('businessType')}
+                required
+                style={{ cursor: 'pointer' }}
+              >
+                {BUSINESS_TYPES.map((bt) => (
+                  <option key={bt.value} value={bt.value}>{bt.label}</option>
+                ))}
+              </select>
             </div>
 
             {/* Plan selection */}

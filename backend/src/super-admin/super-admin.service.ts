@@ -62,7 +62,8 @@ export class SuperAdminService {
       orderBy: { createdAt: 'desc' },
       select: {
         id: true, name: true, subdomain: true, plan: true, isActive: true,
-        ownerEmail: true, trialEndsAt: true, planExpiresAt: true, createdAt: true,
+        ownerEmail: true, ownerPhone: true, address: true, businessType: true, description: true,
+        trialEndsAt: true, planExpiresAt: true, createdAt: true, updatedAt: true,
         subscriptions: {
           orderBy: { createdAt: 'desc' },
           take: 5,
