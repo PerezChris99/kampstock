@@ -46,30 +46,44 @@ export class NotificationsService {
 
   /** Check for low-stock items and create notifications (call after each sale) */
   async checkLowStock(tenantId: number) {
-    const lowStockItems = await this.prisma.stockItem.findMany({
-      where: { location: { tenantId } },
-      include: { product: true },
+    // 1. Fetch all stock items that have a reorder level configured (single query)
+    const stockItems = await this.prisma.stockItem.findMany({
+      where: {
+        location: { tenantId },
+        product: { reorderLevel: { gt: 0 } },
+      },
+      include: {
+        product: { select: { id: true, name: true, reorderLevel: true, unitOfMeasure: true } },
+      },
     });
 
-    for (const item of lowStockItems) {
-      const reorder = Number(item.product.reorderLevel);
-      if (reorder > 0 && Number(item.quantityOnHand) <= reorder) {
-        // Only create if no unread LOW_STOCK notification exists for this product
-        const existing = await this.prisma.notification.findFirst({
-          where: { tenantId, type: 'LOW_STOCK', entityId: item.productId, isRead: false },
-        });
-        if (!existing) {
-          await this.create(
+    const belowReorder = stockItems.filter(
+      (item) => Number(item.quantityOnHand) <= Number(item.product.reorderLevel),
+    );
+    if (belowReorder.length === 0) return;
+
+    // 2. Batch-fetch all existing unread LOW_STOCK notifications (single query, not N)
+    const existing = await this.prisma.notification.findMany({
+      where: { tenantId, type: 'LOW_STOCK', isRead: false },
+      select: { entityId: true },
+    });
+    const existingIds = new Set(existing.map((n) => n.entityId));
+
+    // 3. Create only notifications that don't already exist
+    await Promise.all(
+      belowReorder
+        .filter((item) => !existingIds.has(item.productId))
+        .map((item) =>
+          this.create(
             tenantId,
             'LOW_STOCK',
             `Low stock: ${item.product.name}`,
-            `Only ${Number(item.quantityOnHand)} ${item.product.unitOfMeasure}(s) remaining (reorder at ${reorder}).`,
+            `Only ${Number(item.quantityOnHand)} ${item.product.unitOfMeasure}(s) remaining (reorder at ${Number(item.product.reorderLevel)}).`,
             'product',
             item.productId,
-          );
-        }
-      }
-    }
+          ),
+        ),
+    );
   }
 
   /** Check for items expiring within 30 days */
@@ -77,30 +91,39 @@ export class NotificationsService {
     const soon = new Date();
     soon.setDate(soon.getDate() + 30);
 
+    // 1. Fetch all expiring items in one query
     const items = await this.prisma.stockItem.findMany({
       where: {
         location: { tenantId },
         expiryDate: { lte: soon, gte: new Date() },
         quantityOnHand: { gt: 0 },
       },
-      include: { product: true },
+      include: { product: { select: { id: true, name: true } } },
     });
+    if (items.length === 0) return;
 
-    for (const item of items) {
-      const existing = await this.prisma.notification.findFirst({
-        where: { tenantId, type: 'EXPIRY', entityId: item.productId, isRead: false },
-      });
-      if (!existing) {
-        const days = Math.ceil((item.expiryDate!.getTime() - Date.now()) / 86_400_000);
-        await this.create(
-          tenantId,
-          'EXPIRY',
-          `Expiring soon: ${item.product.name}`,
-          `${Number(item.quantityOnHand)} units expire in ${days} day(s) (${item.expiryDate!.toLocaleDateString()}).`,
-          'product',
-          item.productId,
-        );
-      }
-    }
+    // 2. Batch-fetch all existing unread EXPIRY notifications (single query, not N)
+    const existing = await this.prisma.notification.findMany({
+      where: { tenantId, type: 'EXPIRY', isRead: false },
+      select: { entityId: true },
+    });
+    const existingIds = new Set(existing.map((n) => n.entityId));
+
+    // 3. Create only missing notifications
+    await Promise.all(
+      items
+        .filter((item) => !existingIds.has(item.productId))
+        .map((item) => {
+          const days = Math.ceil((item.expiryDate!.getTime() - Date.now()) / 86_400_000);
+          return this.create(
+            tenantId,
+            'EXPIRY',
+            `Expiring soon: ${item.product.name}`,
+            `${Number(item.quantityOnHand)} units expire in ${days} day(s) (${item.expiryDate!.toLocaleDateString()}).`,
+            'product',
+            item.productId,
+          );
+        }),
+    );
   }
 }

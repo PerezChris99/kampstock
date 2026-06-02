@@ -84,41 +84,74 @@ export class ReportsService {
   async monthlyProfitSummary(year: number, month: number, tenantId?: number) {
     const start = new Date(year, month - 1, 1);
     const end = new Date(year, month, 0, 23, 59, 59);
+    const tenantFilter = tenantId ? { tenantId } : {};
 
-    const sales = await this.prisma.sale.findMany({
-      where: { createdAt: { gte: start, lte: end }, status: 'COMPLETED', ...(tenantId && { tenantId }) },
-      include: { lines: true },
-    });
+    // Run all three aggregations in parallel (no full record loading)
+    const [revenueAgg, saleLines, expenseAgg] = await Promise.all([
+      // 1. Revenue via aggregate — DB does the summation
+      this.prisma.sale.aggregate({
+        where: { createdAt: { gte: start, lte: end }, status: 'COMPLETED', ...tenantFilter },
+        _sum: { grandTotal: true },
+        _count: { id: true },
+      }),
+      // 2. COGS — select only the two columns needed (no full sale joins)
+      this.prisma.saleLine.findMany({
+        where: { sale: { createdAt: { gte: start, lte: end }, status: 'COMPLETED', ...tenantFilter } },
+        select: { quantity: true, costPrice: true },
+      }),
+      // 3. Expenses via aggregate
+      this.prisma.expense.aggregate({
+        where: { paidAt: { gte: start, lte: end }, ...tenantFilter },
+        _sum: { amount: true },
+      }),
+    ]);
 
-    const revenue = sales.reduce((s, sale) => s + Number(sale.grandTotal), 0);
-    const cogs = sales.flatMap(s => s.lines).reduce((s, l) => s + Number(l.quantity) * Number(l.costPrice), 0);
-
-    const expenses = await this.prisma.expense.findMany({
-      where: { paidAt: { gte: start, lte: end }, ...(tenantId && { tenantId }) },
-    });
-    const totalExpenses = expenses.reduce((s, e) => s + Number(e.amount), 0);
-
+    const revenue = Number(revenueAgg._sum.grandTotal ?? 0);
+    const cogs = saleLines.reduce((s, l) => s + Number(l.quantity) * Number(l.costPrice), 0);
+    const totalExpenses = Number(expenseAgg._sum.amount ?? 0);
     const grossProfit = revenue - cogs;
     const netProfit = grossProfit - totalExpenses;
 
     return {
       period: `${year}-${String(month).padStart(2, '0')}`,
-      revenue, cogs, grossProfit, totalExpenses, netProfit, salesCount: sales.length,
+      revenue, cogs, grossProfit, totalExpenses, netProfit,
+      salesCount: revenueAgg._count.id,
     };
   }
 
   async salesTrend(days = 30, tenantId?: number) {
-    const results: { date: string; total: number; count: number }[] = [];
+    // Single query instead of N sequential queries (one per day)
+    const start = new Date();
+    start.setDate(start.getDate() - (days - 1));
+    start.setHours(0, 0, 0, 0);
+
+    const sales = await this.prisma.sale.findMany({
+      where: {
+        createdAt: { gte: start },
+        status: 'COMPLETED',
+        ...(tenantId && { tenantId }),
+      },
+      select: { grandTotal: true, createdAt: true },
+    });
+
+    // Pre-build map with all dates initialised to zero so days with no sales appear
+    const byDate = new Map<string, { total: number; count: number }>();
     for (let i = days - 1; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
-      const dateStr = d.toISOString().split('T')[0];
-      const start = new Date(`${dateStr}T00:00:00`);
-      const end = new Date(`${dateStr}T23:59:59`);
-      const sales = await this.prisma.sale.findMany({ where: { createdAt: { gte: start, lte: end }, status: 'COMPLETED', ...(tenantId && { tenantId }) }, select: { grandTotal: true } });
-      results.push({ date: dateStr, total: sales.reduce((s, sale) => s + Number(sale.grandTotal), 0), count: sales.length });
+      byDate.set(d.toISOString().split('T')[0], { total: 0, count: 0 });
     }
-    return results;
+
+    for (const sale of sales) {
+      const key = sale.createdAt.toISOString().split('T')[0];
+      const entry = byDate.get(key);
+      if (entry) {
+        entry.total += Number(sale.grandTotal);
+        entry.count++;
+      }
+    }
+
+    return Array.from(byDate.entries()).map(([date, stats]) => ({ date, ...stats }));
   }
 
   async topProducts(limit = 10, days = 30, tenantId?: number) {
@@ -170,17 +203,14 @@ export class ReportsService {
   }
 
   async monthlySummary(months = 6, tenantId?: number) {
-    const results: Awaited<ReturnType<typeof this.monthlyProfitSummary>>[] = [];
     const now = new Date();
+    // Run all months in parallel instead of sequential await inside a loop
+    const promises: Promise<Awaited<ReturnType<typeof this.monthlyProfitSummary>>>[] = [];
     for (let i = months - 1; i >= 0; i--) {
-      const year = now.getFullYear();
-      const month = now.getMonth() + 1 - i;
-      const actualYear = month <= 0 ? year - 1 : year;
-      const actualMonth = month <= 0 ? 12 + month : month;
-      const data = await this.monthlyProfitSummary(actualYear, actualMonth, tenantId);
-      results.push(data);
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      promises.push(this.monthlyProfitSummary(d.getFullYear(), d.getMonth() + 1, tenantId));
     }
-    return results;
+    return Promise.all(promises);
   }
 
   async kpiOverview(tenantId?: number) {
