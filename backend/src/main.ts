@@ -3,6 +3,7 @@ import { ValidationPipe, HttpException, HttpStatus, ArgumentsHost, ExceptionFilt
 import { AppModule } from './app.module';
 import helmet from 'helmet';
 import compression from 'compression';
+import cookieParser from 'cookie-parser';
 
 /** Sanitize all error responses — never expose stack traces or Prisma internals */
 @Catch()
@@ -41,6 +42,9 @@ async function bootstrap() {
   // ── Compression ──────────────────────────────────────────────────────────────
   // Saves bandwidth — critical for Uganda 3G/4G connections
   app.use(compression());
+
+  // ── Cookie parser (required for httpOnly JWT cookies) ─────────────────────────
+  app.use(cookieParser());
 
   // ── Security headers via Helmet ───────────────────────────────────────────────
   app.use(helmet({
@@ -101,7 +105,7 @@ async function bootstrap() {
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Tenant-Subdomain', 'X-CSRF-Token'],
   });
 
   app.setGlobalPrefix('api');

@@ -13,9 +13,9 @@ interface User {
 
 interface AuthState {
   user: User | null;
-  accessToken: string | null;
-  refreshToken: string | null;
-  setAuth: (user: User, accessToken: string, refreshToken: string) => void;
+  setUser: (user: User) => void;
+  // Legacy alias so existing callers (LoginPage) still compile
+  setAuth: (user: User, _accessToken?: string, _refreshToken?: string) => void;
   logout: () => void;
   isAuthenticated: () => boolean;
 }
@@ -24,19 +24,15 @@ export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
       user: null,
-      accessToken: null,
-      refreshToken: null,
-      setAuth: (user, accessToken, refreshToken) => {
-        localStorage.setItem('access_token', accessToken);
-        localStorage.setItem('refresh_token', refreshToken);
-        set({ user, accessToken, refreshToken });
-      },
+      setUser: (user) => set({ user }),
+      setAuth: (user) => set({ user }),
       logout: () => {
+        // Clear any stale tokens that may exist from before the httpOnly migration
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
-        set({ user: null, accessToken: null, refreshToken: null });
+        set({ user: null });
       },
-      isAuthenticated: () => !!get().accessToken,
+      isAuthenticated: () => !!get().user,
     }),
     { name: 'kampstock-auth' }
   )

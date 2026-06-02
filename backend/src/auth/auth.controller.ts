@@ -1,22 +1,26 @@
-import { Controller, Post, Body, HttpCode, HttpStatus, Req } from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, HttpStatus, Req, Res } from '@nestjs/common';
 import { SkipThrottle, Throttle } from '@nestjs/throttler';
-import { Request } from 'express';
+import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
-import { LoginDto, RefreshTokenDto } from './dto/auth.dto';
+import { LoginDto } from './dto/auth.dto';
 import { Public } from './decorators/public.decorator';
 
 const isDev = process.env.NODE_ENV !== 'production';
+
+/** Cookie TTLs in milliseconds */
+const ACCESS_TOKEN_MS  = 15  * 60 * 1000;        // 15 minutes
+const REFRESH_TOKEN_MS = 7   * 24 * 60 * 60 * 1000; // 7 days
+
+function setCookies(res: Response, accessToken: string, refreshToken: string) {
+  const base = { httpOnly: true, sameSite: 'lax' as const, secure: !isDev };
+  res.cookie('access_token',  accessToken,  { ...base, maxAge: ACCESS_TOKEN_MS });
+  res.cookie('refresh_token', refreshToken, { ...base, maxAge: REFRESH_TOKEN_MS, path: '/api/auth' });
+}
 
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
 
-  /**
-   * Login — tightly rate-limited in production.
-   * 6 attempts per 5 minutes per IP; 20 per hour.
-   * Additionally, AuthService tracks per-username attempts and locks accounts.
-   * In development the throttle is relaxed to 200 per minute.
-   */
   @Public()
   @Post('login')
   @HttpCode(HttpStatus.OK)
@@ -24,12 +28,14 @@ export class AuthController {
     short: { ttl: 300_000, limit: isDev ? 200 : 6 },
     long:  { ttl: 3_600_000, limit: isDev ? 1000 : 20 },
   })
-  login(@Body() dto: LoginDto, @Req() req: Request) {
+  async login(@Body() dto: LoginDto, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const ip = (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim()
       ?? req.socket?.remoteAddress
       ?? 'unknown';
     const subdomainTenantId = (req as any).subdomainTenantId as number | undefined;
-    return this.authService.login(dto, ip, subdomainTenantId);
+    const { accessToken, refreshToken, user } = await this.authService.login(dto, ip, subdomainTenantId);
+    setCookies(res, accessToken, refreshToken);
+    return { user };
   }
 
   @Public()
@@ -39,7 +45,21 @@ export class AuthController {
     short: { ttl: 60_000, limit: isDev ? 200 : 10 },
     long:  { ttl: 3_600_000, limit: isDev ? 1000 : 60 },
   })
-  refresh(@Body() dto: RefreshTokenDto) {
-    return this.authService.refresh(dto.refreshToken);
+  async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const refreshToken: string | undefined = req.cookies?.refresh_token;
+    if (!refreshToken) {
+      res.status(HttpStatus.UNAUTHORIZED).json({ message: 'No refresh token' });
+      return;
+    }
+    const { accessToken, refreshToken: newRefreshToken, user } = await this.authService.refresh(refreshToken);
+    setCookies(res, accessToken, newRefreshToken);
+    return { user };
+  }
+
+  @Post('logout')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  logout(@Res({ passthrough: true }) res: Response) {
+    res.clearCookie('access_token');
+    res.clearCookie('refresh_token', { path: '/api/auth' });
   }
 }

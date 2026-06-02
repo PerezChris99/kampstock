@@ -4,11 +4,11 @@ import { getSubdomain } from '../utils/subdomain';
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000/api',
   headers: { 'Content-Type': 'application/json' },
+  // Send httpOnly cookies automatically on every request
+  withCredentials: true,
 });
 
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('access_token');
-  if (token) config.headers.Authorization = `Bearer ${token}`;
   // Tell the backend which tenant this request belongs to
   const subdomain = getSubdomain();
   if (subdomain) config.headers['X-Tenant-Subdomain'] = subdomain;
@@ -22,7 +22,6 @@ api.interceptors.response.use(
 
     // 402 Payment Required — tenant subscription expired
     if (error.response?.status === 402) {
-      // Don't redirect if already on locked/billing routes
       const currentPath = window.location.pathname;
       if (!currentPath.startsWith('/locked') && !currentPath.startsWith('/billing')) {
         window.location.href = '/locked';
@@ -30,20 +29,21 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
 
+    // 401 — access token expired; attempt silent refresh via httpOnly refresh cookie
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
-      const refreshToken = localStorage.getItem('refresh_token');
-      if (refreshToken) {
-        try {
-          const { data } = await axios.post(`${import.meta.env.VITE_API_URL}/auth/refresh`, { refreshToken });
-          localStorage.setItem('access_token', data.accessToken);
-          localStorage.setItem('refresh_token', data.refreshToken);
-          originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
-          return api(originalRequest);
-        } catch {
-          localStorage.clear();
-          window.location.href = '/login';
-        }
+      try {
+        // Refresh cookie is scoped to /api/auth so it is NOT sent on this request —
+        // we call the refresh endpoint explicitly with withCredentials
+        await axios.post(
+          `${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/auth/refresh`,
+          {},
+          { withCredentials: true },
+        );
+        // New access_token cookie is now set; retry the original request
+        return api(originalRequest);
+      } catch {
+        window.location.href = '/login';
       }
     }
     return Promise.reject(error);

@@ -23,7 +23,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const { data } = await api.post('/auth/login', { username, password });
-      setAuth(data.user, data.accessToken, data.refreshToken);
+      setAuth(data.user);
       navigate('/');
     } catch (err: any) {
       const status = err?.response?.status;

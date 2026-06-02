@@ -70,36 +70,25 @@ export async function incrementRetry(item: PendingSale): Promise<void> {
 }
 
 /**
- * Attempt to flush all pending sales via fetch POST /api/sales.
+ * Attempt to flush all pending sales via the shared axios instance (withCredentials).
  * Returns number of successfully synced items.
  */
-export async function flushOfflineQueue(accessToken: string): Promise<number> {
+export async function flushOfflineQueue(): Promise<number> {
+  // Dynamically import to avoid circular deps; api instance has withCredentials: true
+  const { default: api } = await import('./api');
   const items = await getPendingSales();
   if (!items.length) return 0;
 
   let synced = 0;
   for (const item of items) {
     try {
-      const res = await fetch('/api/sales', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify(item.payload),
-      });
-      if (res.ok) {
-        await removeFromQueue(item.id!);
-        synced++;
-      } else if (item.retries >= 5) {
-        // Give up after 5 retries — move to dead letter (just remove to avoid infinite loop)
-        await removeFromQueue(item.id!);
-      } else {
-        await incrementRetry(item);
-      }
-    } catch {
-      // Network still unavailable — leave in queue
-      if (item.retries >= 5) {
+      await api.post('/sales', item.payload);
+      await removeFromQueue(item.id!);
+      synced++;
+    } catch (err: any) {
+      const status = err?.response?.status;
+      if (item.retries >= 5 || (status && status < 500)) {
+        // Give up: too many retries or a permanent client error
         await removeFromQueue(item.id!);
       } else {
         await incrementRetry(item);

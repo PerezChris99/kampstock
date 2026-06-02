@@ -31,9 +31,7 @@ export default function POSPage() {
   // Flush queued offline sales when connection is restored
   useEffect(() => {
     const handleOnline = async () => {
-      const token = (useAuthStore.getState() as any).accessToken;
-      if (!token) return;
-      const synced = await flushOfflineQueue(token);
+      const synced = await flushOfflineQueue();
       if (synced > 0) {
         qc.invalidateQueries({ queryKey: ['daily-sales'] });
         setOfflineBanner(false);
