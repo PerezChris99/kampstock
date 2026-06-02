@@ -110,13 +110,26 @@ export class AuthService {
   }
 
   private generateTokens(user: any) {
+    // Normalize role name — strip legacy `_<tenantId>` suffix if present
+    const rawRoleName: string = user.role?.name ?? '';
+    const normalizedRole = rawRoleName.replace(/_\d+$/, '');
+
+    // Parse permissions JSON from the role record
+    let permissions: Record<string, boolean> = {};
+    try {
+      permissions = JSON.parse(user.role?.permissions ?? '{}');
+    } catch {
+      permissions = {};
+    }
+
     const payload = {
       sub: user.id,
       username: user.username,
       roleId: user.roleId,
-      role: user.role.name,
+      role: normalizedRole,
       tenantId: user.tenantId ?? 1,
       isSuperAdmin: user.isSuperAdmin ?? false,
+      permissions,
     };
     const accessToken = this.jwtService.sign(payload, {
       secret: this.config.get<string>('JWT_SECRET'),
@@ -133,9 +146,10 @@ export class AuthService {
         id: user.id,
         name: user.name,
         username: user.username,
-        role: user.role.name,
+        role: normalizedRole,
         tenantId: user.tenantId ?? 1,
         isSuperAdmin: user.isSuperAdmin ?? false,
+        permissions,
       },
     };
   }

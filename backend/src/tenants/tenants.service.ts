@@ -36,12 +36,12 @@ export class TenantsService {
       },
     });
 
-    // Create default roles for this tenant
+    // Create default roles for this tenant (normalized names — tenantId scopes them uniquely)
     const [adminRole] = await Promise.all([
-      this.prisma.role.create({ data: { name: `Admin_${tenant.id}`, permissions: JSON.stringify({ all: true }), tenantId: tenant.id } }),
-      this.prisma.role.create({ data: { name: `Manager_${tenant.id}`, permissions: JSON.stringify({ manage_products: true, manage_sales: true, view_reports: true, manage_stock: true }), tenantId: tenant.id } }),
-      this.prisma.role.create({ data: { name: `Cashier_${tenant.id}`, permissions: JSON.stringify({ create_sales: true }), tenantId: tenant.id } }),
-      this.prisma.role.create({ data: { name: `Storekeeper_${tenant.id}`, permissions: JSON.stringify({ manage_stock: true }), tenantId: tenant.id } }),
+      this.prisma.role.create({ data: { name: 'Admin', permissions: JSON.stringify({ all: true }), tenantId: tenant.id } }),
+      this.prisma.role.create({ data: { name: 'Manager', permissions: JSON.stringify({ manage_products: true, manage_sales: true, view_reports: true, manage_stock: true, manage_expenses: true, manage_suppliers: true, manage_purchase_orders: true, manage_customers: true }), tenantId: tenant.id } }),
+      this.prisma.role.create({ data: { name: 'Cashier', permissions: JSON.stringify({ create_sales: true, manage_customers: true }), tenantId: tenant.id } }),
+      this.prisma.role.create({ data: { name: 'Storekeeper', permissions: JSON.stringify({ manage_stock: true, manage_purchase_orders: true }), tenantId: tenant.id } }),
     ]);
 
     // Create default stock location

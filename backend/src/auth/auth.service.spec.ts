@@ -49,7 +49,7 @@ const activeUser = {
   tenantId: 1,
   isSuperAdmin: false,
   roleId: 1,
-  role: { name: 'Admin' },
+  role: { id: 1, name: 'Admin', permissions: JSON.stringify({ all: true }), tenantId: 1 },
 };
 
 describe('AuthService', () => {
@@ -97,6 +97,18 @@ describe('AuthService', () => {
       const result = await service.login({ username: 'alice', password: 'Password1!' }, '127.0.0.1');
 
       expect((result.user as any).passwordHash).toBeUndefined();
+    });
+
+    it('should return normalized role name and permissions in user object', async () => {
+      // Test with legacy role name format Admin_1
+      const legacyUser = { ...activeUser, role: { id: 1, name: 'Admin_1', permissions: JSON.stringify({ all: true }), tenantId: 1 } };
+      mockPrisma.user.findUnique.mockResolvedValue(legacyUser);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+
+      const result = await service.login({ username: 'alice', password: 'Password1!' }, '127.0.0.1');
+
+      expect(result.user.role).toBe('Admin'); // normalized — no _1 suffix
+      expect((result.user as any).permissions).toEqual({ all: true });
     });
 
     it('should throw UnauthorizedException for wrong password', async () => {
