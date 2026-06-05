@@ -8,7 +8,7 @@ import { useTenantBranding } from '../hooks/useTenantBranding';
 const APP_MODE = import.meta.env.VITE_APP_MODE || 'multi';
 
 export default function LoginPage() {
-  const [username, setUsername] = useState(APP_MODE === 'single' ? 'admin' : '');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -169,20 +169,6 @@ export default function LoginPage() {
               ) : 'Sign In'}
             </button>
           </form>
-
-          {APP_MODE !== 'single' && (
-            <div className="ks-user-hints">
-              <details className="ks-hint-details">
-                <summary>Default login credentials</summary>
-                <div className="ks-hint-grid">
-                  <div><strong>Admin:</strong> admin / admin123</div>
-                  <div><strong>Manager:</strong> manager / manager123</div>
-                  <div><strong>Cashier:</strong> cashier / cashier123</div>
-                  <div><strong>Store:</strong> storekeeper / store123</div>
-                </div>
-              </details>
-            </div>
-          )}
 
           {APP_MODE !== 'single' && (
             <p style={{ textAlign: 'center', fontSize: '0.8rem', color: '#71717a', margin: '0.25rem 0 0.75rem' }}>
