@@ -79,10 +79,15 @@ export async function createNestServer(): Promise<Express> {
   const httpAdapterHost = app.get(HttpAdapterHost);
   app.useGlobalFilters(new GlobalExceptionFilter(httpAdapterHost));
 
-  const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
+  // Build allowed-origins list: prefer ALLOWED_ORIGINS env var, always include
+  // FRONTEND_URL as a fallback so the app works even when the env var is not set.
+  const rawOrigins = (process.env.ALLOWED_ORIGINS || '')
     .split(',')
     .map((o) => o.trim())
     .filter(Boolean);
+  const frontendUrl = process.env.FRONTEND_URL;
+  if (frontendUrl && !rawOrigins.includes(frontendUrl)) rawOrigins.push(frontendUrl);
+  const allowedOrigins = rawOrigins;
 
   app.enableCors({
     origin: (origin, callback) => {

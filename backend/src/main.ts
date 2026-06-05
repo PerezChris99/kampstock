@@ -116,10 +116,13 @@ async function bootstrap() {
   app.useGlobalFilters(new GlobalExceptionFilter(httpAdapterHost));
 
   // ── CORS ──────────────────────────────────────────────────────────────────────
-  const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
+  const rawOrigins = (process.env.ALLOWED_ORIGINS || '')
     .split(',')
     .map((o) => o.trim())
     .filter(Boolean);
+  const frontendUrl = process.env.FRONTEND_URL;
+  if (frontendUrl && !rawOrigins.includes(frontendUrl)) rawOrigins.push(frontendUrl);
+  const allowedOrigins = rawOrigins;
   app.enableCors({
     origin: (origin, callback) => {
       // Allow server-to-server (no origin) in dev; block in prod

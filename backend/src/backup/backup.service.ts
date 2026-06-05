@@ -227,7 +227,6 @@ export class BackupService {
       if (categories.length)
         await tx.category.createMany({
           data: categories,
-          skipDuplicates: true,
         });
       summary.categories = categories.length;
 
@@ -250,7 +249,7 @@ export class BackupService {
         updatedAt: new Date(p.updatedAt),
       }));
       if (products.length)
-        await tx.product.createMany({ data: products, skipDuplicates: true });
+        await tx.product.createMany({ data: products });
       summary.products = products.length;
 
       const productUnits = (data.tables.productUnits ?? []).map((pu: any) => ({
@@ -267,7 +266,6 @@ export class BackupService {
       if (productUnits.length)
         await tx.productUnit.createMany({
           data: productUnits,
-          skipDuplicates: true,
         });
       summary.productUnits = productUnits.length;
 
@@ -284,7 +282,6 @@ export class BackupService {
       if (stockLocations.length)
         await tx.stockLocation.createMany({
           data: stockLocations,
-          skipDuplicates: true,
         });
 
       const stockItems = (data.tables.stockItems ?? []).map((si: any) => ({
@@ -300,7 +297,6 @@ export class BackupService {
       if (stockItems.length)
         await tx.stockItem.createMany({
           data: stockItems,
-          skipDuplicates: true,
         });
       summary.stockItems = stockItems.length;
 
@@ -319,7 +315,7 @@ export class BackupService {
         updatedAt: new Date(sup.updatedAt),
       }));
       if (suppliers.length)
-        await tx.supplier.createMany({ data: suppliers, skipDuplicates: true });
+        await tx.supplier.createMany({ data: suppliers });
       summary.suppliers = suppliers.length;
 
       const customers = (data.tables.customers ?? []).map((cust: any) => ({
@@ -338,7 +334,7 @@ export class BackupService {
         updatedAt: new Date(cust.updatedAt),
       }));
       if (customers.length)
-        await tx.customer.createMany({ data: customers, skipDuplicates: true });
+        await tx.customer.createMany({ data: customers });
       summary.customers = customers.length;
 
       const purchaseOrders = (data.tables.purchaseOrders ?? []).map(
@@ -360,7 +356,6 @@ export class BackupService {
       if (purchaseOrders.length)
         await tx.purchaseOrder.createMany({
           data: purchaseOrders,
-          skipDuplicates: true,
         });
 
       const purchaseOrderLines = (data.tables.purchaseOrderLines ?? []).map(
@@ -377,7 +372,6 @@ export class BackupService {
       if (purchaseOrderLines.length)
         await tx.purchaseOrderLine.createMany({
           data: purchaseOrderLines,
-          skipDuplicates: true,
         });
 
       const expenses = (data.tables.expenses ?? []).map((exp: any) => ({
@@ -392,7 +386,7 @@ export class BackupService {
         createdAt: new Date(exp.createdAt),
       }));
       if (expenses.length)
-        await tx.expense.createMany({ data: expenses, skipDuplicates: true });
+        await tx.expense.createMany({ data: expenses });
       summary.expenses = expenses.length;
 
       const sales = (data.tables.sales ?? []).map((sale: any) => ({
@@ -414,7 +408,7 @@ export class BackupService {
         updatedAt: new Date(sale.updatedAt),
       }));
       if (sales.length)
-        await tx.sale.createMany({ data: sales, skipDuplicates: true });
+        await tx.sale.createMany({ data: sales });
 
       const saleLines = (data.tables.saleLines ?? []).map((sl: any) => ({
         id: sl.id,
@@ -428,7 +422,7 @@ export class BackupService {
         costPrice: sl.costPrice ?? 0,
       }));
       if (saleLines.length)
-        await tx.saleLine.createMany({ data: saleLines, skipDuplicates: true });
+        await tx.saleLine.createMany({ data: saleLines });
 
       const payments = (data.tables.payments ?? []).map((pay: any) => ({
         id: pay.id,
@@ -440,7 +434,7 @@ export class BackupService {
         receivedById: pay.receivedById,
       }));
       if (payments.length)
-        await tx.payment.createMany({ data: payments, skipDuplicates: true });
+        await tx.payment.createMany({ data: payments });
       summary.sales = sales.length;
     });
 
