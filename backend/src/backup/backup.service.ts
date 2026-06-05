@@ -134,6 +134,7 @@ export class BackupService {
       summary.roles = (data.tables.roles ?? []).length;
 
       // Restore users with fresh temp passwords (export excludes passwordHash for security)
+      // Users must be sequential — bcrypt hashing is async and CPU-bound
       for (const user of data.tables.users ?? []) {
         const tempPwd = `Ks${crypto.randomBytes(4).toString('hex').toUpperCase()}!`;
         const hash = await bcrypt.hash(tempPwd, 10);
@@ -154,61 +155,119 @@ export class BackupService {
       }
       summary.users = (data.tables.users ?? []).length;
 
-      for (const cat of data.tables.categories ?? []) {
-        await tx.category.create({ data: { id: cat.id, name: cat.name, parentId: cat.parentId, tenantId, createdAt: new Date(cat.createdAt), updatedAt: new Date(cat.updatedAt) } });
-      }
-      summary.categories = (data.tables.categories ?? []).length;
+      // ── Bulk inserts via createMany (dramatically faster than per-row create) ──
 
-      for (const p of data.tables.products ?? []) {
-        await tx.product.create({ data: { id: p.id, name: p.name, sku: p.sku, barcode: p.barcode, categoryId: p.categoryId, tenantId, brand: p.brand, description: p.description, unitOfMeasure: p.unitOfMeasure, allowFractional: p.allowFractional, hasExpiry: p.hasExpiry, defaultTaxRate: p.defaultTaxRate, isActive: p.isActive, createdAt: new Date(p.createdAt), updatedAt: new Date(p.updatedAt) } });
-      }
-      summary.products = (data.tables.products ?? []).length;
+      const categories = (data.tables.categories ?? []).map((cat: any) => ({
+        id: cat.id, name: cat.name, parentId: cat.parentId ?? null, tenantId,
+        createdAt: new Date(cat.createdAt), updatedAt: new Date(cat.updatedAt),
+      }));
+      if (categories.length) await tx.category.createMany({ data: categories, skipDuplicates: true });
+      summary.categories = categories.length;
 
-      for (const pu of data.tables.productUnits ?? []) {
-        await tx.productUnit.create({ data: { id: pu.id, productId: pu.productId, unitName: pu.unitName, conversionFactor: pu.conversionFactor, buyingPrice: pu.buyingPrice, sellingPriceRetail: pu.sellingPriceRetail, sellingPriceWholesale: pu.sellingPriceWholesale, minWholesaleQty: pu.minWholesaleQty, isDefault: pu.isDefault } });
-      }
-      summary.productUnits = (data.tables.productUnits ?? []).length;
+      const products = (data.tables.products ?? []).map((p: any) => ({
+        id: p.id, name: p.name, sku: p.sku, barcode: p.barcode ?? null, categoryId: p.categoryId,
+        tenantId, brand: p.brand ?? null, description: p.description ?? null,
+        unitOfMeasure: p.unitOfMeasure, allowFractional: p.allowFractional ?? false,
+        hasExpiry: p.hasExpiry ?? false, defaultTaxRate: p.defaultTaxRate ?? 0,
+        reorderLevel: p.reorderLevel ?? 0, isActive: p.isActive ?? true,
+        createdAt: new Date(p.createdAt), updatedAt: new Date(p.updatedAt),
+      }));
+      if (products.length) await tx.product.createMany({ data: products, skipDuplicates: true });
+      summary.products = products.length;
 
-      for (const loc of data.tables.stockLocations ?? []) {
-        await tx.stockLocation.create({ data: { id: loc.id, name: loc.name, description: loc.description, tenantId, isActive: loc.isActive, createdAt: new Date(loc.createdAt) } });
-      }
-      for (const si of data.tables.stockItems ?? []) {
-        await tx.stockItem.create({ data: { id: si.id, productId: si.productId, locationId: si.locationId, quantityOnHand: si.quantityOnHand, batchNo: si.batchNo, expiryDate: si.expiryDate ? new Date(si.expiryDate) : null, lastCostPrice: si.lastCostPrice, updatedAt: new Date(si.updatedAt) } });
-      }
-      summary.stockItems = (data.tables.stockItems ?? []).length;
+      const productUnits = (data.tables.productUnits ?? []).map((pu: any) => ({
+        id: pu.id, productId: pu.productId, unitName: pu.unitName,
+        conversionFactor: pu.conversionFactor, buyingPrice: pu.buyingPrice,
+        sellingPriceRetail: pu.sellingPriceRetail, sellingPriceWholesale: pu.sellingPriceWholesale,
+        minWholesaleQty: pu.minWholesaleQty ?? null, isDefault: pu.isDefault ?? false,
+      }));
+      if (productUnits.length) await tx.productUnit.createMany({ data: productUnits, skipDuplicates: true });
+      summary.productUnits = productUnits.length;
 
-      for (const sup of data.tables.suppliers ?? []) {
-        await tx.supplier.create({ data: { id: sup.id, name: sup.name, contactPerson: sup.contactPerson, phone: sup.phone, email: sup.email, address: sup.address, tin: sup.tin, tenantId, balance: sup.balance, isActive: sup.isActive, createdAt: new Date(sup.createdAt), updatedAt: new Date(sup.updatedAt) } });
-      }
-      summary.suppliers = (data.tables.suppliers ?? []).length;
+      const stockLocations = (data.tables.stockLocations ?? []).map((loc: any) => ({
+        id: loc.id, name: loc.name, description: loc.description ?? null, tenantId,
+        isActive: loc.isActive ?? true, createdAt: new Date(loc.createdAt),
+      }));
+      if (stockLocations.length) await tx.stockLocation.createMany({ data: stockLocations, skipDuplicates: true });
 
-      for (const cust of data.tables.customers ?? []) {
-        await tx.customer.create({ data: { id: cust.id, name: cust.name, phone: cust.phone, email: cust.email, address: cust.address, tin: cust.tin, tenantId, isWholesale: cust.isWholesale, creditLimit: cust.creditLimit, balance: cust.balance, isActive: cust.isActive, createdAt: new Date(cust.createdAt), updatedAt: new Date(cust.updatedAt) } });
-      }
-      summary.customers = (data.tables.customers ?? []).length;
+      const stockItems = (data.tables.stockItems ?? []).map((si: any) => ({
+        id: si.id, productId: si.productId, locationId: si.locationId,
+        quantityOnHand: si.quantityOnHand, batchNo: si.batchNo ?? null,
+        expiryDate: si.expiryDate ? new Date(si.expiryDate) : null,
+        lastCostPrice: si.lastCostPrice ?? 0, updatedAt: new Date(si.updatedAt),
+      }));
+      if (stockItems.length) await tx.stockItem.createMany({ data: stockItems, skipDuplicates: true });
+      summary.stockItems = stockItems.length;
 
-      for (const po of data.tables.purchaseOrders ?? []) {
-        await tx.purchaseOrder.create({ data: { id: po.id, poNumber: po.poNumber, supplierId: po.supplierId, tenantId, status: po.status, orderedDate: new Date(po.orderedDate), expectedDate: po.expectedDate ? new Date(po.expectedDate) : null, grandTotal: po.grandTotal, notes: po.notes, createdById: po.createdById, createdAt: new Date(po.createdAt), updatedAt: new Date(po.updatedAt) } });
-      }
-      for (const pol of data.tables.purchaseOrderLines ?? []) {
-        await tx.purchaseOrderLine.create({ data: { id: pol.id, purchaseOrderId: pol.purchaseOrderId, productId: pol.productId, quantity: pol.quantity, unitPrice: pol.unitPrice, discount: pol.discount, lineTotal: pol.lineTotal } });
-      }
+      const suppliers = (data.tables.suppliers ?? []).map((sup: any) => ({
+        id: sup.id, name: sup.name, contactPerson: sup.contactPerson ?? null,
+        phone: sup.phone ?? null, email: sup.email ?? null, address: sup.address ?? null,
+        tin: sup.tin ?? null, tenantId, balance: sup.balance ?? 0,
+        isActive: sup.isActive ?? true,
+        createdAt: new Date(sup.createdAt), updatedAt: new Date(sup.updatedAt),
+      }));
+      if (suppliers.length) await tx.supplier.createMany({ data: suppliers, skipDuplicates: true });
+      summary.suppliers = suppliers.length;
 
-      for (const exp of data.tables.expenses ?? []) {
-        await tx.expense.create({ data: { id: exp.id, tenantId, category: exp.category, description: exp.description, amount: exp.amount, paidTo: exp.paidTo, paidById: exp.paidById, paidAt: new Date(exp.paidAt), createdAt: new Date(exp.createdAt) } });
-      }
-      summary.expenses = (data.tables.expenses ?? []).length;
+      const customers = (data.tables.customers ?? []).map((cust: any) => ({
+        id: cust.id, name: cust.name, phone: cust.phone ?? null, email: cust.email ?? null,
+        address: cust.address ?? null, tin: cust.tin ?? null, tenantId,
+        isWholesale: cust.isWholesale ?? false, creditLimit: cust.creditLimit ?? 0,
+        balance: cust.balance ?? 0, isActive: cust.isActive ?? true,
+        createdAt: new Date(cust.createdAt), updatedAt: new Date(cust.updatedAt),
+      }));
+      if (customers.length) await tx.customer.createMany({ data: customers, skipDuplicates: true });
+      summary.customers = customers.length;
 
-      for (const sale of data.tables.sales ?? []) {
-        await tx.sale.create({ data: { id: sale.id, saleNumber: sale.saleNumber, tenantId, customerId: sale.customerId, saleType: sale.saleType, status: sale.status, total: sale.total, discountTotal: sale.discountTotal, taxTotal: sale.taxTotal, grandTotal: sale.grandTotal, paidAmount: sale.paidAmount, balance: sale.balance, notes: sale.notes, createdById: sale.createdById, createdAt: new Date(sale.createdAt), updatedAt: new Date(sale.updatedAt) } });
-      }
-      for (const sl of data.tables.saleLines ?? []) {
-        await tx.saleLine.create({ data: { id: sl.id, saleId: sl.saleId, productId: sl.productId, productUnitId: sl.productUnitId, quantity: sl.quantity, unitPrice: sl.unitPrice, discount: sl.discount, lineTotal: sl.lineTotal, costPrice: sl.costPrice } });
-      }
-      for (const pay of data.tables.payments ?? []) {
-        await tx.payment.create({ data: { id: pay.id, saleId: pay.saleId, paymentMethod: pay.paymentMethod, amount: pay.amount, paymentReference: pay.paymentReference, receivedAt: new Date(pay.receivedAt), receivedById: pay.receivedById } });
-      }
-      summary.sales = (data.tables.sales ?? []).length;
+      const purchaseOrders = (data.tables.purchaseOrders ?? []).map((po: any) => ({
+        id: po.id, poNumber: po.poNumber, supplierId: po.supplierId, tenantId,
+        status: po.status, orderedDate: new Date(po.orderedDate),
+        expectedDate: po.expectedDate ? new Date(po.expectedDate) : null,
+        grandTotal: po.grandTotal, notes: po.notes ?? null, createdById: po.createdById,
+        createdAt: new Date(po.createdAt), updatedAt: new Date(po.updatedAt),
+      }));
+      if (purchaseOrders.length) await tx.purchaseOrder.createMany({ data: purchaseOrders, skipDuplicates: true });
+
+      const purchaseOrderLines = (data.tables.purchaseOrderLines ?? []).map((pol: any) => ({
+        id: pol.id, purchaseOrderId: pol.purchaseOrderId, productId: pol.productId,
+        quantity: pol.quantity, unitPrice: pol.unitPrice, discount: pol.discount ?? 0,
+        lineTotal: pol.lineTotal,
+      }));
+      if (purchaseOrderLines.length) await tx.purchaseOrderLine.createMany({ data: purchaseOrderLines, skipDuplicates: true });
+
+      const expenses = (data.tables.expenses ?? []).map((exp: any) => ({
+        id: exp.id, tenantId, category: exp.category, description: exp.description ?? null,
+        amount: exp.amount, paidTo: exp.paidTo ?? null, paidById: exp.paidById,
+        paidAt: new Date(exp.paidAt), createdAt: new Date(exp.createdAt),
+      }));
+      if (expenses.length) await tx.expense.createMany({ data: expenses, skipDuplicates: true });
+      summary.expenses = expenses.length;
+
+      const sales = (data.tables.sales ?? []).map((sale: any) => ({
+        id: sale.id, saleNumber: sale.saleNumber, tenantId, customerId: sale.customerId ?? null,
+        saleType: sale.saleType, status: sale.status, total: sale.total,
+        discountTotal: sale.discountTotal ?? 0, taxTotal: sale.taxTotal ?? 0,
+        grandTotal: sale.grandTotal, paidAmount: sale.paidAmount, balance: sale.balance ?? 0,
+        notes: sale.notes ?? null, createdById: sale.createdById,
+        createdAt: new Date(sale.createdAt), updatedAt: new Date(sale.updatedAt),
+      }));
+      if (sales.length) await tx.sale.createMany({ data: sales, skipDuplicates: true });
+
+      const saleLines = (data.tables.saleLines ?? []).map((sl: any) => ({
+        id: sl.id, saleId: sl.saleId, productId: sl.productId,
+        productUnitId: sl.productUnitId ?? null, quantity: sl.quantity,
+        unitPrice: sl.unitPrice, discount: sl.discount ?? 0, lineTotal: sl.lineTotal,
+        costPrice: sl.costPrice ?? 0,
+      }));
+      if (saleLines.length) await tx.saleLine.createMany({ data: saleLines, skipDuplicates: true });
+
+      const payments = (data.tables.payments ?? []).map((pay: any) => ({
+        id: pay.id, saleId: pay.saleId, paymentMethod: pay.paymentMethod,
+        amount: pay.amount, paymentReference: pay.paymentReference ?? null,
+        receivedAt: new Date(pay.receivedAt), receivedById: pay.receivedById,
+      }));
+      if (payments.length) await tx.payment.createMany({ data: payments, skipDuplicates: true });
+      summary.sales = sales.length;
     });
 
     this.audit
@@ -244,4 +303,4 @@ export class BackupService {
     };
   }
 }
-
+
