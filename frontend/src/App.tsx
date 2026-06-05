@@ -23,6 +23,7 @@ import AdminCalendarPage from './pages/AdminCalendarPage';
 import LockedPage from './pages/LockedPage';
 import SettingsPage from './pages/SettingsPage';
 import SuperAdminRoute from './components/SuperAdminRoute';
+import ManagerCalendarPage from './pages/ManagerCalendarPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -60,6 +61,7 @@ export default function App() {
             <Route path="reports" element={<ReportsPage />} />
             <Route path="users" element={<UsersPage />} />
             <Route path="billing" element={<BillingPage />} />
+            <Route path="calendar" element={<ManagerCalendarPage />} />
             <Route path="settings" element={<SettingsPage />} />
             <Route
               path="super-admin"

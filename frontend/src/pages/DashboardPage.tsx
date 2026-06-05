@@ -1,11 +1,13 @@
-﻿import { useQuery } from "@tanstack/react-query";
+﻿import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import {
   ResponsiveContainer, LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
 } from "recharts";
 import {
   TrendingUp, TrendingDown, ShoppingCart, Package,
-  AlertTriangle, DollarSign, RefreshCw,
+  AlertTriangle, DollarSign, RefreshCw, CalendarDays, Clock,
 } from "lucide-react";
 import api from "../lib/api";
 
@@ -49,6 +51,99 @@ function ChartCard({ title, children, className }: { title: string; children: Re
     <div className={"bg-white rounded-xl border border-slate-200 p-5 shadow-sm " + (className ?? "")}>
       <h3 className="text-sm font-semibold text-slate-700 mb-4">{title}</h3>
       {children}
+    </div>
+  );
+}
+
+function SubscriptionStatusCard() {
+  const [info, setInfo] = useState<any>(null);
+  const [countdown, setCountdown] = useState<{ days: number; hours: number; minutes: number; seconds: number } | null>(null);
+
+  useEffect(() => {
+    api.get('/billing/my').then(r => setInfo(r.data)).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!info) return;
+    const target = info.planExpiresAt ? new Date(info.planExpiresAt) : info.trialEndsAt ? new Date(info.trialEndsAt) : null;
+    if (!target || target < new Date()) return;
+    const tick = () => {
+      const ms = Math.max(0, target.getTime() - Date.now());
+      setCountdown({
+        days: Math.floor(ms / 86_400_000),
+        hours: Math.floor((ms % 86_400_000) / 3_600_000),
+        minutes: Math.floor((ms % 3_600_000) / 60_000),
+        seconds: Math.floor((ms % 60_000) / 1000),
+      });
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [info]);
+
+  if (!info) return null;
+
+  const isExpired = info.isLocked || (!info.planExpiresAt && !info.trialEndsAt && !info.isActive);
+  const expiryDate = info.planExpiresAt ? new Date(info.planExpiresAt) : info.trialEndsAt ? new Date(info.trialEndsAt) : null;
+  const isTrialActive = info.trialEndsAt && new Date(info.trialEndsAt) > new Date();
+
+  const urgency = info.isLocked || isExpired
+    ? { bg: "bg-red-50", border: "border-red-200", text: "text-red-700", badge: "bg-red-100 text-red-700" }
+    : info.warningActive || (info.daysLeft !== null && info.daysLeft <= 7)
+    ? { bg: "bg-amber-50", border: "border-amber-200", text: "text-amber-700", badge: "bg-amber-100 text-amber-700" }
+    : { bg: "bg-emerald-50", border: "border-emerald-200", text: "text-emerald-700", badge: "bg-emerald-100 text-emerald-700" };
+
+  return (
+    <div className={"rounded-xl border p-4 shadow-sm " + urgency.bg + " " + urgency.border}>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <CalendarDays className={"w-4 h-4 " + urgency.text} />
+          <span className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Subscription</span>
+        </div>
+        <Link to="/calendar" className={"text-xs font-semibold px-2 py-0.5 rounded-full " + urgency.badge} style={{ textDecoration: 'none' }}>
+          View Calendar →
+        </Link>
+      </div>
+
+      <div className="flex items-end justify-between gap-4 flex-wrap">
+        <div>
+          <p className="text-2xl font-bold text-slate-900 capitalize">{info.plan}</p>
+          <p className="text-xs text-slate-500 mt-0.5">
+            {isExpired ? "Subscription expired" : isTrialActive ? "Free trial active" : "Paid subscription"}
+          </p>
+          {expiryDate && (
+            <p className={"text-xs font-medium mt-1 " + urgency.text}>
+              {isExpired
+                ? `Expired ${expiryDate.toLocaleDateString('en-UG', { day: 'numeric', month: 'short' })}`
+                : `${isTrialActive ? 'Trial ends' : 'Renews'} ${expiryDate.toLocaleDateString('en-UG', { day: 'numeric', month: 'short', year: 'numeric' })}`
+              }
+            </p>
+          )}
+        </div>
+
+        {countdown && !isExpired && (
+          <div className="flex items-center gap-1">
+            <Clock className="w-3.5 h-3.5 text-slate-400 mr-1 flex-shrink-0" />
+            {[
+              { v: countdown.days, l: "d" },
+              { v: countdown.hours, l: "h" },
+              { v: countdown.minutes, l: "m" },
+              { v: countdown.seconds, l: "s" },
+            ].map(({ v, l }) => (
+              <div key={l} className="flex flex-col items-center bg-white/70 rounded px-1.5 py-1 min-w-[32px]">
+                <span className="text-sm font-bold text-slate-800 tabular-nums leading-none">{String(v).padStart(2, "0")}</span>
+                <span className="text-[9px] text-slate-400 uppercase">{l}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {isExpired && (
+          <Link to="/billing" className="text-xs font-bold px-3 py-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700 transition" style={{ textDecoration: 'none' }}>
+            Renew Now
+          </Link>
+        )}
+      </div>
     </div>
   );
 }
@@ -130,6 +225,8 @@ export default function DashboardPage() {
         <KpiCard title="Low Stock Items" value={String(kpi?.lowStockCount ?? 0)} sub="Items <= 10 units" icon={AlertTriangle} color="bg-amber-500" />
         <KpiCard title="Stock Value" value={"UGX " + fmt(kpi?.totalStockValue ?? 0)} sub="At cost price" icon={Package} color="bg-violet-500" />
       </div>
+
+      <SubscriptionStatusCard />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <ChartCard title="30-Day Sales Trend (UGX 000s)">

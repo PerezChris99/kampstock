@@ -3,7 +3,7 @@ import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, ShoppingCart, Package, Warehouse, Truck,
   ClipboardList, Users, Receipt, BarChart3, Settings, LogOut,
-  Menu, X, ChevronRight, Store, CreditCard, Shield,
+  Menu, X, ChevronRight, Store, CreditCard, Shield, CalendarDays,
 } from 'lucide-react';
 import { useAuthStore } from '../store/auth.store';
 import ExpiryWarningBanner from '../components/ExpiryWarningBanner';
@@ -22,6 +22,7 @@ const navItems = [
   { to: '/reports', label: 'Reports', icon: BarChart3 },
   { to: '/users', label: 'Users', icon: Settings },
   { to: '/billing', label: 'Billing', icon: CreditCard },
+  { to: '/calendar', label: 'My Calendar', icon: CalendarDays },
   { to: '/settings', label: 'Settings', icon: Settings },
 ];
 
