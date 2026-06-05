@@ -1,6 +1,8 @@
 import { IsString, IsOptional, IsEmail } from 'class-validator';
+import { SafeText } from '../../common/decorators/safe-text.decorator';
 
 export class CreateSupplierDto {
+  @SafeText()
   @IsString()
   name: string;
 

@@ -1,9 +1,12 @@
 import { IsString, IsOptional, IsNumber, IsDateString, Min } from 'class-validator';
+import { SafeText } from '../../common/decorators/safe-text.decorator';
 
 export class CreateExpenseDto {
+  @SafeText()
   @IsString()
   category: string;
 
+  @SafeText()
   @IsOptional()
   @IsString()
   description?: string;

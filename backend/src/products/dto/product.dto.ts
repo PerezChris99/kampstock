@@ -1,5 +1,6 @@
 import { IsString, IsOptional, IsBoolean, IsNumber, IsArray, ValidateNested, Min } from 'class-validator';
 import { Type } from 'class-transformer';
+import { SafeText } from '../../common/decorators/safe-text.decorator';
 
 export class CreateProductUnitDto {
   @IsString()
@@ -27,6 +28,7 @@ export class CreateProductUnitDto {
 }
 
 export class CreateProductDto {
+  @SafeText()
   @IsString()
   name: string;
 
