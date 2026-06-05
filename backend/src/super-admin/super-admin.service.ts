@@ -219,5 +219,249 @@ export class SuperAdminService {
     await this.prisma.announcement.delete({ where: { id } });
     return { deleted: true };
   }
+
+  // ─── Account Lock Management ─────────────────────────────────────────────────
+
+  /** List all account locks (active by default, or all) */
+  async getAccountLocks(activeOnly = true, page = 1, limit = 50) {
+    const skip = (page - 1) * limit;
+    const where = activeOnly ? { isActive: true } : {};
+    const [locks, total] = await Promise.all([
+      this.prisma.accountLock.findMany({
+        where,
+        orderBy: { lockedAt: 'desc' },
+        skip,
+        take: limit,
+        include: {
+          user: { select: { id: true, name: true, username: true, isActive: true, role: { select: { name: true } } } },
+          unlockedBy: { select: { id: true, name: true, username: true } },
+        },
+      }),
+      this.prisma.accountLock.count({ where }),
+    ]);
+    return { locks, total, page, pages: Math.ceil(total / limit) };
+  }
+
+  /** Get full detail on one lock record */
+  async getAccountLock(id: number) {
+    const lock = await this.prisma.accountLock.findUnique({
+      where: { id },
+      include: {
+        user: {
+          select: {
+            id: true, name: true, username: true, phone: true, isActive: true,
+            lastLoginAt: true, createdAt: true,
+            role: { select: { name: true } },
+          },
+        },
+        unlockedBy: { select: { id: true, name: true, username: true } },
+      },
+    });
+    if (!lock) throw new NotFoundException('Lock record not found');
+
+    // Pull recent audit events for the locked user
+    const recentAudit = lock.userId
+      ? await this.prisma.auditLog.findMany({
+          where: { userId: lock.userId },
+          orderBy: { createdAt: 'desc' },
+          take: 20,
+          select: { id: true, action: true, entityType: true, createdAt: true, ipAddress: true },
+        })
+      : [];
+
+    return { lock, recentAudit };
+  }
+
+  /** Admin manually unlocks an account — clears in-memory block is handled by auth.service on next login */
+  async unlockAccount(lockId: number, adminId: number, notes?: string) {
+    const lock = await this.prisma.accountLock.findUnique({ where: { id: lockId } });
+    if (!lock) throw new NotFoundException('Lock record not found');
+
+    const updated = await this.prisma.accountLock.update({
+      where: { id: lockId },
+      data: {
+        isActive: false,
+        unlockedAt: new Date(),
+        unlockedById: adminId,
+        ...(notes && { notes }),
+      },
+    });
+
+    // Audit the admin action
+    await this.prisma.auditLog.create({
+      data: {
+        userId: adminId,
+        action: 'ACCOUNT_UNLOCK',
+        entityType: 'AccountLock',
+        entityId: lockId,
+        previousValue: JSON.stringify({ isActive: true }),
+        newValue: JSON.stringify({ isActive: false, unlockedById: adminId }),
+        ipAddress: null,
+      },
+    });
+
+    return updated;
+  }
+
+  /** Admin locks an account manually */
+  async adminLockAccount(data: {
+    username: string;
+    reason: string;
+    notes?: string;
+    lockedUntil?: string;
+    adminId: number;
+  }) {
+    const user = await this.prisma.user.findUnique({ where: { username: data.username } });
+
+    const lock = await this.prisma.accountLock.create({
+      data: {
+        username: data.username,
+        userId: user?.id ?? null,
+        reason: 'ADMIN_LOCK',
+        triggerSource: 'ADMIN',
+        failCount: 0,
+        lockedUntil: data.lockedUntil ? new Date(data.lockedUntil) : null,
+        notes: data.notes,
+        metadata: JSON.stringify({ adminId: data.adminId, adminReason: data.reason }),
+      },
+    });
+
+    await this.prisma.auditLog.create({
+      data: {
+        userId: data.adminId,
+        action: 'ACCOUNT_LOCK',
+        entityType: 'AccountLock',
+        entityId: lock.id,
+        previousValue: null,
+        newValue: JSON.stringify({ username: data.username, reason: data.reason }),
+        ipAddress: null,
+      },
+    });
+
+    return lock;
+  }
+
+  /** Force a password reset flag on a user */
+  async forcePasswordReset(userId: number, adminId: number) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { forcePasswordReset: true },
+    });
+
+    await this.prisma.auditLog.create({
+      data: {
+        userId: adminId,
+        action: 'FORCE_PASSWORD_RESET',
+        entityType: 'User',
+        entityId: userId,
+        previousValue: JSON.stringify({ forcePasswordReset: false }),
+        newValue: JSON.stringify({ forcePasswordReset: true }),
+        ipAddress: null,
+      },
+    });
+
+    return { success: true, userId };
+  }
+
+  /** Flag a user account for investigation */
+  async flagAccount(userId: number, adminId: number, reason: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { flaggedForReview: true, flagReason: reason },
+    });
+
+    await this.prisma.auditLog.create({
+      data: {
+        userId: adminId,
+        action: 'ACCOUNT_FLAGGED',
+        entityType: 'User',
+        entityId: userId,
+        previousValue: JSON.stringify({ flaggedForReview: false }),
+        newValue: JSON.stringify({ flaggedForReview: true, reason }),
+        ipAddress: null,
+      },
+    });
+
+    return { success: true, userId };
+  }
+
+  /** Suspend (deactivate) a user account */
+  async suspendUser(userId: number, adminId: number, reason: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+
+    await this.prisma.user.update({ where: { id: userId }, data: { isActive: false } });
+
+    await this.prisma.auditLog.create({
+      data: {
+        userId: adminId,
+        action: 'USER_SUSPENDED',
+        entityType: 'User',
+        entityId: userId,
+        previousValue: JSON.stringify({ isActive: true }),
+        newValue: JSON.stringify({ isActive: false, reason }),
+        ipAddress: null,
+      },
+    });
+
+    return { success: true, userId };
+  }
+
+  /** Reactivate a suspended user */
+  async reactivateUser(userId: number, adminId: number) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+
+    await this.prisma.user.update({ where: { id: userId }, data: { isActive: true } });
+
+    await this.prisma.auditLog.create({
+      data: {
+        userId: adminId,
+        action: 'USER_REACTIVATED',
+        entityType: 'User',
+        entityId: userId,
+        previousValue: JSON.stringify({ isActive: false }),
+        newValue: JSON.stringify({ isActive: true }),
+        ipAddress: null,
+      },
+    });
+
+    return { success: true, userId };
+  }
+
+  /** Summary stats for the security dashboard */
+  async securityStats() {
+    const [activeLocks, totalLocks, recentFailed, flaggedUsers] = await Promise.all([
+      this.prisma.accountLock.count({ where: { isActive: true } }),
+      this.prisma.accountLock.count(),
+      this.prisma.auditLog.count({
+        where: {
+          action: 'LOGIN_FAIL',
+          createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+        },
+      }),
+      this.prisma.user.count({ where: { flaggedForReview: true } }),
+    ]);
+
+    const locksByReason = await this.prisma.accountLock.groupBy({
+      by: ['reason'],
+      _count: { id: true },
+      where: { isActive: true },
+    });
+
+    return {
+      activeLocks,
+      totalLocks,
+      recentFailedLogins24h: recentFailed,
+      flaggedUsers,
+      locksByReason: locksByReason.map((r) => ({ reason: r.reason, count: r._count.id })),
+    };
+  }
 }
 

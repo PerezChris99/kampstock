@@ -39,17 +39,53 @@ export class AuthService {
     }
   }
 
-  private recordFail(key: string): void {
+  private recordFail(key: string, username?: string, ip?: string): void {
     const rec = this.attempts.get(key) ?? { count: 0 };
     rec.count += 1;
     if (rec.count >= this.MAX_ATTEMPTS) {
       rec.lockedUntil = Date.now() + this.LOCKOUT_MS;
+      // Persist the lockout to DB so admins can see and manage it
+      if (username && ip && key.startsWith('user:')) {
+        this.persistLock(username, ip, rec.count);
+      }
     }
     this.attempts.set(key, rec);
   }
 
-  private clearAttempts(key: string): void {
+  private clearAttempts(key: string, username?: string): void {
+    const rec = this.attempts.get(key);
+    if (rec?.lockedUntil && username) {
+      // Mark the DB lock as resolved when user logs in successfully
+      this.prisma.accountLock
+        .updateMany({
+          where: { username, isActive: true },
+          data: { isActive: false, unlockedAt: new Date() },
+        })
+        .catch(() => {});
+    }
     this.attempts.delete(key);
+  }
+
+  /** Persist a brute-force lockout to the database so admins can view/manage it */
+  private persistLock(username: string, ip: string, failCount: number): void {
+    const lockedUntil = new Date(Date.now() + this.LOCKOUT_MS);
+    this.prisma.user
+      .findUnique({ where: { username } })
+      .then((user) =>
+        this.prisma.accountLock.create({
+          data: {
+            username,
+            userId: user?.id ?? null,
+            reason: 'BRUTE_FORCE',
+            triggerSource: 'SYSTEM',
+            ipAddress: ip,
+            failCount,
+            lockedUntil,
+            metadata: JSON.stringify({ ip, triggeredAt: new Date().toISOString() }),
+          },
+        }),
+      )
+      .catch(() => {});
   }
 
   async login(dto: LoginDto, ip = 'unknown', subdomainTenantId?: number) {
@@ -69,7 +105,7 @@ export class AuthService {
       : (await bcrypt.compare(dto.password, dummyHash), false);
 
     if (!user || !user.isActive || !passwordMatch) {
-      this.recordFail(`user:${dto.username}`);
+      this.recordFail(`user:${dto.username}`, dto.username, ip);
       this.recordFail(`ip:${ip}`);
       // Log failed attempt (fire-and-forget — never blocks login)
       this.audit.log(null, 'LOGIN_FAIL', 'User', null, null, { username: dto.username, ip }, ip).catch(() => {});
@@ -79,11 +115,11 @@ export class AuthService {
 
     // If the request came in on a tenant subdomain, ensure the user belongs to that tenant
     if (subdomainTenantId && user.tenantId !== subdomainTenantId) {
-      this.recordFail(`user:${dto.username}`);
+      this.recordFail(`user:${dto.username}`, dto.username, ip);
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    this.clearAttempts(`user:${dto.username}`);
+    this.clearAttempts(`user:${dto.username}`, dto.username);
     this.clearAttempts(`ip:${ip}`);
 
     // Record last login + audit (fire-and-forget — don't block the response)

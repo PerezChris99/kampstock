@@ -57,4 +57,5 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
   get subscription(): PC['subscription'] { return this._db.subscription; }
   get notification(): PC['notification'] { return this._db.notification; }
   get announcement(): PC['announcement'] { return this._db.announcement; }
+  get accountLock(): PC['accountLock'] { return this._db.accountLock; }
 }

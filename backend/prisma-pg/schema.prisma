@@ -16,11 +16,15 @@ model User {
     phone        String?
     roleId       Int       @map("role_id")
     tenantId     Int       @default(1) @map("tenant_id")
-    isActive     Boolean   @default(true) @map("is_active")
-    isSuperAdmin Boolean   @default(false) @map("is_super_admin")
-    lastLoginAt  DateTime? @map("last_login_at")
-    createdAt    DateTime  @default(now()) @map("created_at")
-    updatedAt    DateTime  @updatedAt @map("updated_at")
+    isActive           Boolean   @default(true) @map("is_active")
+    isSuperAdmin       Boolean   @default(false) @map("is_super_admin")
+    lastLoginAt        DateTime? @map("last_login_at")
+    tokenVersion       Int       @default(0) @map("token_version")
+    flaggedForReview   Boolean   @default(false) @map("flagged_for_review")
+    flagReason         String?   @map("flag_reason")
+    forcePasswordReset Boolean   @default(false) @map("force_password_reset")
+    createdAt          DateTime  @default(now()) @map("created_at")
+    updatedAt          DateTime  @updatedAt @map("updated_at")
 
     role             Role            @relation(fields: [roleId], references: [id])
     sales            Sale[]
@@ -31,6 +35,8 @@ model User {
     goodsReceipts    GoodsReceipt[]
     priceHistories   PriceHistory[]
     paymentsReceived Payment[]
+    accountLocks     AccountLock[]   @relation("UserAccountLocks")
+    unlockedLocks    AccountLock[]   @relation("AdminUnlockedLocks")
 
     @@index([tenantId])
     @@index([roleId])
@@ -521,4 +527,30 @@ model Announcement {
     createdAt  DateTime  @default(now()) @map("created_at")
 
     @@map("announcements")
+}
+
+// ─── Account Lock ──────────────────────────────────────────────────────────────
+model AccountLock {
+    id            Int       @id @default(autoincrement())
+    username      String
+    userId        Int?      @map("user_id")
+    reason        String    // BRUTE_FORCE | RATE_LIMIT | ADMIN_LOCK | SUSPICIOUS_ACTIVITY
+    triggerSource String    @default("SYSTEM") @map("trigger_source")
+    ipAddress     String?   @map("ip_address")
+    failCount     Int       @default(0) @map("fail_count")
+    lockedAt      DateTime  @default(now()) @map("locked_at")
+    lockedUntil   DateTime? @map("locked_until")
+    unlockedAt    DateTime? @map("unlocked_at")
+    unlockedById  Int?      @map("unlocked_by_id")
+    isActive      Boolean   @default(true) @map("is_active")
+    notes         String?
+    metadata      String    @default("{}")
+
+    user       User? @relation("UserAccountLocks", fields: [userId], references: [id])
+    unlockedBy User? @relation("AdminUnlockedLocks", fields: [unlockedById], references: [id])
+
+    @@index([username])
+    @@index([isActive, lockedAt])
+    @@index([userId])
+    @@map("account_locks")
 }

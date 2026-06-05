@@ -11,6 +11,7 @@ import {
   Shield, AlertTriangle, CalendarDays, Search,
   Phone, Mail, MapPin, Clock, Star, Layers, BadgeCheck,
   Package, Megaphone, Plus, Trash2,
+  Lock, LockOpen, Flag, UserX, RefreshCw, ShieldAlert, X,
 } from 'lucide-react';
 
 // ─── types ────────────────────────────────────────────────────────────────────
@@ -36,6 +37,42 @@ interface MrrRow { month: string; mrr: number; signups: number; churn: number; }
 interface Announcement {
   id: number; title: string; body: string; severity: string;
   targetPlan: string | null; isActive: boolean; expiresAt: string | null; createdAt: string;
+}
+
+// ─── Account Lock types ────────────────────────────────────────────────────────
+interface AccountLockUser {
+  id: number; name: string; username: string; isActive: boolean;
+  role?: { name: string };
+}
+interface AccountLock {
+  id: number;
+  username: string;
+  userId: number | null;
+  reason: string;
+  triggerSource: string;
+  ipAddress: string | null;
+  failCount: number;
+  lockedAt: string;
+  lockedUntil: string | null;
+  unlockedAt: string | null;
+  isActive: boolean;
+  notes: string | null;
+  metadata: string;
+  user?: AccountLockUser | null;
+  unlockedBy?: { id: number; name: string; username: string } | null;
+}
+interface LocksResponse {
+  locks: AccountLock[];
+  total: number;
+  page: number;
+  pages: number;
+}
+interface SecurityStats {
+  activeLocks: number;
+  totalLocks: number;
+  recentFailedLogins24h: number;
+  flaggedUsers: number;
+  locksByReason: { reason: string; count: number }[];
 }
 
 interface TenantRow {
@@ -138,7 +175,7 @@ export default function SuperAdminPage() {
   const [filterPlan, setFilterPlan] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterBizType, setFilterBizType] = useState('all');
-  const [activeTab, setActiveTab] = useState<'directory' | 'overview' | 'analytics' | 'announcements'>('overview');
+  const [activeTab, setActiveTab] = useState<'directory' | 'overview' | 'analytics' | 'announcements' | 'security'>('overview');
 
   // Announcement form state
   const [annForm, setAnnForm] = useState({ title: '', body: '', severity: 'info', targetPlan: '', expiresAt: '' });
@@ -197,6 +234,82 @@ export default function SuperAdminPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['sa-announcements'] }),
   });
 
+  // ─── Security / Account Locks ─────────────────────────────────────────────
+  const [locksPage, setLocksPage] = useState(1);
+  const [locksActiveOnly, setLocksActiveOnly] = useState(true);
+  const [lockSearch, setLockSearch] = useState('');
+  const [selectedLock, setSelectedLock] = useState<AccountLock | null>(null);
+  const [unlockNotes, setUnlockNotes] = useState('');
+  const [manualLockForm, setManualLockForm] = useState({ username: '', reason: '', notes: '', lockedUntil: '' });
+  const [showManualLock, setShowManualLock] = useState(false);
+
+  const { data: secStats } = useQuery<SecurityStats>({
+    queryKey: ['sa-security-stats'],
+    queryFn: () => api.get('/super-admin/security/stats').then(r => r.data),
+    enabled: activeTab === 'security',
+    refetchInterval: activeTab === 'security' ? 30_000 : false,
+  });
+
+  const { data: locksData, isLoading: locksLoading, refetch: refetchLocks } = useQuery<LocksResponse>({
+    queryKey: ['sa-locks', locksPage, locksActiveOnly],
+    queryFn: () => api.get(`/super-admin/security/locks?activeOnly=${locksActiveOnly}&page=${locksPage}&limit=20`).then(r => r.data),
+    enabled: activeTab === 'security',
+  });
+
+  const unlockMutation = useMutation({
+    mutationFn: ({ id, notes }: { id: number; notes?: string }) =>
+      api.post(`/super-admin/security/locks/${id}/unlock`, { notes }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['sa-locks'] });
+      qc.invalidateQueries({ queryKey: ['sa-security-stats'] });
+      setSelectedLock(null);
+      setUnlockNotes('');
+    },
+  });
+
+  const manualLockMutation = useMutation({
+    mutationFn: (d: typeof manualLockForm) => api.post('/super-admin/security/lock', { ...d, lockedUntil: d.lockedUntil || null }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['sa-locks'] });
+      qc.invalidateQueries({ queryKey: ['sa-security-stats'] });
+      setShowManualLock(false);
+      setManualLockForm({ username: '', reason: '', notes: '', lockedUntil: '' });
+    },
+  });
+
+  const forceResetMutation = useMutation({
+    mutationFn: (userId: number) => api.post(`/super-admin/security/users/${userId}/force-password-reset`),
+    onSuccess: () => { setSelectedLock(null); qc.invalidateQueries({ queryKey: ['sa-locks'] }); },
+  });
+
+  const suspendUserMutation = useMutation({
+    mutationFn: ({ userId, reason }: { userId: number; reason: string }) =>
+      api.post(`/super-admin/security/users/${userId}/suspend`, { reason }),
+    onSuccess: () => { setSelectedLock(null); qc.invalidateQueries({ queryKey: ['sa-locks'] }); },
+  });
+
+  const reactivateUserMutation = useMutation({
+    mutationFn: (userId: number) => api.post(`/super-admin/security/users/${userId}/reactivate`),
+    onSuccess: () => { setSelectedLock(null); qc.invalidateQueries({ queryKey: ['sa-locks'] }); },
+  });
+
+  const flagMutation = useMutation({
+    mutationFn: ({ userId, reason }: { userId: number; reason: string }) =>
+      api.post(`/super-admin/security/users/${userId}/flag`, { reason }),
+    onSuccess: () => setSelectedLock(null),
+  });
+
+  const filteredLocks = useMemo(() => {
+    if (!locksData?.locks) return [];
+    const q = lockSearch.toLowerCase();
+    if (!q) return locksData.locks;
+    return locksData.locks.filter(l =>
+      l.username.toLowerCase().includes(q) ||
+      (l.ipAddress ?? '').toLowerCase().includes(q) ||
+      l.reason.toLowerCase().includes(q),
+    );
+  }, [locksData, lockSearch]);
+
   const filtered = useMemo(() => {
     if (!tenants) return [];
     return tenants.filter((t) => {
@@ -251,7 +364,7 @@ export default function SuperAdminPage() {
 
       {/* Tabs */}
       <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1 w-fit flex-wrap">
-        {(['overview', 'directory', 'analytics', 'announcements'] as const).map((tab) => (
+        {(['overview', 'directory', 'analytics', 'announcements', 'security'] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -261,7 +374,11 @@ export default function SuperAdminPage() {
                 : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
             }`}
           >
-            {tab === 'overview' ? 'Platform Overview' : tab === 'directory' ? 'Business Directory' : tab === 'analytics' ? 'Revenue Analytics' : 'Announcements'}
+            {tab === 'overview' ? 'Platform Overview'
+              : tab === 'directory' ? 'Business Directory'
+              : tab === 'analytics' ? 'Revenue Analytics'
+              : tab === 'announcements' ? 'Announcements'
+              : <span className="flex items-center gap-1.5"><ShieldAlert className="w-3.5 h-3.5" />Security</span>}
           </button>
         ))}
       </div>
@@ -764,6 +881,390 @@ export default function SuperAdminPage() {
           </div>
         </div>
       )}
+
+      {/* ====== SECURITY TAB ====== */}
+      {activeTab === 'security' && (
+        <div className="space-y-5">
+
+          {/* Security Stats Row */}
+          {secStats && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {[
+                { label: 'Active Locks', value: secStats.activeLocks, icon: Lock, color: 'text-red-500', bg: 'bg-red-50 dark:bg-red-900/20' },
+                { label: 'Total Lock Events', value: secStats.totalLocks, icon: ShieldAlert, color: 'text-orange-500', bg: 'bg-orange-50 dark:bg-orange-900/20' },
+                { label: 'Failed Logins (24h)', value: secStats.recentFailedLogins24h, icon: AlertTriangle, color: 'text-amber-500', bg: 'bg-amber-50 dark:bg-amber-900/20' },
+                { label: 'Flagged Users', value: secStats.flaggedUsers, icon: Flag, color: 'text-purple-500', bg: 'bg-purple-50 dark:bg-purple-900/20' },
+              ].map(c => (
+                <div key={c.label} className="rounded-2xl bg-white dark:bg-gray-800 p-4 shadow-sm border border-gray-100 dark:border-gray-700">
+                  <div className={`w-8 h-8 rounded-lg ${c.bg} flex items-center justify-center mb-2`}>
+                    <c.icon className={`w-4 h-4 ${c.color}`} />
+                  </div>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white">{c.value}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide mt-0.5">{c.label}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Locks by reason breakdown */}
+          {secStats && secStats.locksByReason.length > 0 && (
+            <div className="rounded-2xl bg-white dark:bg-gray-800 p-4 shadow-sm border border-gray-100 dark:border-gray-700">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Active Locks by Reason</p>
+              <div className="flex flex-wrap gap-2">
+                {secStats.locksByReason.map(r => (
+                  <span key={r.reason} className="px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">
+                    {r.reason.replace('_', ' ')}: {r.count}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Controls bar */}
+          <div className="flex flex-wrap gap-3 items-center">
+            <div className="relative flex-1 min-w-48">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Search by username, IP, reason..."
+                value={lockSearch}
+                onChange={e => setLockSearch(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500"
+              />
+            </div>
+            <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={locksActiveOnly}
+                onChange={e => { setLocksActiveOnly(e.target.checked); setLocksPage(1); }}
+                className="rounded"
+              />
+              Active locks only
+            </label>
+            <button
+              onClick={() => { void refetchLocks(); qc.invalidateQueries({ queryKey: ['sa-security-stats'] }); }}
+              className="flex items-center gap-1.5 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white border border-gray-200 dark:border-gray-600 rounded-xl transition-colors"
+            >
+              <RefreshCw className="w-3.5 h-3.5" /> Refresh
+            </button>
+            <button
+              onClick={() => setShowManualLock(true)}
+              className="flex items-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-xl transition-colors"
+            >
+              <Lock className="w-3.5 h-3.5" /> Lock Account
+            </button>
+          </div>
+
+          {/* Manual Lock Form */}
+          {showManualLock && (
+            <div className="rounded-2xl bg-white dark:bg-gray-800 p-5 shadow-sm border border-red-200 dark:border-red-800 space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                  <Lock className="w-4 h-4 text-red-500" /> Manually Lock Account
+                </h3>
+                <button onClick={() => setShowManualLock(false)} className="text-gray-400 hover:text-gray-600">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Username *</label>
+                  <input
+                    type="text"
+                    value={manualLockForm.username}
+                    onChange={e => setManualLockForm(p => ({ ...p, username: e.target.value }))}
+                    placeholder="Enter username"
+                    className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Reason *</label>
+                  <input
+                    type="text"
+                    value={manualLockForm.reason}
+                    onChange={e => setManualLockForm(p => ({ ...p, reason: e.target.value }))}
+                    placeholder="e.g. Suspicious activity, policy violation"
+                    className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Lock Until (optional)</label>
+                  <input
+                    type="datetime-local"
+                    value={manualLockForm.lockedUntil}
+                    onChange={e => setManualLockForm(p => ({ ...p, lockedUntil: e.target.value }))}
+                    className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Admin Notes</label>
+                  <input
+                    type="text"
+                    value={manualLockForm.notes}
+                    onChange={e => setManualLockForm(p => ({ ...p, notes: e.target.value }))}
+                    placeholder="Internal notes"
+                    className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-2 justify-end pt-1">
+                <button onClick={() => setShowManualLock(false)} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 border border-gray-200 rounded-lg">Cancel</button>
+                <button
+                  onClick={() => manualLockMutation.mutate(manualLockForm)}
+                  disabled={!manualLockForm.username || !manualLockForm.reason || manualLockMutation.isPending}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors"
+                >
+                  {manualLockMutation.isPending ? 'Locking...' : 'Lock Account'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Locks Table */}
+          <div className="rounded-2xl bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+              <h2 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                <Lock className="w-4 h-4 text-red-500" />
+                {locksActiveOnly ? 'Active Account Locks' : 'All Lock Events'}
+                {locksData && <span className="text-xs text-gray-400 font-normal">({locksData.total} total)</span>}
+              </h2>
+            </div>
+
+            {locksLoading ? (
+              <div className="p-8 text-center text-gray-400">Loading locks...</div>
+            ) : filteredLocks.length === 0 ? (
+              <div className="p-8 text-center">
+                <LockOpen className="w-10 h-10 text-green-400 mx-auto mb-2" />
+                <p className="text-gray-500 dark:text-gray-400 font-medium">No locked accounts</p>
+                <p className="text-xs text-gray-400 mt-1">All accounts are currently unlocked.</p>
+              </div>
+            ) : (
+              <>
+                <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                  {filteredLocks.map(lock => (
+                    <div
+                      key={lock.id}
+                      className="px-5 py-4 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors cursor-pointer"
+                      onClick={() => setSelectedLock(selectedLock?.id === lock.id ? null : lock)}
+                    >
+                      <div className="flex flex-wrap items-start gap-3">
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${lock.isActive ? 'bg-red-100 dark:bg-red-900/30' : 'bg-green-100 dark:bg-green-900/30'}`}>
+                          {lock.isActive ? <Lock className="w-4 h-4 text-red-500" /> : <LockOpen className="w-4 h-4 text-green-500" />}
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2 mb-0.5">
+                            <span className="font-semibold text-gray-900 dark:text-white text-sm">{lock.username}</span>
+                            {lock.user?.role && (
+                              <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded-full">{lock.user.role.name}</span>
+                            )}
+                            <LockReasonBadge reason={lock.reason} />
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${lock.triggerSource === 'ADMIN' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'}`}>
+                              {lock.triggerSource}
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+                            <span className="flex items-center gap-1"><Clock className="w-3 h-3" />Locked {fmtDateTime(lock.lockedAt)}</span>
+                            {lock.ipAddress && <span className="flex items-center gap-1">IP: <code className="bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded text-xs">{lock.ipAddress}</code></span>}
+                            {lock.failCount > 0 && <span>{lock.failCount} failed attempts</span>}
+                            {lock.lockedUntil && lock.isActive && <span className="text-amber-600 dark:text-amber-400">Until {fmtDateTime(lock.lockedUntil)}</span>}
+                            {!lock.isActive && lock.unlockedAt && <span className="text-green-600 dark:text-green-400">Unlocked {fmtDateTime(lock.unlockedAt)} by {lock.unlockedBy?.name ?? 'system'}</span>}
+                          </div>
+                          {lock.notes && <p className="text-xs text-gray-400 italic mt-1">Note: {lock.notes}</p>}
+                        </div>
+
+                        {lock.isActive && (
+                          <button
+                            onClick={e => { e.stopPropagation(); setSelectedLock(lock); }}
+                            className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-300 text-xs font-semibold rounded-lg transition-colors"
+                          >
+                            <LockOpen className="w-3.5 h-3.5" /> Unlock
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Expanded detail panel */}
+                      {selectedLock?.id === lock.id && (
+                        <div
+                          className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 space-y-4"
+                          onClick={e => e.stopPropagation()}
+                        >
+                          <div className="grid sm:grid-cols-2 gap-4">
+                            {/* User info */}
+                            <div className="bg-gray-50 dark:bg-gray-750 rounded-xl p-4 space-y-2">
+                              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Account Information</p>
+                              {lock.user ? (
+                                <div className="space-y-1.5 text-sm">
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-500">Name</span>
+                                    <span className="font-medium text-gray-900 dark:text-white">{lock.user.name}</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-500">Username</span>
+                                    <code className="text-xs bg-gray-200 dark:bg-gray-700 px-2 py-0.5 rounded">{lock.user.username}</code>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-500">Role</span>
+                                    <span className="text-gray-900 dark:text-white">{lock.user.role?.name ?? '—'}</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-500">Account Active</span>
+                                    <span className={lock.user.isActive ? 'text-green-600' : 'text-red-500'}>{lock.user.isActive ? 'Yes' : 'No'}</span>
+                                  </div>
+                                </div>
+                              ) : (
+                                <p className="text-sm text-gray-400 italic">User record not found (may have been deleted)</p>
+                              )}
+                            </div>
+
+                            {/* Lock metadata */}
+                            <div className="bg-gray-50 dark:bg-gray-750 rounded-xl p-4 space-y-2">
+                              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Lock Details</p>
+                              <div className="space-y-1.5 text-sm">
+                                <div className="flex justify-between">
+                                  <span className="text-gray-500">Reason</span>
+                                  <LockReasonBadge reason={lock.reason} />
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-gray-500">Trigger</span>
+                                  <span className="text-gray-900 dark:text-white">{lock.triggerSource}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-gray-500">IP Address</span>
+                                  <code className="text-xs bg-gray-200 dark:bg-gray-700 px-2 py-0.5 rounded">{lock.ipAddress ?? '—'}</code>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-gray-500">Failed Attempts</span>
+                                  <span className="font-bold text-red-500">{lock.failCount}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-gray-500">Locked At</span>
+                                  <span className="text-gray-900 dark:text-white text-xs">{fmtDateTime(lock.lockedAt)}</span>
+                                </div>
+                                {lock.lockedUntil && (
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-500">Expires</span>
+                                    <span className={`text-xs ${lock.isActive ? 'text-amber-600' : 'text-gray-500'}`}>{fmtDateTime(lock.lockedUntil)}</span>
+                                  </div>
+                                )}
+                                {!lock.lockedUntil && lock.isActive && (
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-500">Duration</span>
+                                    <span className="text-xs text-red-500 font-medium">Until manually unlocked</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Action buttons */}
+                          {lock.isActive && (
+                            <div className="space-y-3">
+                              <div>
+                                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">Admin Notes (optional)</label>
+                                <input
+                                  type="text"
+                                  value={unlockNotes}
+                                  onChange={e => setUnlockNotes(e.target.value)}
+                                  placeholder="Reason for unlocking..."
+                                  className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500"
+                                />
+                              </div>
+                              <div className="flex flex-wrap gap-2">
+                                <button
+                                  onClick={() => unlockMutation.mutate({ id: lock.id, notes: unlockNotes || undefined })}
+                                  disabled={unlockMutation.isPending}
+                                  className="flex items-center gap-1.5 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors"
+                                >
+                                  <LockOpen className="w-4 h-4" />
+                                  {unlockMutation.isPending ? 'Unlocking...' : 'Unlock Account'}
+                                </button>
+                                {lock.user && (
+                                  <>
+                                    <button
+                                      onClick={() => lock.user && forceResetMutation.mutate(lock.user.id)}
+                                      disabled={forceResetMutation.isPending}
+                                      className="flex items-center gap-1.5 px-3 py-2 bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-300 text-sm font-medium rounded-lg transition-colors"
+                                    >
+                                      <RefreshCw className="w-3.5 h-3.5" /> Force Password Reset
+                                    </button>
+                                    {lock.user.isActive ? (
+                                      <button
+                                        onClick={() => lock.user && suspendUserMutation.mutate({ userId: lock.user.id, reason: 'Admin action from security panel' })}
+                                        disabled={suspendUserMutation.isPending}
+                                        className="flex items-center gap-1.5 px-3 py-2 bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-300 text-sm font-medium rounded-lg transition-colors"
+                                      >
+                                        <UserX className="w-3.5 h-3.5" /> Suspend User
+                                      </button>
+                                    ) : (
+                                      <button
+                                        onClick={() => lock.user && reactivateUserMutation.mutate(lock.user.id)}
+                                        disabled={reactivateUserMutation.isPending}
+                                        className="flex items-center gap-1.5 px-3 py-2 bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-300 text-sm font-medium rounded-lg transition-colors"
+                                      >
+                                        <Users className="w-3.5 h-3.5" /> Reactivate User
+                                      </button>
+                                    )}
+                                    <button
+                                      onClick={() => lock.user && flagMutation.mutate({ userId: lock.user.id, reason: 'Flagged from security panel' })}
+                                      disabled={flagMutation.isPending}
+                                      className="flex items-center gap-1.5 px-3 py-2 bg-purple-100 text-purple-700 hover:bg-purple-200 dark:bg-purple-900/30 dark:text-purple-300 text-sm font-medium rounded-lg transition-colors"
+                                    >
+                                      <Flag className="w-3.5 h-3.5" /> Flag for Investigation
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Pagination */}
+                {locksData && locksData.pages > 1 && (
+                  <div className="px-5 py-3 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between">
+                    <button
+                      onClick={() => setLocksPage(p => Math.max(1, p - 1))}
+                      disabled={locksPage <= 1}
+                      className="px-3 py-1.5 text-sm text-gray-600 border border-gray-200 rounded-lg disabled:opacity-40 hover:bg-gray-50"
+                    >Previous</button>
+                    <span className="text-sm text-gray-500">Page {locksPage} of {locksData.pages}</span>
+                    <button
+                      onClick={() => setLocksPage(p => Math.min(locksData.pages, p + 1))}
+                      disabled={locksPage >= locksData.pages}
+                      className="px-3 py-1.5 text-sm text-gray-600 border border-gray-200 rounded-lg disabled:opacity-40 hover:bg-gray-50"
+                    >Next</button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+// ─── Helper Components ─────────────────────────────────────────────────────────
+function LockReasonBadge({ reason }: { reason: string }) {
+  const styles: Record<string, string> = {
+    BRUTE_FORCE: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300',
+    RATE_LIMIT: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300',
+    ADMIN_LOCK: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
+    SUSPICIOUS_ACTIVITY: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
+  };
+  const labels: Record<string, string> = {
+    BRUTE_FORCE: 'Brute Force',
+    RATE_LIMIT: 'Rate Limit',
+    ADMIN_LOCK: 'Admin Lock',
+    SUSPICIOUS_ACTIVITY: 'Suspicious Activity',
+  };
+  return (
+    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${styles[reason] ?? 'bg-gray-100 text-gray-600'}`}>
+      {labels[reason] ?? reason.replace('_', ' ')}
+    </span>
   );
 }
