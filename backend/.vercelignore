@@ -1,8 +1,0 @@
-# Exclude files not needed by the build or at runtime
-# NOTE: src/ must NOT be listed — nest build needs the TypeScript sources
-prisma/
-test/
-tests/
-coverage/
-.env*
-*.log
