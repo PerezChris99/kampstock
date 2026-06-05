@@ -190,7 +190,18 @@ export class AuthService {
         include: { role: true },
       });
       if (!user || !user.isActive) throw new UnauthorizedException();
-      return this.generateTokens(user);
+      // Reject if the token's version doesn't match the stored version
+      // (handles revocation via logout or admin suspension)
+      if ((payload.tokenVersion ?? 0) !== (user.tokenVersion ?? 0)) {
+        throw new UnauthorizedException('Token has been revoked');
+      }
+      // Rotate: increment tokenVersion so previous refresh tokens are invalidated
+      const updated = await this.prisma.user.update({
+        where: { id: user.id },
+        data: { tokenVersion: { increment: 1 } },
+        include: { role: true },
+      });
+      return this.generateTokens(updated);
     } catch {
       throw new UnauthorizedException('Invalid refresh token');
     }
@@ -217,6 +228,7 @@ export class AuthService {
       tenantId: user.tenantId ?? 1,
       isSuperAdmin: user.isSuperAdmin ?? false,
       permissions,
+      tokenVersion: user.tokenVersion ?? 0,
     };
     const accessToken = this.jwtService.sign(payload, {
       secret: this.config.get<string>('JWT_SECRET'),

@@ -1,4 +1,8 @@
-import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios, { AxiosInstance } from 'axios';
 
@@ -42,21 +46,37 @@ export class PesapalService {
   }
 
   private async getToken(): Promise<string> {
-    if (this.tokenCache && this.tokenCache.expiresAt > new Date(Date.now() + 30_000)) {
+    if (
+      this.tokenCache &&
+      this.tokenCache.expiresAt > new Date(Date.now() + 30_000)
+    ) {
       return this.tokenCache.token;
     }
     const key = this.config.get<string>('PESAPAL_CONSUMER_KEY');
     const secret = this.config.get<string>('PESAPAL_CONSUMER_SECRET');
     if (!key || !secret) {
-      throw new InternalServerErrorException('Pesapal credentials not configured');
+      throw new InternalServerErrorException(
+        'Pesapal credentials not configured',
+      );
     }
-    const { data } = await this.http.post('/api/Auth/RequestToken', {
-      consumer_key: key,
-      consumer_secret: secret,
-    }, { headers: { Accept: 'application/json', 'Content-Type': 'application/json' } });
+    const { data } = await this.http.post(
+      '/api/Auth/RequestToken',
+      {
+        consumer_key: key,
+        consumer_secret: secret,
+      },
+      {
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+      },
+    );
 
     if (data.status !== '200' || !data.token) {
-      throw new InternalServerErrorException('Pesapal auth failed: ' + data.message);
+      throw new InternalServerErrorException(
+        'Pesapal auth failed: ' + data.message,
+      );
     }
     this.tokenCache = {
       token: data.token,
@@ -74,16 +94,27 @@ export class PesapalService {
   }
 
   async getOrRegisterIpn(): Promise<string> {
+    // Prefer a pre-registered IPN ID from env — avoids duplicate registrations on cold starts
+    const envIpnId = this.config.get<string>('PESAPAL_IPN_ID');
+    if (envIpnId) return envIpnId;
+
     if (this.ipnId) return this.ipnId;
     const ipnUrl = this.config.get<string>('PESAPAL_IPN_URL');
-    if (!ipnUrl) throw new InternalServerErrorException('PESAPAL_IPN_URL not configured');
+    if (!ipnUrl)
+      throw new InternalServerErrorException('PESAPAL_IPN_URL not configured');
     const token = await this.getToken();
-    const { data } = await this.http.post('/api/URLSetup/RegisterIPN', {
-      url: ipnUrl,
-      ipn_notification_type: 'GET',
-    }, { headers: this.authHeaders(token) });
+    const { data } = await this.http.post(
+      '/api/URLSetup/RegisterIPN',
+      {
+        url: ipnUrl,
+        ipn_notification_type: 'GET',
+      },
+      { headers: this.authHeaders(token) },
+    );
     if (!data.ipn_id) {
-      throw new InternalServerErrorException('Pesapal IPN registration failed: ' + JSON.stringify(data));
+      throw new InternalServerErrorException(
+        'Pesapal IPN registration failed: ' + JSON.stringify(data),
+      );
     }
     this.ipnId = data.ipn_id as string;
     this.logger.log(`Pesapal IPN registered: ${this.ipnId}`);
@@ -93,7 +124,8 @@ export class PesapalService {
   async submitOrder(payload: SubmitOrderPayload): Promise<SubmitOrderResult> {
     const token = await this.getToken();
     const ipnId = await this.getOrRegisterIpn();
-    const callbackUrl = this.config.get<string>('PESAPAL_CALLBACK_URL') || payload.callbackUrl;
+    const callbackUrl =
+      this.config.get<string>('PESAPAL_CALLBACK_URL') || payload.callbackUrl;
 
     const body = {
       id: payload.merchantRef,
@@ -111,12 +143,18 @@ export class PesapalService {
       },
     };
 
-    const { data } = await this.http.post('/api/Transactions/SubmitOrderRequest', body, {
-      headers: this.authHeaders(token),
-    });
+    const { data } = await this.http.post(
+      '/api/Transactions/SubmitOrderRequest',
+      body,
+      {
+        headers: this.authHeaders(token),
+      },
+    );
 
     if (data.error?.code || !data.redirect_url) {
-      throw new InternalServerErrorException('Pesapal order submission failed: ' + JSON.stringify(data));
+      throw new InternalServerErrorException(
+        'Pesapal order submission failed: ' + JSON.stringify(data),
+      );
     }
 
     return {
@@ -126,11 +164,21 @@ export class PesapalService {
     };
   }
 
-  async getTransactionStatus(orderTrackingId: string): Promise<{ status: string; paymentMethod: string; amount: number; confirmationCode: string }> {
+  async getTransactionStatus(
+    orderTrackingId: string,
+  ): Promise<{
+    status: string;
+    paymentMethod: string;
+    amount: number;
+    confirmationCode: string;
+  }> {
     const token = await this.getToken();
-    const { data } = await this.http.get(`/api/Transactions/GetTransactionStatus?orderTrackingId=${orderTrackingId}`, {
-      headers: this.authHeaders(token),
-    });
+    const { data } = await this.http.get(
+      `/api/Transactions/GetTransactionStatus?orderTrackingId=${orderTrackingId}`,
+      {
+        headers: this.authHeaders(token),
+      },
+    );
     return {
       status: data.payment_status_description || data.status_code || 'UNKNOWN',
       paymentMethod: data.payment_method || '',

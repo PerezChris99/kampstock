@@ -1,4 +1,8 @@
-import { Injectable, BadRequestException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
@@ -6,7 +10,10 @@ import { AuditService } from '../audit/audit.service';
 
 /** Compute SHA-256 checksum of the backup tables payload */
 function computeChecksum(tables: object): string {
-  return crypto.createHash('sha256').update(JSON.stringify(tables)).digest('hex');
+  return crypto
+    .createHash('sha256')
+    .update(JSON.stringify(tables))
+    .digest('hex');
 }
 
 @Injectable()
@@ -23,15 +30,36 @@ export class BackupService {
    */
   async exportBackup(actorId: number, ip: string, tenantId: number) {
     const [
-      roles, users, categories, products, productUnits,
-      stockLocations, stockItems, suppliers, customers,
-      purchaseOrders, purchaseOrderLines, expenses, sales, saleLines, payments,
+      roles,
+      users,
+      categories,
+      products,
+      productUnits,
+      stockLocations,
+      stockItems,
+      suppliers,
+      customers,
+      purchaseOrders,
+      purchaseOrderLines,
+      expenses,
+      sales,
+      saleLines,
+      payments,
     ] = await Promise.all([
       this.prisma.role.findMany({ where: { tenantId } }),
       // passwordHash intentionally excluded — restore issues temp passwords for security
       this.prisma.user.findMany({
         where: { tenantId },
-        select: { id: true, name: true, username: true, phone: true, roleId: true, tenantId: true, isActive: true, createdAt: true },
+        select: {
+          id: true,
+          name: true,
+          username: true,
+          phone: true,
+          roleId: true,
+          tenantId: true,
+          isActive: true,
+          createdAt: true,
+        },
       }),
       this.prisma.category.findMany({ where: { tenantId } }),
       this.prisma.product.findMany({ where: { tenantId } }),
@@ -41,7 +69,9 @@ export class BackupService {
       this.prisma.supplier.findMany({ where: { tenantId } }),
       this.prisma.customer.findMany({ where: { tenantId } }),
       this.prisma.purchaseOrder.findMany({ where: { tenantId } }),
-      this.prisma.purchaseOrderLine.findMany({ where: { purchaseOrder: { tenantId } } }),
+      this.prisma.purchaseOrderLine.findMany({
+        where: { purchaseOrder: { tenantId } },
+      }),
       this.prisma.expense.findMany({ where: { tenantId } }),
       this.prisma.sale.findMany({ where: { tenantId } }),
       this.prisma.saleLine.findMany({ where: { sale: { tenantId } } }),
@@ -49,9 +79,21 @@ export class BackupService {
     ]);
 
     const tables = {
-      roles, users, categories, products, productUnits,
-      stockLocations, stockItems, suppliers, customers,
-      purchaseOrders, purchaseOrderLines, expenses, sales, saleLines, payments,
+      roles,
+      users,
+      categories,
+      products,
+      productUnits,
+      stockLocations,
+      stockItems,
+      suppliers,
+      customers,
+      purchaseOrders,
+      purchaseOrderLines,
+      expenses,
+      sales,
+      saleLines,
+      payments,
     };
 
     const rowCounts: Record<string, number> = {};
@@ -71,7 +113,16 @@ export class BackupService {
 
     const filename = `kampstock-backup-tenant${tenantId}-${new Date().toISOString().split('T')[0]}.json`;
     this.audit
-      .log(actorId, 'BACKUP_EXPORT', 'System', null, null, { filename, tenantId, rowCounts }, ip, tenantId)
+      .log(
+        actorId,
+        'BACKUP_EXPORT',
+        'System',
+        null,
+        null,
+        { filename, tenantId, rowCounts },
+        ip,
+        tenantId,
+      )
       .catch(() => {});
     return { data, filename };
   }
@@ -87,7 +138,11 @@ export class BackupService {
     actorId: number,
     ip: string,
     tenantId: number,
-  ): Promise<{ message: string; summary: Record<string, number>; tempPasswords: Record<string, string> }> {
+  ): Promise<{
+    message: string;
+    summary: Record<string, number>;
+    tempPasswords: Record<string, string>;
+  }> {
     if (!data?.tables || data?.system !== 'KampStock') {
       throw new BadRequestException('Invalid backup file format');
     }
@@ -101,7 +156,9 @@ export class BackupService {
     if (data.version === '2.0' && data.checksum) {
       const computed = computeChecksum(data.tables);
       if (computed !== data.checksum) {
-        throw new BadRequestException('Backup integrity check failed — checksum mismatch. File may be corrupted or tampered with.');
+        throw new BadRequestException(
+          'Backup integrity check failed — checksum mismatch. File may be corrupted or tampered with.',
+        );
       }
     }
 
@@ -115,7 +172,9 @@ export class BackupService {
       await tx.saleLine.deleteMany({ where: { sale: { tenantId } } });
       await tx.sale.deleteMany({ where: { tenantId } });
       await tx.expense.deleteMany({ where: { tenantId } });
-      await tx.purchaseOrderLine.deleteMany({ where: { purchaseOrder: { tenantId } } });
+      await tx.purchaseOrderLine.deleteMany({
+        where: { purchaseOrder: { tenantId } },
+      });
       await tx.purchaseOrder.deleteMany({ where: { tenantId } });
       await tx.stockItem.deleteMany({ where: { location: { tenantId } } });
       await tx.stockLocation.deleteMany({ where: { tenantId } });
@@ -158,120 +217,244 @@ export class BackupService {
       // ── Bulk inserts via createMany (dramatically faster than per-row create) ──
 
       const categories = (data.tables.categories ?? []).map((cat: any) => ({
-        id: cat.id, name: cat.name, parentId: cat.parentId ?? null, tenantId,
-        createdAt: new Date(cat.createdAt), updatedAt: new Date(cat.updatedAt),
+        id: cat.id,
+        name: cat.name,
+        parentId: cat.parentId ?? null,
+        tenantId,
+        createdAt: new Date(cat.createdAt),
+        updatedAt: new Date(cat.updatedAt),
       }));
-      if (categories.length) await tx.category.createMany({ data: categories, skipDuplicates: true });
+      if (categories.length)
+        await tx.category.createMany({
+          data: categories,
+          skipDuplicates: true,
+        });
       summary.categories = categories.length;
 
       const products = (data.tables.products ?? []).map((p: any) => ({
-        id: p.id, name: p.name, sku: p.sku, barcode: p.barcode ?? null, categoryId: p.categoryId,
-        tenantId, brand: p.brand ?? null, description: p.description ?? null,
-        unitOfMeasure: p.unitOfMeasure, allowFractional: p.allowFractional ?? false,
-        hasExpiry: p.hasExpiry ?? false, defaultTaxRate: p.defaultTaxRate ?? 0,
-        reorderLevel: p.reorderLevel ?? 0, isActive: p.isActive ?? true,
-        createdAt: new Date(p.createdAt), updatedAt: new Date(p.updatedAt),
+        id: p.id,
+        name: p.name,
+        sku: p.sku,
+        barcode: p.barcode ?? null,
+        categoryId: p.categoryId,
+        tenantId,
+        brand: p.brand ?? null,
+        description: p.description ?? null,
+        unitOfMeasure: p.unitOfMeasure,
+        allowFractional: p.allowFractional ?? false,
+        hasExpiry: p.hasExpiry ?? false,
+        defaultTaxRate: p.defaultTaxRate ?? 0,
+        reorderLevel: p.reorderLevel ?? 0,
+        isActive: p.isActive ?? true,
+        createdAt: new Date(p.createdAt),
+        updatedAt: new Date(p.updatedAt),
       }));
-      if (products.length) await tx.product.createMany({ data: products, skipDuplicates: true });
+      if (products.length)
+        await tx.product.createMany({ data: products, skipDuplicates: true });
       summary.products = products.length;
 
       const productUnits = (data.tables.productUnits ?? []).map((pu: any) => ({
-        id: pu.id, productId: pu.productId, unitName: pu.unitName,
-        conversionFactor: pu.conversionFactor, buyingPrice: pu.buyingPrice,
-        sellingPriceRetail: pu.sellingPriceRetail, sellingPriceWholesale: pu.sellingPriceWholesale,
-        minWholesaleQty: pu.minWholesaleQty ?? null, isDefault: pu.isDefault ?? false,
+        id: pu.id,
+        productId: pu.productId,
+        unitName: pu.unitName,
+        conversionFactor: pu.conversionFactor,
+        buyingPrice: pu.buyingPrice,
+        sellingPriceRetail: pu.sellingPriceRetail,
+        sellingPriceWholesale: pu.sellingPriceWholesale,
+        minWholesaleQty: pu.minWholesaleQty ?? null,
+        isDefault: pu.isDefault ?? false,
       }));
-      if (productUnits.length) await tx.productUnit.createMany({ data: productUnits, skipDuplicates: true });
+      if (productUnits.length)
+        await tx.productUnit.createMany({
+          data: productUnits,
+          skipDuplicates: true,
+        });
       summary.productUnits = productUnits.length;
 
-      const stockLocations = (data.tables.stockLocations ?? []).map((loc: any) => ({
-        id: loc.id, name: loc.name, description: loc.description ?? null, tenantId,
-        isActive: loc.isActive ?? true, createdAt: new Date(loc.createdAt),
-      }));
-      if (stockLocations.length) await tx.stockLocation.createMany({ data: stockLocations, skipDuplicates: true });
+      const stockLocations = (data.tables.stockLocations ?? []).map(
+        (loc: any) => ({
+          id: loc.id,
+          name: loc.name,
+          description: loc.description ?? null,
+          tenantId,
+          isActive: loc.isActive ?? true,
+          createdAt: new Date(loc.createdAt),
+        }),
+      );
+      if (stockLocations.length)
+        await tx.stockLocation.createMany({
+          data: stockLocations,
+          skipDuplicates: true,
+        });
 
       const stockItems = (data.tables.stockItems ?? []).map((si: any) => ({
-        id: si.id, productId: si.productId, locationId: si.locationId,
-        quantityOnHand: si.quantityOnHand, batchNo: si.batchNo ?? null,
+        id: si.id,
+        productId: si.productId,
+        locationId: si.locationId,
+        quantityOnHand: si.quantityOnHand,
+        batchNo: si.batchNo ?? null,
         expiryDate: si.expiryDate ? new Date(si.expiryDate) : null,
-        lastCostPrice: si.lastCostPrice ?? 0, updatedAt: new Date(si.updatedAt),
+        lastCostPrice: si.lastCostPrice ?? 0,
+        updatedAt: new Date(si.updatedAt),
       }));
-      if (stockItems.length) await tx.stockItem.createMany({ data: stockItems, skipDuplicates: true });
+      if (stockItems.length)
+        await tx.stockItem.createMany({
+          data: stockItems,
+          skipDuplicates: true,
+        });
       summary.stockItems = stockItems.length;
 
       const suppliers = (data.tables.suppliers ?? []).map((sup: any) => ({
-        id: sup.id, name: sup.name, contactPerson: sup.contactPerson ?? null,
-        phone: sup.phone ?? null, email: sup.email ?? null, address: sup.address ?? null,
-        tin: sup.tin ?? null, tenantId, balance: sup.balance ?? 0,
+        id: sup.id,
+        name: sup.name,
+        contactPerson: sup.contactPerson ?? null,
+        phone: sup.phone ?? null,
+        email: sup.email ?? null,
+        address: sup.address ?? null,
+        tin: sup.tin ?? null,
+        tenantId,
+        balance: sup.balance ?? 0,
         isActive: sup.isActive ?? true,
-        createdAt: new Date(sup.createdAt), updatedAt: new Date(sup.updatedAt),
+        createdAt: new Date(sup.createdAt),
+        updatedAt: new Date(sup.updatedAt),
       }));
-      if (suppliers.length) await tx.supplier.createMany({ data: suppliers, skipDuplicates: true });
+      if (suppliers.length)
+        await tx.supplier.createMany({ data: suppliers, skipDuplicates: true });
       summary.suppliers = suppliers.length;
 
       const customers = (data.tables.customers ?? []).map((cust: any) => ({
-        id: cust.id, name: cust.name, phone: cust.phone ?? null, email: cust.email ?? null,
-        address: cust.address ?? null, tin: cust.tin ?? null, tenantId,
-        isWholesale: cust.isWholesale ?? false, creditLimit: cust.creditLimit ?? 0,
-        balance: cust.balance ?? 0, isActive: cust.isActive ?? true,
-        createdAt: new Date(cust.createdAt), updatedAt: new Date(cust.updatedAt),
+        id: cust.id,
+        name: cust.name,
+        phone: cust.phone ?? null,
+        email: cust.email ?? null,
+        address: cust.address ?? null,
+        tin: cust.tin ?? null,
+        tenantId,
+        isWholesale: cust.isWholesale ?? false,
+        creditLimit: cust.creditLimit ?? 0,
+        balance: cust.balance ?? 0,
+        isActive: cust.isActive ?? true,
+        createdAt: new Date(cust.createdAt),
+        updatedAt: new Date(cust.updatedAt),
       }));
-      if (customers.length) await tx.customer.createMany({ data: customers, skipDuplicates: true });
+      if (customers.length)
+        await tx.customer.createMany({ data: customers, skipDuplicates: true });
       summary.customers = customers.length;
 
-      const purchaseOrders = (data.tables.purchaseOrders ?? []).map((po: any) => ({
-        id: po.id, poNumber: po.poNumber, supplierId: po.supplierId, tenantId,
-        status: po.status, orderedDate: new Date(po.orderedDate),
-        expectedDate: po.expectedDate ? new Date(po.expectedDate) : null,
-        grandTotal: po.grandTotal, notes: po.notes ?? null, createdById: po.createdById,
-        createdAt: new Date(po.createdAt), updatedAt: new Date(po.updatedAt),
-      }));
-      if (purchaseOrders.length) await tx.purchaseOrder.createMany({ data: purchaseOrders, skipDuplicates: true });
+      const purchaseOrders = (data.tables.purchaseOrders ?? []).map(
+        (po: any) => ({
+          id: po.id,
+          poNumber: po.poNumber,
+          supplierId: po.supplierId,
+          tenantId,
+          status: po.status,
+          orderedDate: new Date(po.orderedDate),
+          expectedDate: po.expectedDate ? new Date(po.expectedDate) : null,
+          grandTotal: po.grandTotal,
+          notes: po.notes ?? null,
+          createdById: po.createdById,
+          createdAt: new Date(po.createdAt),
+          updatedAt: new Date(po.updatedAt),
+        }),
+      );
+      if (purchaseOrders.length)
+        await tx.purchaseOrder.createMany({
+          data: purchaseOrders,
+          skipDuplicates: true,
+        });
 
-      const purchaseOrderLines = (data.tables.purchaseOrderLines ?? []).map((pol: any) => ({
-        id: pol.id, purchaseOrderId: pol.purchaseOrderId, productId: pol.productId,
-        quantity: pol.quantity, unitPrice: pol.unitPrice, discount: pol.discount ?? 0,
-        lineTotal: pol.lineTotal,
-      }));
-      if (purchaseOrderLines.length) await tx.purchaseOrderLine.createMany({ data: purchaseOrderLines, skipDuplicates: true });
+      const purchaseOrderLines = (data.tables.purchaseOrderLines ?? []).map(
+        (pol: any) => ({
+          id: pol.id,
+          purchaseOrderId: pol.purchaseOrderId,
+          productId: pol.productId,
+          quantity: pol.quantity,
+          unitPrice: pol.unitPrice,
+          discount: pol.discount ?? 0,
+          lineTotal: pol.lineTotal,
+        }),
+      );
+      if (purchaseOrderLines.length)
+        await tx.purchaseOrderLine.createMany({
+          data: purchaseOrderLines,
+          skipDuplicates: true,
+        });
 
       const expenses = (data.tables.expenses ?? []).map((exp: any) => ({
-        id: exp.id, tenantId, category: exp.category, description: exp.description ?? null,
-        amount: exp.amount, paidTo: exp.paidTo ?? null, paidById: exp.paidById,
-        paidAt: new Date(exp.paidAt), createdAt: new Date(exp.createdAt),
+        id: exp.id,
+        tenantId,
+        category: exp.category,
+        description: exp.description ?? null,
+        amount: exp.amount,
+        paidTo: exp.paidTo ?? null,
+        paidById: exp.paidById,
+        paidAt: new Date(exp.paidAt),
+        createdAt: new Date(exp.createdAt),
       }));
-      if (expenses.length) await tx.expense.createMany({ data: expenses, skipDuplicates: true });
+      if (expenses.length)
+        await tx.expense.createMany({ data: expenses, skipDuplicates: true });
       summary.expenses = expenses.length;
 
       const sales = (data.tables.sales ?? []).map((sale: any) => ({
-        id: sale.id, saleNumber: sale.saleNumber, tenantId, customerId: sale.customerId ?? null,
-        saleType: sale.saleType, status: sale.status, total: sale.total,
-        discountTotal: sale.discountTotal ?? 0, taxTotal: sale.taxTotal ?? 0,
-        grandTotal: sale.grandTotal, paidAmount: sale.paidAmount, balance: sale.balance ?? 0,
-        notes: sale.notes ?? null, createdById: sale.createdById,
-        createdAt: new Date(sale.createdAt), updatedAt: new Date(sale.updatedAt),
+        id: sale.id,
+        saleNumber: sale.saleNumber,
+        tenantId,
+        customerId: sale.customerId ?? null,
+        saleType: sale.saleType,
+        status: sale.status,
+        total: sale.total,
+        discountTotal: sale.discountTotal ?? 0,
+        taxTotal: sale.taxTotal ?? 0,
+        grandTotal: sale.grandTotal,
+        paidAmount: sale.paidAmount,
+        balance: sale.balance ?? 0,
+        notes: sale.notes ?? null,
+        createdById: sale.createdById,
+        createdAt: new Date(sale.createdAt),
+        updatedAt: new Date(sale.updatedAt),
       }));
-      if (sales.length) await tx.sale.createMany({ data: sales, skipDuplicates: true });
+      if (sales.length)
+        await tx.sale.createMany({ data: sales, skipDuplicates: true });
 
       const saleLines = (data.tables.saleLines ?? []).map((sl: any) => ({
-        id: sl.id, saleId: sl.saleId, productId: sl.productId,
-        productUnitId: sl.productUnitId ?? null, quantity: sl.quantity,
-        unitPrice: sl.unitPrice, discount: sl.discount ?? 0, lineTotal: sl.lineTotal,
+        id: sl.id,
+        saleId: sl.saleId,
+        productId: sl.productId,
+        productUnitId: sl.productUnitId ?? null,
+        quantity: sl.quantity,
+        unitPrice: sl.unitPrice,
+        discount: sl.discount ?? 0,
+        lineTotal: sl.lineTotal,
         costPrice: sl.costPrice ?? 0,
       }));
-      if (saleLines.length) await tx.saleLine.createMany({ data: saleLines, skipDuplicates: true });
+      if (saleLines.length)
+        await tx.saleLine.createMany({ data: saleLines, skipDuplicates: true });
 
       const payments = (data.tables.payments ?? []).map((pay: any) => ({
-        id: pay.id, saleId: pay.saleId, paymentMethod: pay.paymentMethod,
-        amount: pay.amount, paymentReference: pay.paymentReference ?? null,
-        receivedAt: new Date(pay.receivedAt), receivedById: pay.receivedById,
+        id: pay.id,
+        saleId: pay.saleId,
+        paymentMethod: pay.paymentMethod,
+        amount: pay.amount,
+        paymentReference: pay.paymentReference ?? null,
+        receivedAt: new Date(pay.receivedAt),
+        receivedById: pay.receivedById,
       }));
-      if (payments.length) await tx.payment.createMany({ data: payments, skipDuplicates: true });
+      if (payments.length)
+        await tx.payment.createMany({ data: payments, skipDuplicates: true });
       summary.sales = sales.length;
     });
 
     this.audit
-      .log(actorId, 'BACKUP_RESTORE', 'System', null, null, { exportedAt: data.exportedAt, tenantId, summary }, ip, tenantId)
+      .log(
+        actorId,
+        'BACKUP_RESTORE',
+        'System',
+        null,
+        null,
+        { exportedAt: data.exportedAt, tenantId, summary },
+        ip,
+        tenantId,
+      )
       .catch(() => {});
     return {
       message: `Backup restored successfully from ${data.exportedAt}. All user passwords have been reset — distribute the tempPasswords map and ask users to change immediately.`,
@@ -286,7 +469,9 @@ export class BackupService {
       this.prisma.product.count({ where: tenantId ? { tenantId } : {} }),
       this.prisma.stockItem.findMany({
         where: tenantId ? { location: { tenantId } } : {},
-        include: { product: { include: { units: { where: { isDefault: true } } } } },
+        include: {
+          product: { include: { units: { where: { isDefault: true } } } },
+        },
       }),
     ]);
 
@@ -303,4 +488,3 @@ export class BackupService {
     };
   }
 }
-

@@ -3,6 +3,7 @@ import { lazy, Suspense } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import AppLayout from './layouts/AppLayout';
 import ProtectedRoute from './components/ProtectedRoute';
+import ErrorBoundary from './components/ErrorBoundary';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import AboutPage from './pages/AboutPage';
@@ -29,7 +30,16 @@ const ManagerCalendarPage = lazy(() => import('./pages/ManagerCalendarPage'));
 const AdminCalendarPage = lazy(() => import('./pages/AdminCalendarPage'));
 
 const PageLoader = () => (
-  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', color: '#64748b', fontSize: '0.9rem' }}>
+  <div
+    style={{
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      height: '60vh',
+      color: '#64748b',
+      fontSize: '0.9rem',
+    }}
+  >
     Loading...
   </div>
 );
@@ -43,57 +53,73 @@ const queryClient = new QueryClient({
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/about" element={<AboutPage />} />
-          <Route path="/billing/callback" element={<BillingCallbackPage />} />
-          <Route path="/locked" element={<LockedPage />} />
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute>
-                <AppLayout />
-              </ProtectedRoute>
-            }
-          >
-            <Route index element={<DashboardPage />} />
-            <Route path="pos" element={<POSPage />} />
-            <Route path="products" element={<ProductsPage />} />
-            <Route path="inventory" element={<InventoryPage />} />
-            <Route path="suppliers" element={<SuppliersPage />} />
-            <Route path="purchase-orders" element={<PurchaseOrdersPage />} />
-            <Route path="customers" element={<CustomersPage />} />
-            <Route path="expenses" element={<ExpensesPage />} />
-            <Route path="sales" element={<SalesPage />} />
-            <Route path="reports" element={<Suspense fallback={<PageLoader />}><ReportsPage /></Suspense>} />
-            <Route path="users" element={<UsersPage />} />
-            <Route path="billing" element={<BillingPage />} />
-            <Route path="calendar" element={<Suspense fallback={<PageLoader />}><ManagerCalendarPage /></Suspense>} />
-            <Route path="settings" element={<SettingsPage />} />
+      <ErrorBoundary>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/about" element={<AboutPage />} />
+            <Route path="/billing/callback" element={<BillingCallbackPage />} />
+            <Route path="/locked" element={<LockedPage />} />
             <Route
-              path="super-admin"
+              path="/"
               element={
-                <SuperAdminRoute>
-                  <SuperAdminPage />
-                </SuperAdminRoute>
+                <ProtectedRoute>
+                  <AppLayout />
+                </ProtectedRoute>
               }
-            />
-            <Route
-              path="super-admin/calendar"
-              element={
-                <SuperAdminRoute>
+            >
+              <Route index element={<DashboardPage />} />
+              <Route path="pos" element={<POSPage />} />
+              <Route path="products" element={<ProductsPage />} />
+              <Route path="inventory" element={<InventoryPage />} />
+              <Route path="suppliers" element={<SuppliersPage />} />
+              <Route path="purchase-orders" element={<PurchaseOrdersPage />} />
+              <Route path="customers" element={<CustomersPage />} />
+              <Route path="expenses" element={<ExpensesPage />} />
+              <Route path="sales" element={<SalesPage />} />
+              <Route
+                path="reports"
+                element={
                   <Suspense fallback={<PageLoader />}>
-                    <AdminCalendarPage />
+                    <ReportsPage />
                   </Suspense>
-                </SuperAdminRoute>
-              }
-            />
-          </Route>
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </BrowserRouter>
+                }
+              />
+              <Route path="users" element={<UsersPage />} />
+              <Route path="billing" element={<BillingPage />} />
+              <Route
+                path="calendar"
+                element={
+                  <Suspense fallback={<PageLoader />}>
+                    <ManagerCalendarPage />
+                  </Suspense>
+                }
+              />
+              <Route path="settings" element={<SettingsPage />} />
+              <Route
+                path="super-admin"
+                element={
+                  <SuperAdminRoute>
+                    <SuperAdminPage />
+                  </SuperAdminRoute>
+                }
+              />
+              <Route
+                path="super-admin/calendar"
+                element={
+                  <SuperAdminRoute>
+                    <Suspense fallback={<PageLoader />}>
+                      <AdminCalendarPage />
+                    </Suspense>
+                  </SuperAdminRoute>
+                }
+              />
+            </Route>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </ErrorBoundary>
     </QueryClientProvider>
   );
 }

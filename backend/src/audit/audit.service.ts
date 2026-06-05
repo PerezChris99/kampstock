@@ -21,7 +21,8 @@ export class AuditService {
         action,
         entityType,
         entityId,
-        previousValue: previousValue != null ? JSON.stringify(previousValue) : undefined,
+        previousValue:
+          previousValue != null ? JSON.stringify(previousValue) : undefined,
         newValue: newValue != null ? JSON.stringify(newValue) : undefined,
         ipAddress,
         ...(tenantId && { tenantId }),
@@ -54,6 +55,12 @@ export class AuditService {
       }),
       this.prisma.auditLog.count({ where }),
     ]);
-    return { data, total, page: safePage, limit: safeLimit, pages: Math.ceil(total / safeLimit) };
+    return {
+      data,
+      total,
+      page: safePage,
+      limit: safeLimit,
+      pages: Math.ceil(total / safeLimit),
+    };
   }
 }

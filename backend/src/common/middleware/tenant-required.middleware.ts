@@ -41,7 +41,8 @@ export class TenantRequiredMiddleware implements NestMiddleware {
 
     // Skip bypass routes
     const path = req.path;
-    if (BYPASS_PREFIXES.some((prefix) => path.startsWith(prefix))) return next();
+    if (BYPASS_PREFIXES.some((prefix) => path.startsWith(prefix)))
+      return next();
 
     // If neither subdomain middleware nor JWT has resolved a tenantId yet,
     // and the request has no Authorization header (i.e. JWT guard hasn't run),
@@ -50,12 +51,15 @@ export class TenantRequiredMiddleware implements NestMiddleware {
     //
     // Only block unauthenticated mutation requests with no subdomain resolution.
     const hasSubdomainTenant = !!(req as any).subdomainTenantId;
-    const hasAuthHeader = !!(req.headers.authorization || req.cookies?.access_token);
+    const hasAuthHeader = !!(
+      req.headers.authorization || req.cookies?.access_token
+    );
 
     if (!hasSubdomainTenant && !hasAuthHeader) {
       res.status(400).json({
         statusCode: 400,
-        message: 'Tenant context could not be resolved. Ensure X-Tenant-Subdomain header is set.',
+        message:
+          'Tenant context could not be resolved. Ensure X-Tenant-Subdomain header is set.',
       });
       return;
     }

@@ -1,6 +1,17 @@
-import { Controller, Get, Post, Param, Body, ParseIntPipe, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Param,
+  Body,
+  ParseIntPipe,
+  Query,
+} from '@nestjs/common';
 import { GoodsReceiptsService } from './goods-receipts.service';
-import { CreateGoodsReceiptDto, CreateSupplierInvoiceDto } from './dto/goods-receipt.dto';
+import {
+  CreateGoodsReceiptDto,
+  CreateSupplierInvoiceDto,
+} from './dto/goods-receipt.dto';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
@@ -10,7 +21,11 @@ export class GoodsReceiptsController {
 
   @Post()
   @Roles('Admin', 'Manager', 'Storekeeper')
-  create(@Body() dto: CreateGoodsReceiptDto, @CurrentUser('id') actorId: number, @CurrentUser('tenantId') tenantId: number) {
+  create(
+    @Body() dto: CreateGoodsReceiptDto,
+    @CurrentUser('id') actorId: number,
+    @CurrentUser('tenantId') tenantId: number,
+  ) {
     return this.grService.create(dto, actorId, tenantId);
   }
 
@@ -20,7 +35,11 @@ export class GoodsReceiptsController {
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
   ) {
-    return this.grService.findAll(tenantId, limit ? parseInt(limit) : 50, offset ? parseInt(offset) : 0);
+    return this.grService.findAll(
+      tenantId,
+      limit ? parseInt(limit) : 50,
+      offset ? parseInt(offset) : 0,
+    );
   }
 
   @Get(':id')

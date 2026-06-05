@@ -7,13 +7,18 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
 
 const DB_NAME = 'kampstock-offline';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 interface KampstockDB extends DBSchema {
   'pending-sales': {
     key: number;
     value: PendingSale;
     indexes: { 'by-createdAt': string };
+  };
+  'failed-sales': {
+    key: number;
+    value: FailedSale;
+    indexes: { 'by-failedAt': string };
   };
 }
 
@@ -24,17 +29,34 @@ export interface PendingSale {
   retries: number;
 }
 
+export interface FailedSale {
+  id?: number;
+  payload: unknown;
+  createdAt: string;
+  failedAt: string;
+  reason: string;
+}
+
 let _db: IDBPDatabase<KampstockDB> | null = null;
 
 async function getDB(): Promise<IDBPDatabase<KampstockDB>> {
   if (!_db) {
     _db = await openDB<KampstockDB>(DB_NAME, DB_VERSION, {
-      upgrade(db) {
-        const store = db.createObjectStore('pending-sales', {
-          keyPath: 'id',
-          autoIncrement: true,
-        });
-        store.createIndex('by-createdAt', 'createdAt');
+      upgrade(db, oldVersion) {
+        if (oldVersion < 1) {
+          const store = db.createObjectStore('pending-sales', {
+            keyPath: 'id',
+            autoIncrement: true,
+          });
+          store.createIndex('by-createdAt', 'createdAt');
+        }
+        if (oldVersion < 2) {
+          const failedStore = db.createObjectStore('failed-sales', {
+            keyPath: 'id',
+            autoIncrement: true,
+          });
+          failedStore.createIndex('by-failedAt', 'failedAt');
+        }
       },
     });
   }
@@ -65,10 +87,37 @@ export async function incrementRetry(item: PendingSale): Promise<void> {
   await db.put('pending-sales', { ...item, retries: item.retries + 1 });
 }
 
+async function moveToFailed(item: PendingSale, reason: string): Promise<void> {
+  const db = await getDB();
+  await db.add('failed-sales', {
+    payload: item.payload,
+    createdAt: item.createdAt,
+    failedAt: new Date().toISOString(),
+    reason,
+  });
+  await db.delete('pending-sales', item.id!);
+}
+
+export async function getFailedSales(): Promise<FailedSale[]> {
+  const db = await getDB();
+  return db.getAll('failed-sales');
+}
+
+export async function clearFailedSale(id: number): Promise<void> {
+  const db = await getDB();
+  await db.delete('failed-sales', id);
+}
+
+export async function failedSaleCount(): Promise<number> {
+  const db = await getDB();
+  return db.count('failed-sales');
+}
+
 /**
  * Attempt to flush all pending sales via the shared axios instance (withCredentials).
  * Returns number of successfully synced items.
- * Max 5 retries per item; permanent client errors (4xx) are discarded immediately.
+ * Max 5 retries per item; permanent client errors (4xx) are moved to 'failed-sales'
+ * instead of silently discarded — the UI is expected to surface these to the user.
  */
 export async function flushOfflineQueue(): Promise<number> {
   const { default: api } = await import('./api');
@@ -82,10 +131,14 @@ export async function flushOfflineQueue(): Promise<number> {
       await removeFromQueue(item.id!);
       synced++;
     } catch (err: any) {
-      const status = err?.response?.status;
-      if (item.retries >= 5 || (status && status >= 400 && status < 500)) {
-        // Give up: too many retries or a permanent client error (4xx)
-        await removeFromQueue(item.id!);
+      const status = err?.response?.status as number | undefined;
+      if (item.retries >= 5) {
+        await moveToFailed(item, `Max retries exceeded (last status: ${status ?? 'network'})`);
+      } else if (status && status >= 400 && status < 500) {
+        // Permanent client error — move to failed store for manager review
+        const serverMsg: string =
+          err?.response?.data?.message ?? `HTTP ${status}`;
+        await moveToFailed(item, serverMsg);
       } else {
         await incrementRetry(item);
       }

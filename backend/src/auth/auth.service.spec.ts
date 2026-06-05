@@ -54,7 +54,12 @@ const activeUser = {
   tenantId: 1,
   isSuperAdmin: false,
   roleId: 1,
-  role: { id: 1, name: 'Admin', permissions: JSON.stringify({ all: true }), tenantId: 1 },
+  role: {
+    id: 1,
+    name: 'Admin',
+    permissions: JSON.stringify({ all: true }),
+    tenantId: 1,
+  },
 };
 
 describe('AuthService', () => {
@@ -87,7 +92,10 @@ describe('AuthService', () => {
       mockPrisma.user.findUnique.mockResolvedValue(activeUser);
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
 
-      const result = await service.login({ username: 'alice', password: 'Password1!' }, '127.0.0.1');
+      const result = await service.login(
+        { username: 'alice', password: 'Password1!' },
+        '127.0.0.1',
+      );
 
       expect(result.accessToken).toBe('mock.jwt.token');
       expect(result.refreshToken).toBe('mock.jwt.token');
@@ -99,18 +107,32 @@ describe('AuthService', () => {
       mockPrisma.user.findUnique.mockResolvedValue(activeUser);
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
 
-      const result = await service.login({ username: 'alice', password: 'Password1!' }, '127.0.0.1');
+      const result = await service.login(
+        { username: 'alice', password: 'Password1!' },
+        '127.0.0.1',
+      );
 
       expect((result.user as any).passwordHash).toBeUndefined();
     });
 
     it('should return normalized role name and permissions in user object', async () => {
       // Test with legacy role name format Admin_1
-      const legacyUser = { ...activeUser, role: { id: 1, name: 'Admin_1', permissions: JSON.stringify({ all: true }), tenantId: 1 } };
+      const legacyUser = {
+        ...activeUser,
+        role: {
+          id: 1,
+          name: 'Admin_1',
+          permissions: JSON.stringify({ all: true }),
+          tenantId: 1,
+        },
+      };
       mockPrisma.user.findUnique.mockResolvedValue(legacyUser);
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
 
-      const result = await service.login({ username: 'alice', password: 'Password1!' }, '127.0.0.1');
+      const result = await service.login(
+        { username: 'alice', password: 'Password1!' },
+        '127.0.0.1',
+      );
 
       expect(result.user.role).toBe('Admin'); // normalized — no _1 suffix
       expect((result.user as any).permissions).toEqual({ all: true });
@@ -121,7 +143,10 @@ describe('AuthService', () => {
       (bcrypt.compare as jest.Mock).mockResolvedValue(false);
 
       await expect(
-        service.login({ username: 'alice', password: 'WrongPassword1' }, '127.0.0.1'),
+        service.login(
+          { username: 'alice', password: 'WrongPassword1' },
+          '127.0.0.1',
+        ),
       ).rejects.toThrow(UnauthorizedException);
     });
 
@@ -130,25 +155,41 @@ describe('AuthService', () => {
       (bcrypt.compare as jest.Mock).mockResolvedValue(false);
 
       await expect(
-        service.login({ username: 'nobody', password: 'Password1!' }, '127.0.0.1'),
+        service.login(
+          { username: 'nobody', password: 'Password1!' },
+          '127.0.0.1',
+        ),
       ).rejects.toThrow(UnauthorizedException);
     });
 
     it('should throw UnauthorizedException for inactive user', async () => {
-      mockPrisma.user.findUnique.mockResolvedValue({ ...activeUser, isActive: false });
+      mockPrisma.user.findUnique.mockResolvedValue({
+        ...activeUser,
+        isActive: false,
+      });
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
 
       await expect(
-        service.login({ username: 'alice', password: 'Password1!' }, '127.0.0.1'),
+        service.login(
+          { username: 'alice', password: 'Password1!' },
+          '127.0.0.1',
+        ),
       ).rejects.toThrow(UnauthorizedException);
     });
 
     it('should throw UnauthorizedException when user belongs to wrong tenant', async () => {
-      mockPrisma.user.findUnique.mockResolvedValue({ ...activeUser, tenantId: 2 });
+      mockPrisma.user.findUnique.mockResolvedValue({
+        ...activeUser,
+        tenantId: 2,
+      });
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
 
       await expect(
-        service.login({ username: 'alice', password: 'Password1!' }, '127.0.0.1', 99),
+        service.login(
+          { username: 'alice', password: 'Password1!' },
+          '127.0.0.1',
+          99,
+        ),
       ).rejects.toThrow(UnauthorizedException);
     });
 
@@ -158,13 +199,27 @@ describe('AuthService', () => {
       (bcrypt.compare as jest.Mock).mockResolvedValue(false);
 
       let err1: UnauthorizedException;
-      try { await service.login({ username: 'nobody', password: 'pass' }, '127.0.0.1'); } catch (e) { err1 = e; }
+      try {
+        await service.login(
+          { username: 'nobody', password: 'pass' },
+          '127.0.0.1',
+        );
+      } catch (e) {
+        err1 = e;
+      }
 
       // Wrong password
       mockPrisma.user.findUnique.mockResolvedValue(activeUser);
       (bcrypt.compare as jest.Mock).mockResolvedValue(false);
       let err2: UnauthorizedException;
-      try { await service.login({ username: 'alice', password: 'wrong' }, '127.0.0.1'); } catch (e) { err2 = e; }
+      try {
+        await service.login(
+          { username: 'alice', password: 'wrong' },
+          '127.0.0.1',
+        );
+      } catch (e) {
+        err2 = e;
+      }
 
       expect(err1!.message).toBe(err2!.message);
     });
@@ -175,16 +230,25 @@ describe('AuthService', () => {
 
       // Fail twice
       for (let i = 0; i < 2; i++) {
-        await expect(service.login({ username: 'alice', password: 'wrong' }, '127.0.0.1')).rejects.toThrow();
+        await expect(
+          service.login({ username: 'alice', password: 'wrong' }, '127.0.0.1'),
+        ).rejects.toThrow();
       }
 
       // Succeed — should clear attempt counter
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
-      await expect(service.login({ username: 'alice', password: 'Password1!' }, '127.0.0.1')).resolves.toBeDefined();
+      await expect(
+        service.login(
+          { username: 'alice', password: 'Password1!' },
+          '127.0.0.1',
+        ),
+      ).resolves.toBeDefined();
 
       // Another failure should NOT be locked (counter reset)
       (bcrypt.compare as jest.Mock).mockResolvedValue(false);
-      const err = await service.login({ username: 'alice', password: 'wrong' }, '127.0.0.1').catch((e) => e);
+      const err = await service
+        .login({ username: 'alice', password: 'wrong' }, '127.0.0.1')
+        .catch((e) => e);
       expect(err.message).toBe('Invalid credentials'); // not a lockout message
     });
 
@@ -193,13 +257,18 @@ describe('AuthService', () => {
       (bcrypt.compare as jest.Mock).mockResolvedValue(false);
 
       for (let i = 0; i < 5; i++) {
-        await expect(service.login({ username: 'alice', password: 'wrong' }, '127.0.0.1')).rejects.toThrow(UnauthorizedException);
+        await expect(
+          service.login({ username: 'alice', password: 'wrong' }, '127.0.0.1'),
+        ).rejects.toThrow(UnauthorizedException);
       }
 
       // 6th attempt — should be locked, even with correct password
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
       await expect(
-        service.login({ username: 'alice', password: 'Password1!' }, '127.0.0.1'),
+        service.login(
+          { username: 'alice', password: 'Password1!' },
+          '127.0.0.1',
+        ),
       ).rejects.toThrow(/temporarily limited|too many failed attempts/i);
     });
   });
@@ -211,7 +280,10 @@ describe('AuthService', () => {
       mockPrisma.user.findUnique.mockResolvedValue(activeUser);
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
 
-      await service.login({ username: 'alice', password: 'Password1!' }, '10.0.0.1');
+      await service.login(
+        { username: 'alice', password: 'Password1!' },
+        '10.0.0.1',
+      );
       await new Promise((r) => setTimeout(r, 10)); // flush fire-and-forget
 
       expect(mockAudit.log).toHaveBeenCalledWith(
@@ -230,7 +302,9 @@ describe('AuthService', () => {
       mockPrisma.user.findUnique.mockResolvedValue(activeUser);
       (bcrypt.compare as jest.Mock).mockResolvedValue(false);
 
-      await service.login({ username: 'alice', password: 'wrong' }, '10.0.0.2').catch(() => {});
+      await service
+        .login({ username: 'alice', password: 'wrong' }, '10.0.0.2')
+        .catch(() => {});
       await new Promise((r) => setTimeout(r, 10));
 
       expect(mockAudit.log).toHaveBeenCalledWith(
@@ -248,7 +322,9 @@ describe('AuthService', () => {
       mockPrisma.user.findUnique.mockResolvedValue(null);
       (bcrypt.compare as jest.Mock).mockResolvedValue(false);
 
-      await service.login({ username: 'ghost', password: 'anything' }, '10.0.0.3').catch(() => {});
+      await service
+        .login({ username: 'ghost', password: 'anything' }, '10.0.0.3')
+        .catch(() => {});
       await new Promise((r) => setTimeout(r, 10));
 
       expect(mockAudit.log).toHaveBeenCalledWith(
@@ -275,16 +351,25 @@ describe('AuthService', () => {
     });
 
     it('should throw UnauthorizedException for invalid refresh token', async () => {
-      mockJwt.verify.mockImplementation(() => { throw new Error('jwt expired'); });
+      mockJwt.verify.mockImplementation(() => {
+        throw new Error('jwt expired');
+      });
 
-      await expect(service.refresh('bad.token')).rejects.toThrow(UnauthorizedException);
+      await expect(service.refresh('bad.token')).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
 
     it('should throw UnauthorizedException if user is inactive on refresh', async () => {
       mockJwt.verify.mockReturnValue({ sub: 1 });
-      mockPrisma.user.findUnique.mockResolvedValue({ ...activeUser, isActive: false });
+      mockPrisma.user.findUnique.mockResolvedValue({
+        ...activeUser,
+        isActive: false,
+      });
 
-      await expect(service.refresh('valid.token')).rejects.toThrow(UnauthorizedException);
+      await expect(service.refresh('valid.token')).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
   });
 });

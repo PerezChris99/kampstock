@@ -1,5 +1,12 @@
 import { NestFactory, HttpAdapterHost } from '@nestjs/core';
-import { ValidationPipe, HttpException, HttpStatus, ArgumentsHost, ExceptionFilter, Catch } from '@nestjs/common';
+import {
+  ValidationPipe,
+  HttpException,
+  HttpStatus,
+  ArgumentsHost,
+  ExceptionFilter,
+  Catch,
+} from '@nestjs/common';
 import { WinstonModule } from 'nest-winston';
 import { AppModule } from './app.module';
 import { winstonLogger } from './config/logger';
@@ -26,7 +33,8 @@ class GlobalExceptionFilter implements ExceptionFilter {
     if (exception instanceof HttpException) {
       status = exception.getStatus();
       const res = exception.getResponse();
-      message = typeof res === 'string' ? res : (res as any)?.message ?? message;
+      message =
+        typeof res === 'string' ? res : ((res as any)?.message ?? message);
     } else {
       // Unexpected error — report to Sentry
       captureException(exception);
@@ -35,7 +43,11 @@ class GlobalExceptionFilter implements ExceptionFilter {
       }
     }
 
-    httpAdapter.reply(ctx.getResponse(), { statusCode: status, message }, status);
+    httpAdapter.reply(
+      ctx.getResponse(),
+      { statusCode: status, message },
+      status,
+    );
   }
 }
 
@@ -60,30 +72,34 @@ async function bootstrap() {
   app.use(cookieParser());
 
   // ── Security headers via Helmet ───────────────────────────────────────────────
-  app.use(helmet({
-    crossOriginEmbedderPolicy: false,
-    hsts: isProd ? { maxAge: 31536000, includeSubDomains: true, preload: true } : false,
-    referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        scriptSrc: ["'self'"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
-        imgSrc: ["'self'", 'data:', 'blob:'],
-        connectSrc: ["'self'"],
-        fontSrc: ["'self'"],
-        objectSrc: ["'none'"],
-        frameAncestors: ["'none'"],     // prevent clickjacking
-        upgradeInsecureRequests: isProd ? [] : null,
+  app.use(
+    helmet({
+      crossOriginEmbedderPolicy: false,
+      hsts: isProd
+        ? { maxAge: 31536000, includeSubDomains: true, preload: true }
+        : false,
+      referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'"],
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          imgSrc: ["'self'", 'data:', 'blob:'],
+          connectSrc: ["'self'"],
+          fontSrc: ["'self'"],
+          objectSrc: ["'none'"],
+          frameAncestors: ["'none'"], // prevent clickjacking
+          upgradeInsecureRequests: isProd ? [] : null,
+        },
       },
-    },
-    // Prevent MIME-type sniffing
-    xContentTypeOptions: true,
-    // Block legacy IE from executing downloads in site context
-    xDownloadOptions: true,
-    // Disable FLoC / interest-cohort tracking
-    permittedCrossDomainPolicies: { permittedPolicies: 'none' },
-  }));
+      // Prevent MIME-type sniffing
+      xContentTypeOptions: true,
+      // Block legacy IE from executing downloads in site context
+      xDownloadOptions: true,
+      // Disable FLoC / interest-cohort tracking
+      permittedCrossDomainPolicies: { permittedPolicies: 'none' },
+    }),
+  );
 
   // ── Global validation — whitelist & strip unknown fields ──────────────────────
   app.useGlobalPipes(
@@ -100,7 +116,10 @@ async function bootstrap() {
   app.useGlobalFilters(new GlobalExceptionFilter(httpAdapterHost));
 
   // ── CORS ──────────────────────────────────────────────────────────────────────
-  const allowedOrigins = (process.env.ALLOWED_ORIGINS || '').split(',').map(o => o.trim()).filter(Boolean);
+  const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
   app.enableCors({
     origin: (origin, callback) => {
       // Allow server-to-server (no origin) in dev; block in prod
@@ -118,14 +137,20 @@ async function bootstrap() {
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Tenant-Subdomain', 'X-CSRF-Token'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-Tenant-Subdomain',
+      'X-CSRF-Token',
+    ],
   });
 
   app.setGlobalPrefix('api');
 
   const port = process.env.PORT || 3000;
   await app.listen(port);
-  console.log(`KampStock API running on http://localhost:${port}/api [${isProd ? 'production' : 'development'}]`);
+  console.log(
+    `KampStock API running on http://localhost:${port}/api [${isProd ? 'production' : 'development'}]`,
+  );
 }
 bootstrap();
-

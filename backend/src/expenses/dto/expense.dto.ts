@@ -1,4 +1,10 @@
-import { IsString, IsOptional, IsNumber, IsDateString, Min } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsNumber,
+  IsDateString,
+  Min,
+} from 'class-validator';
 import { SafeText } from '../../common/decorators/safe-text.decorator';
 
 export class CreateExpenseDto {

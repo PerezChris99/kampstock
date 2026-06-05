@@ -1,6 +1,9 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateGoodsReceiptDto, CreateSupplierInvoiceDto } from './dto/goods-receipt.dto';
+import {
+  CreateGoodsReceiptDto,
+  CreateSupplierInvoiceDto,
+} from './dto/goods-receipt.dto';
 
 @Injectable()
 export class GoodsReceiptsService {
@@ -14,13 +17,15 @@ export class GoodsReceiptsService {
           tenantId,
           notes: dto.notes,
           receivedById: actorId,
-          lines: { create: dto.lines.map(l => ({
-            productId: l.productId,
-            quantity: l.quantity,
-            unitCost: l.unitCost,
-            expiryDate: l.expiryDate ? new Date(l.expiryDate) : undefined,
-            batchNo: l.batchNo,
-          })) },
+          lines: {
+            create: dto.lines.map((l) => ({
+              productId: l.productId,
+              quantity: l.quantity,
+              unitCost: l.unitCost,
+              expiryDate: l.expiryDate ? new Date(l.expiryDate) : undefined,
+              batchNo: l.batchNo,
+            })),
+          },
         },
         include: { lines: true },
       });
@@ -28,7 +33,11 @@ export class GoodsReceiptsService {
       // Update stock items and create movements
       for (const line of dto.lines) {
         const existing = await tx.stockItem.findFirst({
-          where: { productId: line.productId, locationId: dto.locationId, batchNo: line.batchNo ?? null },
+          where: {
+            productId: line.productId,
+            locationId: dto.locationId,
+            batchNo: line.batchNo ?? null,
+          },
         });
 
         if (existing) {
@@ -47,7 +56,9 @@ export class GoodsReceiptsService {
               quantityOnHand: line.quantity,
               lastCostPrice: line.unitCost,
               batchNo: line.batchNo,
-              expiryDate: line.expiryDate ? new Date(line.expiryDate) : undefined,
+              expiryDate: line.expiryDate
+                ? new Date(line.expiryDate)
+                : undefined,
             },
           });
         }

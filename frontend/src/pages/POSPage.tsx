@@ -24,13 +24,19 @@ export default function POSPage() {
   const [offlineBanner, setOfflineBanner] = useState(false);
   const [scanError, setScanError] = useState('');
   const [offlineSaleMsg, setOfflineSaleMsg] = useState('');
+  const [failedSalesAlert, setFailedSalesAlert] = useState<string | null>(null);
   const barcodeRef = useRef<HTMLInputElement>(null);
   const qc = useQueryClient();
 
   // Track online status and auto-flush offline queue on reconnect
-  const { isOnline, pendingCount } = useOnlineStatus({
+  const { isOnline, pendingCount, failedCount } = useOnlineStatus({
     onReconnect: (synced) => {
       if (synced > 0) setOfflineBanner(false);
+    },
+    onFailedSales: (count) => {
+      setFailedSalesAlert(
+        `${count} sale${count === 1 ? '' : 's'} could not be synced and have been saved for manager review. Check "Failed Sales" in Settings.`
+      );
     },
   });
 
@@ -177,10 +183,22 @@ export default function POSPage() {
 
   return (
     <div className="flex h-full flex-col">
+      {failedSalesAlert && (
+        <div className="bg-red-600 text-white text-sm text-center py-2 font-medium flex items-center justify-center gap-3">
+          <span>⚠️ {failedSalesAlert}</span>
+          <button
+            onClick={() => setFailedSalesAlert(null)}
+            className="ml-2 text-white underline text-xs"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
       {offlineBanner && (
         <div className="bg-yellow-500 text-white text-sm text-center py-1.5 font-medium">
           OFFLINE MODE — Sales are queued locally and will sync when connection is restored.
           {pendingCount > 0 && <span className="ml-2 bg-white text-yellow-700 rounded-full px-2 py-0.5 text-xs font-bold">{pendingCount} pending</span>}
+          {failedCount > 0 && <span className="ml-2 bg-red-100 text-red-700 rounded-full px-2 py-0.5 text-xs font-bold">{failedCount} failed</span>}
         </div>
       )}
       <div className="flex flex-1 overflow-hidden">

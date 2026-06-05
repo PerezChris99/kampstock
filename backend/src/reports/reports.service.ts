@@ -352,7 +352,9 @@ export class ReportsService {
     const yesterdayEnd = new Date(todayStart);
     yesterdayEnd.setMilliseconds(-1);
 
-    const [todaySales, yesterdaySales, lowStockItems, allStock] =
+    type StockValueRow = { total_value: string | null };
+
+    const [todaySales, yesterdaySales, lowStockItems, stockValueRows] =
       await Promise.all([
         this.prisma.sale.findMany({
           where: {
@@ -376,12 +378,15 @@ export class ReportsService {
             ...(tenantId && { location: { tenantId } }),
           },
         }),
-        this.prisma.stockItem.findMany({
-          where: { ...(tenantId && { location: { tenantId } }) },
-          include: {
-            product: { include: { units: { where: { isDefault: true } } } },
-          },
-        }),
+        tenantId
+          ? this.prisma.$queryRaw<StockValueRow[]>`
+              SELECT SUM(si.quantity_on_hand * si.last_cost_price)::text AS total_value
+              FROM stock_items si
+              JOIN stock_locations sl ON sl.id = si.location_id
+              WHERE sl.tenant_id = ${tenantId}`
+          : this.prisma.$queryRaw<StockValueRow[]>`
+              SELECT SUM(si.quantity_on_hand * si.last_cost_price)::text AS total_value
+              FROM stock_items si`,
       ]);
 
     const todayTotal = todaySales.reduce(
@@ -392,11 +397,7 @@ export class ReportsService {
       (s, sale) => s + Number(sale.grandTotal),
       0,
     );
-    const totalStockValue = allStock.reduce(
-      (sum, item) =>
-        sum + Number(item.lastCostPrice) * Number(item.quantityOnHand),
-      0,
-    );
+    const totalStockValue = Number(stockValueRows[0]?.total_value ?? 0);
 
     return {
       todaySales: todayTotal,

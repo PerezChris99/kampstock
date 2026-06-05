@@ -16,7 +16,13 @@ import { PrismaService } from '../../prisma/prisma.service';
  */
 
 interface TenantCacheEntry {
-  tenant: { id: number; name: string; subdomain: string; isActive: boolean; plan: string | null } | null;
+  tenant: {
+    id: number;
+    name: string;
+    subdomain: string;
+    isActive: boolean;
+    plan: string | null;
+  } | null;
   cachedAt: number;
 }
 
@@ -36,7 +42,9 @@ export class SubdomainTenantMiddleware implements NestMiddleware {
     let subdomain: string | null = null;
 
     // 1. Explicit header from frontend (preferred, works in all environments)
-    const explicitHeader = req.headers['x-tenant-subdomain'] as string | undefined;
+    const explicitHeader = req.headers['x-tenant-subdomain'] as
+      | string
+      | undefined;
     if (explicitHeader) {
       const cleaned = explicitHeader.toLowerCase().trim();
       // Validate format: only lowercase alphanumeric and hyphens, 1-63 chars
@@ -48,7 +56,9 @@ export class SubdomainTenantMiddleware implements NestMiddleware {
     // 2. Extract from reverse-proxy or host header
     if (!subdomain) {
       const host =
-        (req.headers['x-forwarded-host'] as string | undefined)?.split(',')[0]?.trim() ||
+        (req.headers['x-forwarded-host'] as string | undefined)
+          ?.split(',')[0]
+          ?.trim() ||
         req.headers.host ||
         '';
       const hostname = host.split(':')[0].toLowerCase(); // strip port
@@ -74,11 +84,20 @@ export class SubdomainTenantMiddleware implements NestMiddleware {
       // Cache miss — query DB
       const tenant = await this.prisma.tenant.findUnique({
         where: { subdomain },
-        select: { id: true, name: true, subdomain: true, isActive: true, plan: true },
+        select: {
+          id: true,
+          name: true,
+          subdomain: true,
+          isActive: true,
+          plan: true,
+        },
       });
 
       // Cache the result (even null — to avoid hammering DB for unknown subdomains)
-      tenantCache.set(subdomain, { tenant: tenant?.isActive ? tenant : null, cachedAt: Date.now() });
+      tenantCache.set(subdomain, {
+        tenant: tenant?.isActive ? tenant : null,
+        cachedAt: Date.now(),
+      });
 
       if (tenant && tenant.isActive) {
         (req as any).subdomainTenantId = tenant.id;
@@ -89,4 +108,3 @@ export class SubdomainTenantMiddleware implements NestMiddleware {
     next();
   }
 }
-

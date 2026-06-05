@@ -87,8 +87,6 @@ export async function createNestServer(): Promise<Express> {
   app.enableCors({
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
-      // Allow any Vercel preview deployment URL
-      if (/\.vercel\.app$/.test(origin)) return callback(null, true);
       if (allowedOrigins.includes(origin)) return callback(null, true);
       callback(new Error('Not allowed by CORS'));
     },

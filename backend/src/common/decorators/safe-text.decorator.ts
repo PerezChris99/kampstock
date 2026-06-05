@@ -9,16 +9,18 @@ import { Transform } from 'class-transformer';
  */
 function stripHtml(value: unknown): unknown {
   if (typeof value !== 'string') return value;
-  return value
-    // Remove <script>...</script> blocks (case-insensitive, across newlines)
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-    // Remove <iframe>...</iframe> blocks
-    .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
-    // Remove javascript: URIs (in href, src, on* attributes, etc.)
-    .replace(/javascript\s*:/gi, '')
-    // Remove all remaining HTML tags
-    .replace(/<[^>]+>/g, '')
-    .trim();
+  return (
+    value
+      // Remove <script>...</script> blocks (case-insensitive, across newlines)
+      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+      // Remove <iframe>...</iframe> blocks
+      .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
+      // Remove javascript: URIs (in href, src, on* attributes, etc.)
+      .replace(/javascript\s*:/gi, '')
+      // Remove all remaining HTML tags
+      .replace(/<[^>]+>/g, '')
+      .trim()
+  );
 }
 
 /**
