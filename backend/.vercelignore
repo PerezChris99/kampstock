@@ -1,0 +1,11 @@
+# Keep Vercel bundle small — exclude everything not needed at runtime
+prisma/
+*.spec.ts
+*.test.ts
+src/
+test/
+tests/
+coverage/
+.env*
+*.md
+*.log
