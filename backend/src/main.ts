@@ -46,6 +46,12 @@ async function bootstrap() {
 
   const isProd = process.env.NODE_ENV === 'production';
 
+  // ── Request body size limit ───────────────────────────────────────────────────
+  // Prevents large payload DoS attacks. Backup restore endpoint may need up to
+  // ~5 MB for large tenants; anything beyond that is likely an attack or mistake.
+  app.use(require('express').json({ limit: '5mb' }));
+  app.use(require('express').urlencoded({ limit: '5mb', extended: true }));
+
   // ── Compression ──────────────────────────────────────────────────────────────
   // Saves bandwidth — critical for Uganda 3G/4G connections
   app.use(compression());
