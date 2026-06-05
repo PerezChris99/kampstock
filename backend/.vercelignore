@@ -1,11 +1,8 @@
-# Keep Vercel bundle small — exclude everything not needed at runtime
+# Exclude files not needed by the build or at runtime
+# NOTE: src/ must NOT be listed — nest build needs the TypeScript sources
 prisma/
-*.spec.ts
-*.test.ts
-src/
 test/
 tests/
 coverage/
 .env*
-*.md
 *.log
