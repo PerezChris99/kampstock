@@ -285,11 +285,6 @@ export default function LoginPage() {
             <summary>Demo / Test Accounts</summary>
             <div className="auth-demo-grid">
               <div className="auth-demo-row">
-                <span className="auth-demo-role">Admin</span>
-                <code>admin</code>
-                <code>admin123</code>
-              </div>
-              <div className="auth-demo-row">
                 <span className="auth-demo-role">Manager</span>
                 <code>manager</code>
                 <code>manager123</code>

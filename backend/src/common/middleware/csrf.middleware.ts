@@ -4,16 +4,17 @@ import { randomBytes, createHmac } from 'crypto';
 
 const CSRF_COOKIE = 'csrf_token';
 const CSRF_HEADER = 'x-csrf-token';
-const CSRF_SECRET = process.env.CSRF_SECRET || 'csrf-default-secret-change-in-prod';
+const CSRF_SECRET =
+  process.env.CSRF_SECRET || 'csrf-default-secret-change-in-prod';
 
 /** Methods that mutate state and require CSRF verification */
 const UNSAFE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
 /** Routes excluded from CSRF (webhooks, public auth endpoints handled separately) */
 const CSRF_BYPASS_PREFIXES = [
-  '/api/billing/ipn',   // Pesapal webhook — arrives server-to-server
-  '/api/auth/login',    // Login sets the cookie — token not yet available
-  '/api/auth/refresh',  // Refresh uses httpOnly cookie only
+  '/api/billing/ipn', // Pesapal webhook — arrives server-to-server
+  '/api/auth/login', // Login sets the cookie — token not yet available
+  '/api/auth/refresh', // Refresh uses httpOnly cookie only
   '/api/tenants/register', // Public registration
 ];
 
@@ -43,10 +44,13 @@ export class CsrfMiddleware implements NestMiddleware {
     let csrfToken: string = req.cookies?.[CSRF_COOKIE];
     if (!csrfToken) {
       csrfToken = generateCsrfToken();
+      // sameSite:'none' needed in production so frontend on a different origin can receive
+      // and send the cookie. Must be paired with secure:true.
+      const isProd = process.env.NODE_ENV === 'production';
       res.cookie(CSRF_COOKIE, csrfToken, {
         httpOnly: false, // Must be readable by JS to attach to header
-        sameSite: 'lax',
-        secure: process.env.NODE_ENV === 'production',
+        sameSite: isProd ? 'none' : 'lax',
+        secure: isProd,
         maxAge: 24 * 60 * 60 * 1000, // 24 hours
       });
     }
@@ -55,7 +59,9 @@ export class CsrfMiddleware implements NestMiddleware {
     if (!UNSAFE_METHODS.has(method)) return next();
 
     // Check bypass list
-    const isBypassed = CSRF_BYPASS_PREFIXES.some((prefix) => path.startsWith(prefix.replace('/api', '')));
+    const isBypassed = CSRF_BYPASS_PREFIXES.some((prefix) =>
+      path.startsWith(prefix.replace('/api', '')),
+    );
     if (isBypassed) return next();
 
     // Validate double-submit: header token must match cookie token

@@ -11,11 +11,37 @@ const api = axios.create({
 });
 
 // ── CSRF Token Management ────────────────────────────────────────────────────
-// Read the csrf_token from the cookie (set by the backend CsrfMiddleware).
-// The cookie is NOT httpOnly so JS can read it.
+// In same-origin setups: read from cookie. In cross-origin (production Vercel),
+// cookies from the backend domain aren't readable by JS on the frontend domain,
+// so we read the token from the /auth/csrf response body instead.
+let _csrfToken: string | null = null;
+
 function getCsrfCookie(): string | null {
   const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]+)/);
   return match ? decodeURIComponent(match[1]) : null;
+}
+
+async function getOrFetchCsrfToken(): Promise<string | null> {
+  // 1. Try in-memory cache first
+  if (_csrfToken) return _csrfToken;
+  // 2. Try cookie (works in same-origin dev)
+  const fromCookie = getCsrfCookie();
+  if (fromCookie) {
+    _csrfToken = fromCookie;
+    return _csrfToken;
+  }
+  // 3. Fetch from endpoint — works for cross-origin because endpoint returns body
+  try {
+    const res = await axios.get(`${API_BASE}/auth/csrf`, { withCredentials: true });
+    const token = res.data?.csrfToken ?? getCsrfCookie();
+    if (token) {
+      _csrfToken = token;
+      return _csrfToken;
+    }
+  } catch {
+    // Non-fatal: proceed without CSRF (server will reject if required)
+  }
+  return null;
 }
 
 const UNSAFE_METHODS = new Set(['post', 'put', 'patch', 'delete']);
@@ -28,16 +54,7 @@ api.interceptors.request.use(async (config) => {
   // Attach CSRF token for state-changing requests
   const method = (config.method ?? '').toLowerCase();
   if (UNSAFE_METHODS.has(method)) {
-    let csrfToken = getCsrfCookie();
-    if (!csrfToken) {
-      // Fetch CSRF token if cookie not yet set
-      try {
-        await axios.get(`${API_BASE}/auth/csrf`, { withCredentials: true });
-        csrfToken = getCsrfCookie();
-      } catch {
-        // Proceed without — server will reject if token required
-      }
-    }
+    const csrfToken = await getOrFetchCsrfToken();
     if (csrfToken) config.headers['X-CSRF-Token'] = csrfToken;
   }
 
@@ -62,19 +79,16 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       try {
-        await axios.post(
-          `${API_BASE}/auth/refresh`,
-          {},
-          { withCredentials: true },
-        );
+        await axios.post(`${API_BASE}/auth/refresh`, {}, { withCredentials: true });
         // New access_token cookie is now set; retry the original request
         return api(originalRequest);
       } catch {
+        _csrfToken = null; // Clear stale CSRF token on session expiry
         window.location.href = '/login';
       }
     }
     return Promise.reject(error);
-  }
+  },
 );
 
 export default api;

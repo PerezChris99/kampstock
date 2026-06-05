@@ -35,10 +35,15 @@ class GlobalExceptionFilter implements ExceptionFilter {
     if (exception instanceof HttpException) {
       status = exception.getStatus();
       const res = exception.getResponse();
-      message = typeof res === 'string' ? res : (res as any)?.message ?? message;
+      message =
+        typeof res === 'string' ? res : ((res as any)?.message ?? message);
     }
 
-    httpAdapter.reply(ctx.getResponse(), { statusCode: status, message }, status);
+    httpAdapter.reply(
+      ctx.getResponse(),
+      { statusCode: status, message },
+      status,
+    );
   }
 }
 
@@ -89,7 +94,13 @@ export async function createNestServer(): Promise<Express> {
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-CSRF-Token',
+      'X-Tenant-Subdomain',
+    ],
+    exposedHeaders: ['Set-Cookie'],
   });
 
   app.setGlobalPrefix('api');

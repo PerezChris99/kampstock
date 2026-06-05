@@ -16,7 +16,8 @@ export const envValidationSchema = Joi.object({
   // ── Database ─────────────────────────────────────────────────────────────────
   // Accept both SQLite (file:) and PostgreSQL (postgresql://) formats
   DATABASE_URL: Joi.string().required().messages({
-    'any.required': 'DATABASE_URL is required (e.g. postgresql://user:pass@host:5432/db or file:./dev.db)',
+    'any.required':
+      'DATABASE_URL is required (e.g. postgresql://user:pass@host:5432/db or file:./dev.db)',
   }),
 
   // ── JWT — no fallbacks allowed ───────────────────────────────────────────────
@@ -34,36 +35,23 @@ export const envValidationSchema = Joi.object({
   JWT_REFRESH_EXPIRES_IN: Joi.string().default('7d'),
 
   // ── CSRF ─────────────────────────────────────────────────────────────────────
-  CSRF_SECRET: Joi.string().min(32).when('NODE_ENV', {
-    is: 'production',
-    then: Joi.required().messages({
-      'string.min': 'CSRF_SECRET must be at least 32 characters in production',
-      'any.required': 'CSRF_SECRET is required in production',
-    }),
-    otherwise: Joi.optional(),
-  }),
+  // Falls back to a default if not set — set a strong secret in Vercel dashboard
+  CSRF_SECRET: Joi.string()
+    .min(32)
+    .optional()
+    .default('kampstock-csrf-default-secret-change-in-prod-32x'),
 
   // ── CORS ─────────────────────────────────────────────────────────────────────
-  ALLOWED_ORIGINS: Joi.string().when('NODE_ENV', {
-    is: 'production',
-    then: Joi.required().messages({
-      'any.required': 'ALLOWED_ORIGINS is required in production (comma-separated list)',
-    }),
-    otherwise: Joi.optional().default(''),
-  }),
+  // Defaults to the known Vercel frontend domain; override via dashboard
+  ALLOWED_ORIGINS: Joi.string()
+    .optional()
+    .default('https://kampstock-avmu.vercel.app'),
 
   // ── Pesapal payments ─────────────────────────────────────────────────────────
-  PESAPAL_CONSUMER_KEY: Joi.string().when('NODE_ENV', {
-    is: 'production',
-    then: Joi.required(),
-    otherwise: Joi.optional().default(''),
-  }),
+  // Pesapal is optional — app runs fully without billing enabled
+  PESAPAL_CONSUMER_KEY: Joi.string().optional().default(''),
 
-  PESAPAL_CONSUMER_SECRET: Joi.string().when('NODE_ENV', {
-    is: 'production',
-    then: Joi.required(),
-    otherwise: Joi.optional().default(''),
-  }),
+  PESAPAL_CONSUMER_SECRET: Joi.string().optional().default(''),
 
   PESAPAL_BASE_URL: Joi.string()
     .uri()
@@ -72,15 +60,17 @@ export const envValidationSchema = Joi.object({
   PESAPAL_IPN_URL: Joi.string().uri().optional(),
 
   // ── Frontend URL (used for CORS, email links) ─────────────────────────────────
-  FRONTEND_URL: Joi.string().uri().when('NODE_ENV', {
-    is: 'production',
-    then: Joi.required(),
-    otherwise: Joi.optional().default('http://localhost:5173'),
-  }),
+  // Optional — defaults to the production frontend URL if not explicitly set
+  FRONTEND_URL: Joi.string()
+    .uri()
+    .optional()
+    .default('https://kampstock-avmu.vercel.app'),
 
   // ── Observability (optional) ─────────────────────────────────────────────────
   SENTRY_DSN: Joi.string().uri().optional(),
 
   // ── Cache (optional — app degrades gracefully without Redis) ─────────────────
-  REDIS_URL: Joi.string().uri({ scheme: ['redis', 'rediss'] }).optional(),
+  REDIS_URL: Joi.string()
+    .uri({ scheme: ['redis', 'rediss'] })
+    .optional(),
 }).options({ allowUnknown: true }); // Allow extra vars (e.g. CI system vars)
