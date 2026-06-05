@@ -280,6 +280,33 @@ export default function LoginPage() {
             </p>
           )}
 
+          {/* Demo credentials */}
+          <details className="auth-demo-details">
+            <summary>Demo / Test Accounts</summary>
+            <div className="auth-demo-grid">
+              <div className="auth-demo-row">
+                <span className="auth-demo-role">Admin</span>
+                <code>admin</code>
+                <code>admin123</code>
+              </div>
+              <div className="auth-demo-row">
+                <span className="auth-demo-role">Manager</span>
+                <code>manager</code>
+                <code>manager123</code>
+              </div>
+              <div className="auth-demo-row">
+                <span className="auth-demo-role">Cashier</span>
+                <code>cashier</code>
+                <code>cashier123</code>
+              </div>
+              <div className="auth-demo-row">
+                <span className="auth-demo-role">Storekeeper</span>
+                <code>storekeeper</code>
+                <code>store123</code>
+              </div>
+            </div>
+          </details>
+
           <div className="auth-footer">
             <span>KampStock v2.0</span>
             <span className="auth-footer-dot">·</span>

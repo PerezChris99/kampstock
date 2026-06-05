@@ -31,20 +31,20 @@ const PLANS = [
   {
     value: 'starter',
     label: 'Starter',
-    desc: 'Up to 2 users Â· 500 products Â· 30-day trial',
-    icon: 'ðŸš€',
+    desc: 'Up to 2 users | 500 products | 30-day trial',
+    icon: 'S',
   },
   {
     value: 'professional',
     label: 'Professional',
-    desc: 'Up to 10 users Â· Unlimited products Â· Full reports',
-    icon: 'âš¡',
+    desc: 'Up to 10 users | Unlimited products | Full reports',
+    icon: 'P',
   },
   {
     value: 'enterprise',
     label: 'Enterprise',
-    desc: 'Unlimited users Â· Multi-location Â· Priority support',
-    icon: 'ðŸ¢',
+    desc: 'Unlimited users | Multi-location | Priority support',
+    icon: 'E',
   },
 ] as const;
 
@@ -130,9 +130,9 @@ export default function RegisterPage() {
             <div className="auth-success-details">
               <div className="auth-success-row"><span>Subdomain</span><code>{success.subdomain}.kampstock.com</code></div>
               <div className="auth-success-row"><span>Admin username</span><code>{success.username}</code></div>
-              <div className="auth-success-row"><span>Trial</span><code>30 days free â€” starts now</code></div>
+              <div className="auth-success-row"><span>Trial</span><code>30 days free - starts now</code></div>
             </div>
-            <button className="auth-btn-primary" onClick={() => navigate('/login')}>Go to Login â†’</button>
+            <button className="auth-btn-primary" onClick={() => navigate('/login')}>Go to Login &rarr;</button>
           </div>
         </div>
       </div>
@@ -287,8 +287,8 @@ export default function RegisterPage() {
 
             <button className="auth-btn-primary" type="submit" disabled={loading} style={{ marginTop: '0.5rem' }}>
               {loading ? (
-                <span className="auth-btn-loading"><span className="auth-spinner" />Creating your accountâ€¦</span>
-              ) : 'Create Account â€” Free 30-day Trial â†’'}
+                <span className="auth-btn-loading"><span className="auth-spinner" />Creating your account...</span>
+              ) : 'Create Account - Free 30-day Trial'}
             </button>
 
             <p className="auth-switch-link">

@@ -1099,26 +1099,43 @@ async function main() {
   const adminRole = await prisma.role.upsert({
     where: { name_tenantId: { name: 'Admin', tenantId: 1 } },
     update: {},
-    create: { name: 'Admin', permissions: JSON.stringify({ all: true }), tenantId: 1 },
+    create: {
+      name: 'Admin',
+      permissions: JSON.stringify({ all: true }),
+      tenantId: 1,
+    },
   });
   const managerRole = await prisma.role.upsert({
     where: { name_tenantId: { name: 'Manager', tenantId: 1 } },
     update: {},
     create: {
       name: 'Manager',
-      permissions: JSON.stringify({ manage_products: true, manage_sales: true, view_reports: true, manage_stock: true }),
+      permissions: JSON.stringify({
+        manage_products: true,
+        manage_sales: true,
+        view_reports: true,
+        manage_stock: true,
+      }),
       tenantId: 1,
     },
   });
   const cashierRole = await prisma.role.upsert({
     where: { name_tenantId: { name: 'Cashier', tenantId: 1 } },
     update: {},
-    create: { name: 'Cashier', permissions: JSON.stringify({ create_sales: true }), tenantId: 1 },
+    create: {
+      name: 'Cashier',
+      permissions: JSON.stringify({ create_sales: true }),
+      tenantId: 1,
+    },
   });
   const storekeeperRole = await prisma.role.upsert({
     where: { name_tenantId: { name: 'Storekeeper', tenantId: 1 } },
     update: {},
-    create: { name: 'Storekeeper', permissions: JSON.stringify({ manage_stock: true }), tenantId: 1 },
+    create: {
+      name: 'Storekeeper',
+      permissions: JSON.stringify({ manage_stock: true }),
+      tenantId: 1,
+    },
   });
 
   // --- USERS ---
