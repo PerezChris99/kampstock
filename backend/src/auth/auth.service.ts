@@ -27,16 +27,26 @@ export class AuthService {
   /** Per-username brute-force tracking (in-memory, suitable for single-instance) */
   private readonly attempts = new Map<string, AttemptRecord>();
   private readonly MAX_ATTEMPTS =
-    process.env.NODE_ENV === 'production' ? 5 : 100;
-  private readonly LOCKOUT_MS = 15 * 60 * 1000; // 15 minutes
+    process.env.NODE_ENV === 'production' ? 8 : 100; // 8 attempts before lockout
+  private readonly LOCKOUT_MS = 10 * 60 * 1000; // 10 minutes
 
   private checkLock(key: string): void {
     const rec = this.attempts.get(key);
     if (rec?.lockedUntil && Date.now() < rec.lockedUntil) {
-      const mins = Math.ceil((rec.lockedUntil - Date.now()) / 60_000);
+      const secsLeft = Math.ceil((rec.lockedUntil - Date.now()) / 1000);
+      const minsLeft = Math.ceil(secsLeft / 60);
+      const unlockAt = new Date(rec.lockedUntil).toLocaleTimeString('en-UG', {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
       throw new UnauthorizedException(
-        `Too many failed attempts. Try again in ${mins} minute${mins === 1 ? '' : 's'}.`,
+        `Account temporarily locked due to too many failed login attempts. ` +
+          `Please try again in ${minsLeft} minute${minsLeft === 1 ? '' : 's'} (at approximately ${unlockAt}).`,
       );
+    }
+    // Clear expired lock automatically
+    if (rec?.lockedUntil && Date.now() >= rec.lockedUntil) {
+      this.attempts.delete(key);
     }
   }
 
@@ -71,7 +81,7 @@ export class AuthService {
   private persistLock(username: string, ip: string, failCount: number): void {
     const lockedUntil = new Date(Date.now() + this.LOCKOUT_MS);
     this.prisma.user
-      .findUnique({ where: { username } })
+      .findFirst({ where: { username } }) // findFirst: username no longer globally unique
       .then((user) =>
         this.prisma.accountLock.create({
           data: {
@@ -98,7 +108,12 @@ export class AuthService {
     this.checkLock(`ip:${ip}`);
 
     const user = await this.prisma.user.findUnique({
-      where: { username: dto.username },
+      where: {
+        username_tenantId: {
+          username: dto.username,
+          tenantId: subdomainTenantId ?? 1,
+        },
+      },
       include: { role: true },
     });
 
@@ -154,7 +169,15 @@ export class AuthService {
       )
       .catch(() => {});
 
-    return this.generateTokens(user);
+    const tokens = this.generateTokens(user);
+
+    // If admin has flagged this account for forced password reset, signal it in response
+    // The frontend should redirect to a change-password page and block normal navigation.
+    if (user.forcePasswordReset) {
+      return { ...tokens, requirePasswordReset: true };
+    }
+
+    return tokens;
   }
 
   async refresh(refreshToken: string) {

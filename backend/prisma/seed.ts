@@ -1086,7 +1086,7 @@ async function main() {
 
   // Idempotency check — skip if already seeded
   const existingAdmin = await prisma.user.findUnique({
-    where: { username: 'admin' },
+    where: { username_tenantId: { username: 'admin', tenantId: 1 } },
   });
   if (existingAdmin) {
     console.log(
@@ -1139,9 +1139,9 @@ async function main() {
   });
 
   // --- USERS ---
-  const adminHash = await bcrypt.hash('admin123', 12);
+  const adminHash = await bcrypt.hash('K@mpSt0ck#Admin!2026', 12);
   const admin = await prisma.user.upsert({
-    where: { username: 'admin' },
+    where: { username_tenantId: { username: 'admin', tenantId: 1 } },
     update: {},
     create: {
       name: 'Nakiganda Christine',
@@ -1154,7 +1154,7 @@ async function main() {
   });
   const managerHash = await bcrypt.hash('manager123', 12);
   await prisma.user.upsert({
-    where: { username: 'manager' },
+    where: { username_tenantId: { username: 'manager', tenantId: 1 } },
     update: {},
     create: {
       name: 'Ssekandi Robert',
@@ -1167,7 +1167,7 @@ async function main() {
   });
   const cashierHash = await bcrypt.hash('cashier123', 12);
   const cashier = await prisma.user.upsert({
-    where: { username: 'cashier' },
+    where: { username_tenantId: { username: 'cashier', tenantId: 1 } },
     update: {},
     create: {
       name: 'Namutebi Fiona',
@@ -1179,7 +1179,7 @@ async function main() {
     },
   });
   await prisma.user.upsert({
-    where: { username: 'storekeeper' },
+    where: { username_tenantId: { username: 'storekeeper', tenantId: 1 } },
     update: {},
     create: {
       name: 'Okello Patrick',
@@ -1547,7 +1547,9 @@ async function main() {
   console.log('\n[ok] KampStock seed complete!');
   console.log('[ok] Users created');
   console.log('  Login credentials:');
-  console.log('  admin / admin123     (full access)');
+  console.log(
+    '  admin / K@mpSt0ck#Admin!2026  (full access — change on first login!)',
+  );
   console.log('  manager / manager123 (manage products & sales)');
   console.log('  cashier / cashier123 (POS only)');
   console.log('[ok] Users created');

@@ -151,10 +151,10 @@ export class SuperAdminService {
 
   /** Promote a user to super-admin by username */
   async promoteToSuperAdmin(username: string) {
-    const user = await this.prisma.user.findUnique({ where: { username } });
+    const user = await this.prisma.user.findFirst({ where: { username } });
     if (!user) throw new NotFoundException('User not found');
     return this.prisma.user.update({
-      where: { username },
+      where: { id: user.id },
       data: { isSuperAdmin: true },
       select: { id: true, name: true, username: true, isSuperAdmin: true },
     });
@@ -397,7 +397,7 @@ export class SuperAdminService {
     lockedUntil?: string;
     adminId: number;
   }) {
-    const user = await this.prisma.user.findUnique({
+    const user = await this.prisma.user.findFirst({
       where: { username: data.username },
     });
 

@@ -1,4 +1,8 @@
-import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTenantDto } from './dto/create-tenant.dto';
@@ -12,14 +16,19 @@ export class TenantsService {
    * Creates: Tenant record + 4 default roles + 1 admin user.
    */
   async register(dto: CreateTenantDto) {
-    const subdomainConflict = await this.prisma.tenant.findUnique({ where: { subdomain: dto.subdomain } });
-    if (subdomainConflict) throw new ConflictException('Subdomain already taken');
+    const subdomainConflict = await this.prisma.tenant.findUnique({
+      where: { subdomain: dto.subdomain },
+    });
+    if (subdomainConflict)
+      throw new ConflictException('Subdomain already taken');
 
-    const nameConflict = await this.prisma.tenant.findUnique({ where: { name: dto.name } });
-    if (nameConflict) throw new ConflictException('Business name already registered');
+    const nameConflict = await this.prisma.tenant.findUnique({
+      where: { name: dto.name },
+    });
+    if (nameConflict)
+      throw new ConflictException('Business name already registered');
 
-    const usernameConflict = await this.prisma.user.findUnique({ where: { username: dto.adminUsername } });
-    if (usernameConflict) throw new ConflictException('Admin username already taken — choose another');
+    // Note: username uniqueness is scoped per-tenant so no global pre-check needed here.
 
     // Create tenant
     const tenant = await this.prisma.tenant.create({
@@ -38,15 +47,58 @@ export class TenantsService {
 
     // Create default roles for this tenant (normalized names — tenantId scopes them uniquely)
     const [adminRole] = await Promise.all([
-      this.prisma.role.create({ data: { name: 'Admin', permissions: JSON.stringify({ all: true }), tenantId: tenant.id } }),
-      this.prisma.role.create({ data: { name: 'Manager', permissions: JSON.stringify({ manage_products: true, manage_sales: true, view_reports: true, manage_stock: true, manage_expenses: true, manage_suppliers: true, manage_purchase_orders: true, manage_customers: true }), tenantId: tenant.id } }),
-      this.prisma.role.create({ data: { name: 'Cashier', permissions: JSON.stringify({ create_sales: true, manage_customers: true }), tenantId: tenant.id } }),
-      this.prisma.role.create({ data: { name: 'Storekeeper', permissions: JSON.stringify({ manage_stock: true, manage_purchase_orders: true }), tenantId: tenant.id } }),
+      this.prisma.role.create({
+        data: {
+          name: 'Admin',
+          permissions: JSON.stringify({ all: true }),
+          tenantId: tenant.id,
+        },
+      }),
+      this.prisma.role.create({
+        data: {
+          name: 'Manager',
+          permissions: JSON.stringify({
+            manage_products: true,
+            manage_sales: true,
+            view_reports: true,
+            manage_stock: true,
+            manage_expenses: true,
+            manage_suppliers: true,
+            manage_purchase_orders: true,
+            manage_customers: true,
+          }),
+          tenantId: tenant.id,
+        },
+      }),
+      this.prisma.role.create({
+        data: {
+          name: 'Cashier',
+          permissions: JSON.stringify({
+            create_sales: true,
+            manage_customers: true,
+          }),
+          tenantId: tenant.id,
+        },
+      }),
+      this.prisma.role.create({
+        data: {
+          name: 'Storekeeper',
+          permissions: JSON.stringify({
+            manage_stock: true,
+            manage_purchase_orders: true,
+          }),
+          tenantId: tenant.id,
+        },
+      }),
     ]);
 
     // Create default stock location
     await this.prisma.stockLocation.create({
-      data: { name: 'Main Store', description: 'Primary stock location', tenantId: tenant.id },
+      data: {
+        name: 'Main Store',
+        description: 'Primary stock location',
+        tenantId: tenant.id,
+      },
     });
 
     // Create admin user
@@ -64,7 +116,13 @@ export class TenantsService {
 
     const { passwordHash: _, ...adminSafe } = admin;
     return {
-      tenant: { id: tenant.id, name: tenant.name, subdomain: tenant.subdomain, plan: tenant.plan, trialEndsAt: tenant.trialEndsAt },
+      tenant: {
+        id: tenant.id,
+        name: tenant.name,
+        subdomain: tenant.subdomain,
+        plan: tenant.plan,
+        trialEndsAt: tenant.trialEndsAt,
+      },
       admin: adminSafe,
       message: `Tenant "${tenant.name}" registered successfully. Login at /${tenant.subdomain} with username "${dto.adminUsername}".`,
     };
@@ -72,7 +130,15 @@ export class TenantsService {
 
   async findAll() {
     return this.prisma.tenant.findMany({
-      select: { id: true, name: true, subdomain: true, plan: true, isActive: true, trialEndsAt: true, createdAt: true },
+      select: {
+        id: true,
+        name: true,
+        subdomain: true,
+        plan: true,
+        isActive: true,
+        trialEndsAt: true,
+        createdAt: true,
+      },
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -80,7 +146,18 @@ export class TenantsService {
   async findOne(id: number) {
     const tenant = await this.prisma.tenant.findUnique({
       where: { id },
-      select: { id: true, name: true, subdomain: true, plan: true, isActive: true, ownerEmail: true, ownerPhone: true, address: true, trialEndsAt: true, createdAt: true },
+      select: {
+        id: true,
+        name: true,
+        subdomain: true,
+        plan: true,
+        isActive: true,
+        ownerEmail: true,
+        ownerPhone: true,
+        address: true,
+        trialEndsAt: true,
+        createdAt: true,
+      },
     });
     if (!tenant) throw new NotFoundException('Tenant not found');
     return tenant;
@@ -89,7 +166,10 @@ export class TenantsService {
   async toggleActive(id: number) {
     const tenant = await this.prisma.tenant.findUnique({ where: { id } });
     if (!tenant) throw new NotFoundException('Tenant not found');
-    return this.prisma.tenant.update({ where: { id }, data: { isActive: !tenant.isActive } });
+    return this.prisma.tenant.update({
+      where: { id },
+      data: { isActive: !tenant.isActive },
+    });
   }
 
   /** Stats for a tenant: users, products, sales count */
@@ -98,18 +178,33 @@ export class TenantsService {
       this.prisma.user.count({ where: { tenantId } }),
       this.prisma.product.count({ where: { tenantId } }),
       this.prisma.sale.count({ where: { tenantId } }),
-      this.prisma.sale.aggregate({ where: { tenantId, status: 'COMPLETED' }, _sum: { grandTotal: true } }),
+      this.prisma.sale.aggregate({
+        where: { tenantId, status: 'COMPLETED' },
+        _sum: { grandTotal: true },
+      }),
     ]);
-    return { users, products, salesCount, totalRevenue: totalRevenue._sum.grandTotal ?? 0 };
+    return {
+      users,
+      products,
+      salesCount,
+      totalRevenue: totalRevenue._sum.grandTotal ?? 0,
+    };
   }
 
   /** Public: resolve a tenant by subdomain (for login-page branding) */
   async findBySubdomain(subdomain: string) {
     const tenant = await this.prisma.tenant.findUnique({
       where: { subdomain: subdomain.toLowerCase() },
-      select: { id: true, name: true, subdomain: true, plan: true, isActive: true },
+      select: {
+        id: true,
+        name: true,
+        subdomain: true,
+        plan: true,
+        isActive: true,
+      },
     });
-    if (!tenant || !tenant.isActive) throw new NotFoundException('Tenant not found');
+    if (!tenant || !tenant.isActive)
+      throw new NotFoundException('Tenant not found');
     return tenant;
   }
 
@@ -130,11 +225,23 @@ export class TenantsService {
         ...(dto.ownerEmail !== undefined && { ownerEmail: dto.ownerEmail }),
         ...(dto.ownerPhone !== undefined && { ownerPhone: dto.ownerPhone }),
         ...(dto.address !== undefined && { address: dto.address }),
-        ...(dto.businessType !== undefined && { businessType: dto.businessType }),
+        ...(dto.businessType !== undefined && {
+          businessType: dto.businessType,
+        }),
         ...(dto.description !== undefined && { description: dto.description }),
       },
-      select: { id: true, name: true, subdomain: true, plan: true, ownerEmail: true, ownerPhone: true, address: true, businessType: true, description: true, createdAt: true },
+      select: {
+        id: true,
+        name: true,
+        subdomain: true,
+        plan: true,
+        ownerEmail: true,
+        ownerPhone: true,
+        address: true,
+        businessType: true,
+        description: true,
+        createdAt: true,
+      },
     });
   }
 }
-

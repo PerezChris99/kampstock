@@ -10,7 +10,7 @@ datasource db {
 model User {
     id                 Int       @id @default(autoincrement())
     name               String
-    username           String    @unique
+    username           String
     passwordHash       String    @map("password_hash")
     phone              String?
     roleId             Int       @map("role_id")
@@ -37,6 +37,7 @@ model User {
     accountLocks     AccountLock[]   @relation("UserAccountLocks")
     unlockedLocks    AccountLock[]   @relation("AdminUnlockedLocks")
 
+    @@unique([username, tenantId], name: "username_tenantId")
     @@index([tenantId])
     @@index([roleId])
     @@map("users")

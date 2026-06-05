@@ -35,11 +35,22 @@ export const envValidationSchema = Joi.object({
   JWT_REFRESH_EXPIRES_IN: Joi.string().default('7d'),
 
   // ── CSRF ─────────────────────────────────────────────────────────────────────
-  // Falls back to a default if not set — set a strong secret in Vercel dashboard
+  // MUST be set in production. If missing, startup will log a critical warning.
+  // Minimum 32 chars. Generate with: openssl rand -hex 32
   CSRF_SECRET: Joi.string()
     .min(32)
     .optional()
-    .default('kampstock-csrf-default-secret-change-in-prod-32x'),
+    .default(() => {
+      if (process.env.NODE_ENV === 'production') {
+        // eslint-disable-next-line no-console
+        console.error(
+          '[SECURITY CRITICAL] CSRF_SECRET env var is not set in production! ' +
+            'Set a strong secret (>=32 chars) in your Vercel dashboard immediately. ' +
+            'Falling back to a weak default — CSRF protection is degraded.',
+        );
+      }
+      return 'kampstock-csrf-default-CHANGE-ME-in-prod-32x';
+    }),
 
   // ── CORS ─────────────────────────────────────────────────────────────────────
   // Defaults to the known Vercel frontend domain; override via dashboard

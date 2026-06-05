@@ -16,7 +16,11 @@ export class ReportsService {
     const end = new Date(`${date}T23:59:59`);
 
     const sales = await this.prisma.sale.findMany({
-      where: { createdAt: { gte: start, lte: end }, status: 'COMPLETED', ...(tenantId && { tenantId }) },
+      where: {
+        createdAt: { gte: start, lte: end },
+        status: 'COMPLETED',
+        ...(tenantId && { tenantId }),
+      },
       include: {
         payments: true,
         createdBy: { select: { id: true, name: true } },
@@ -24,15 +28,31 @@ export class ReportsService {
       },
     });
 
-    const totalSales = sales.reduce((s, sale) => s + Number(sale.grandTotal), 0);
-    const totalCash = sales.flatMap(s => s.payments).filter(p => p.paymentMethod === 'CASH').reduce((s, p) => s + Number(p.amount), 0);
-    const totalMobileMoney = sales.flatMap(s => s.payments).filter(p => p.paymentMethod === 'MOBILE_MONEY').reduce((s, p) => s + Number(p.amount), 0);
-    const totalCredit = sales.flatMap(s => s.payments).filter(p => p.paymentMethod === 'CREDIT').reduce((s, p) => s + Number(p.amount), 0);
+    const totalSales = sales.reduce(
+      (s, sale) => s + Number(sale.grandTotal),
+      0,
+    );
+    const totalCash = sales
+      .flatMap((s) => s.payments)
+      .filter((p) => p.paymentMethod === 'CASH')
+      .reduce((s, p) => s + Number(p.amount), 0);
+    const totalMobileMoney = sales
+      .flatMap((s) => s.payments)
+      .filter((p) => p.paymentMethod === 'MOBILE_MONEY')
+      .reduce((s, p) => s + Number(p.amount), 0);
+    const totalCredit = sales
+      .flatMap((s) => s.payments)
+      .filter((p) => p.paymentMethod === 'CREDIT')
+      .reduce((s, p) => s + Number(p.amount), 0);
 
-    const byCashier: Record<string, { name: string; count: number; total: number }> = {};
+    const byCashier: Record<
+      string,
+      { name: string; count: number; total: number }
+    > = {};
     for (const sale of sales) {
       const key = String(sale.createdBy.id);
-      if (!byCashier[key]) byCashier[key] = { name: sale.createdBy.name, count: 0, total: 0 };
+      if (!byCashier[key])
+        byCashier[key] = { name: sale.createdBy.name, count: 0, total: 0 };
       byCashier[key].count++;
       byCashier[key].total += Number(sale.grandTotal);
     }
@@ -41,7 +61,11 @@ export class ReportsService {
       date,
       totalTransactions: sales.length,
       totalSales,
-      byPaymentMethod: { cash: totalCash, mobileMoney: totalMobileMoney, credit: totalCredit },
+      byPaymentMethod: {
+        cash: totalCash,
+        mobileMoney: totalMobileMoney,
+        credit: totalCredit,
+      },
       byCashier: Object.values(byCashier),
     };
   }
@@ -50,9 +74,10 @@ export class ReportsService {
     const items = await this.prisma.stockItem.findMany({
       where: { ...(tenantId && { location: { tenantId } }) },
       include: { product: { include: { units: true } }, location: true },
+      take: 5000, // safety cap — prevents OOM on large catalogs
     });
 
-    const rows = items.map(i => ({
+    const rows = items.map((i) => ({
       productId: i.productId,
       productName: i.product.name,
       sku: i.product.sku,
@@ -70,10 +95,14 @@ export class ReportsService {
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - days);
 
-    const allProducts = await this.prisma.product.findMany({ where: { isActive: true, ...(tenantId && { tenantId }) } });
+    const allProducts = await this.prisma.product.findMany({
+      where: { isActive: true, ...(tenantId && { tenantId }) },
+      take: 5000,
+    });
     const recentMovements = await this.prisma.stockMovement.findMany({
       where: { createdAt: { gte: cutoff }, movementType: 'SALE' },
       select: { productId: true, quantity: true },
+      take: 50000,
     });
 
     const soldQty: Record<number, number> = {};
@@ -82,21 +111,33 @@ export class ReportsService {
     }
 
     return allProducts
-      .map(p => ({ id: p.id, name: p.name, sku: p.sku, soldLast30Days: soldQty[p.id] ?? 0 }))
+      .map((p) => ({
+        id: p.id,
+        name: p.name,
+        sku: p.sku,
+        soldLast30Days: soldQty[p.id] ?? 0,
+      }))
       .sort((a, b) => a.soldLast30Days - b.soldLast30Days)
       .slice(0, 50);
   }
 
   async monthlyProfitSummary(year: number, month: number, tenantId?: number) {
     const cacheKey = `report:monthlyProfit:${tenantId ?? 'global'}:${year}-${month}`;
-    const cached = await this.cache.get<ReturnType<typeof this._monthlyProfitSummary>>(cacheKey);
+    const cached =
+      await this.cache.get<ReturnType<typeof this._monthlyProfitSummary>>(
+        cacheKey,
+      );
     if (cached) return cached;
     const result = await this._monthlyProfitSummary(year, month, tenantId);
     await this.cache.set(cacheKey, result, REPORT_TTL);
     return result;
   }
 
-  private async _monthlyProfitSummary(year: number, month: number, tenantId?: number) {
+  private async _monthlyProfitSummary(
+    year: number,
+    month: number,
+    tenantId?: number,
+  ) {
     const start = new Date(year, month - 1, 1);
     const end = new Date(year, month, 0, 23, 59, 59);
     const tenantFilter = tenantId ? { tenantId } : {};
@@ -105,13 +146,23 @@ export class ReportsService {
     const [revenueAgg, saleLines, expenseAgg] = await Promise.all([
       // 1. Revenue via aggregate — DB does the summation
       this.prisma.sale.aggregate({
-        where: { createdAt: { gte: start, lte: end }, status: 'COMPLETED', ...tenantFilter },
+        where: {
+          createdAt: { gte: start, lte: end },
+          status: 'COMPLETED',
+          ...tenantFilter,
+        },
         _sum: { grandTotal: true },
         _count: { id: true },
       }),
       // 2. COGS — select only the two columns needed (no full sale joins)
       this.prisma.saleLine.findMany({
-        where: { sale: { createdAt: { gte: start, lte: end }, status: 'COMPLETED', ...tenantFilter } },
+        where: {
+          sale: {
+            createdAt: { gte: start, lte: end },
+            status: 'COMPLETED',
+            ...tenantFilter,
+          },
+        },
         select: { quantity: true, costPrice: true },
       }),
       // 3. Expenses via aggregate
@@ -122,21 +173,29 @@ export class ReportsService {
     ]);
 
     const revenue = Number(revenueAgg._sum.grandTotal ?? 0);
-    const cogs = saleLines.reduce((s, l) => s + Number(l.quantity) * Number(l.costPrice), 0);
+    const cogs = saleLines.reduce(
+      (s, l) => s + Number(l.quantity) * Number(l.costPrice),
+      0,
+    );
     const totalExpenses = Number(expenseAgg._sum.amount ?? 0);
     const grossProfit = revenue - cogs;
     const netProfit = grossProfit - totalExpenses;
 
     return {
       period: `${year}-${String(month).padStart(2, '0')}`,
-      revenue, cogs, grossProfit, totalExpenses, netProfit,
+      revenue,
+      cogs,
+      grossProfit,
+      totalExpenses,
+      netProfit,
       salesCount: revenueAgg._count.id,
     };
   }
 
   async salesTrend(days = 30, tenantId?: number) {
     const cacheKey = `report:salesTrend:${tenantId ?? 'global'}:${days}`;
-    const cached = await this.cache.get<ReturnType<typeof this._salesTrend>>(cacheKey);
+    const cached =
+      await this.cache.get<ReturnType<typeof this._salesTrend>>(cacheKey);
     if (cached) return cached;
     const result = await this._salesTrend(days, tenantId);
     await this.cache.set(cacheKey, result, REPORT_TTL);
@@ -175,31 +234,62 @@ export class ReportsService {
       }
     }
 
-    return Array.from(byDate.entries()).map(([date, stats]) => ({ date, ...stats }));
+    return Array.from(byDate.entries()).map(([date, stats]) => ({
+      date,
+      ...stats,
+    }));
   }
 
   async topProducts(limit = 10, days = 30, tenantId?: number) {
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - days);
     const lines = await this.prisma.saleLine.findMany({
-      where: { sale: { createdAt: { gte: cutoff }, status: 'COMPLETED', ...(tenantId && { tenantId }) } },
+      where: {
+        sale: {
+          createdAt: { gte: cutoff },
+          status: 'COMPLETED',
+          ...(tenantId && { tenantId }),
+        },
+      },
       include: { product: { select: { name: true, sku: true } } },
     });
-    const map: Record<number, { productName: string; sku: string; revenue: number; quantity: number; profit: number }> = {};
+    const map: Record<
+      number,
+      {
+        productName: string;
+        sku: string;
+        revenue: number;
+        quantity: number;
+        profit: number;
+      }
+    > = {};
     for (const l of lines) {
-      if (!map[l.productId]) map[l.productId] = { productName: l.product.name, sku: l.product.sku, revenue: 0, quantity: 0, profit: 0 };
+      if (!map[l.productId])
+        map[l.productId] = {
+          productName: l.product.name,
+          sku: l.product.sku,
+          revenue: 0,
+          quantity: 0,
+          profit: 0,
+        };
       map[l.productId].revenue += Number(l.lineTotal);
       map[l.productId].quantity += Number(l.quantity);
-      map[l.productId].profit += (Number(l.unitPrice) - Number(l.costPrice)) * Number(l.quantity);
+      map[l.productId].profit +=
+        (Number(l.unitPrice) - Number(l.costPrice)) * Number(l.quantity);
     }
-    return Object.values(map).sort((a, b) => b.revenue - a.revenue).slice(0, limit);
+    return Object.values(map)
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, limit);
   }
 
   async paymentBreakdown(days = 30, tenantId?: number) {
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - days);
     const payments = await this.prisma.payment.findMany({
-      where: { receivedAt: { gte: cutoff }, ...(tenantId && { sale: { tenantId } }) },
+      where: {
+        receivedAt: { gte: cutoff },
+        ...(tenantId && { sale: { tenantId } }),
+      },
       select: { paymentMethod: true, amount: true },
     });
     const map: Record<string, number> = {};
@@ -213,10 +303,19 @@ export class ReportsService {
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - days);
     const lines = await this.prisma.saleLine.findMany({
-      where: { sale: { createdAt: { gte: cutoff }, status: 'COMPLETED', ...(tenantId && { tenantId }) } },
+      where: {
+        sale: {
+          createdAt: { gte: cutoff },
+          status: 'COMPLETED',
+          ...(tenantId && { tenantId }),
+        },
+      },
       include: { product: { include: { category: true } } },
     });
-    const map: Record<string, { category: string; revenue: number; quantity: number }> = {};
+    const map: Record<
+      string,
+      { category: string; revenue: number; quantity: number }
+    > = {};
     for (const l of lines) {
       const cat = l.product.category?.name ?? 'Uncategorised';
       if (!map[cat]) map[cat] = { category: cat, revenue: 0, quantity: 0 };
@@ -229,36 +328,84 @@ export class ReportsService {
   async monthlySummary(months = 6, tenantId?: number) {
     const now = new Date();
     // Run all months in parallel instead of sequential await inside a loop
-    const promises: Promise<Awaited<ReturnType<typeof this.monthlyProfitSummary>>>[] = [];
+    const promises: Promise<
+      Awaited<ReturnType<typeof this.monthlyProfitSummary>>
+    >[] = [];
     for (let i = months - 1; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      promises.push(this.monthlyProfitSummary(d.getFullYear(), d.getMonth() + 1, tenantId));
+      promises.push(
+        this.monthlyProfitSummary(d.getFullYear(), d.getMonth() + 1, tenantId),
+      );
     }
     return Promise.all(promises);
   }
 
   async kpiOverview(tenantId?: number) {
     const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const yesterdayStart = new Date(todayStart); yesterdayStart.setDate(yesterdayStart.getDate() - 1);
-    const yesterdayEnd = new Date(todayStart); yesterdayEnd.setMilliseconds(-1);
+    const todayStart = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    );
+    const yesterdayStart = new Date(todayStart);
+    yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+    const yesterdayEnd = new Date(todayStart);
+    yesterdayEnd.setMilliseconds(-1);
 
-    const [todaySales, yesterdaySales, lowStockItems, allStock] = await Promise.all([
-      this.prisma.sale.findMany({ where: { createdAt: { gte: todayStart }, status: 'COMPLETED', ...(tenantId && { tenantId }) }, select: { grandTotal: true } }),
-      this.prisma.sale.findMany({ where: { createdAt: { gte: yesterdayStart, lte: yesterdayEnd }, status: 'COMPLETED', ...(tenantId && { tenantId }) }, select: { grandTotal: true } }),
-      this.prisma.stockItem.count({ where: { quantityOnHand: { lte: 10 }, ...(tenantId && { location: { tenantId } }) } }),
-      this.prisma.stockItem.findMany({ where: { ...(tenantId && { location: { tenantId } }) }, include: { product: { include: { units: { where: { isDefault: true } } } } } }),
-    ]);
+    const [todaySales, yesterdaySales, lowStockItems, allStock] =
+      await Promise.all([
+        this.prisma.sale.findMany({
+          where: {
+            createdAt: { gte: todayStart },
+            status: 'COMPLETED',
+            ...(tenantId && { tenantId }),
+          },
+          select: { grandTotal: true },
+        }),
+        this.prisma.sale.findMany({
+          where: {
+            createdAt: { gte: yesterdayStart, lte: yesterdayEnd },
+            status: 'COMPLETED',
+            ...(tenantId && { tenantId }),
+          },
+          select: { grandTotal: true },
+        }),
+        this.prisma.stockItem.count({
+          where: {
+            quantityOnHand: { lte: 10 },
+            ...(tenantId && { location: { tenantId } }),
+          },
+        }),
+        this.prisma.stockItem.findMany({
+          where: { ...(tenantId && { location: { tenantId } }) },
+          include: {
+            product: { include: { units: { where: { isDefault: true } } } },
+          },
+        }),
+      ]);
 
-    const todayTotal = todaySales.reduce((s, sale) => s + Number(sale.grandTotal), 0);
-    const yesterdayTotal = yesterdaySales.reduce((s, sale) => s + Number(sale.grandTotal), 0);
-    const totalStockValue = allStock.reduce((sum, item) => sum + Number(item.lastCostPrice) * Number(item.quantityOnHand), 0);
+    const todayTotal = todaySales.reduce(
+      (s, sale) => s + Number(sale.grandTotal),
+      0,
+    );
+    const yesterdayTotal = yesterdaySales.reduce(
+      (s, sale) => s + Number(sale.grandTotal),
+      0,
+    );
+    const totalStockValue = allStock.reduce(
+      (sum, item) =>
+        sum + Number(item.lastCostPrice) * Number(item.quantityOnHand),
+      0,
+    );
 
     return {
       todaySales: todayTotal,
       todayTransactions: todaySales.length,
       yesterdaySales: yesterdayTotal,
-      salesGrowth: yesterdayTotal > 0 ? ((todayTotal - yesterdayTotal) / yesterdayTotal) * 100 : 0,
+      salesGrowth:
+        yesterdayTotal > 0
+          ? ((todayTotal - yesterdayTotal) / yesterdayTotal) * 100
+          : 0,
       lowStockCount: lowStockItems,
       totalStockValue,
     };
@@ -295,4 +442,3 @@ export class ReportsService {
     }));
   }
 }
-

@@ -32,11 +32,14 @@ import { CacheModule } from './cache/cache.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true, validationSchema: envValidationSchema }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      validationSchema: envValidationSchema,
+    }),
     WinstonModule.forRoot({ instance: winstonLogger }),
     ThrottlerModule.forRoot([
-      { name: 'short', ttl: 60_000,   limit: 60 },   // 60 req/min  per IP  (general)
-      { name: 'long',  ttl: 3_600_000, limit: 600 },  // 600 req/hr  per IP  (general)
+      { name: 'short', ttl: 60_000, limit: 120 }, // 120 req/min per IP (general)
+      { name: 'long', ttl: 3_600_000, limit: 1200 }, // 1200 req/hr per IP (general)
     ]),
     PrismaModule,
     AuthModule,
@@ -60,9 +63,7 @@ import { CacheModule } from './cache/cache.module';
     SuperAdminModule,
     NotificationsModule,
   ],
-  providers: [
-    { provide: APP_GUARD, useClass: ThrottlerGuard },
-  ],
+  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
