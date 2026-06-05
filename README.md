@@ -171,7 +171,7 @@ npm run dev                   # starts on http://localhost:5173
 
 | Variable | Description |
 |----------|-------------|
-| `DATABASE_URL` | PostgreSQL connection string *(prod)* |
+| `DATABASE_URL` | PostgreSQL connection string. **On Vercel/serverless**, append `?connection_limit=1&pool_timeout=20` to the Neon pooler URL to prevent connection exhaustion across concurrent cold starts. |
 | `JWT_SECRET` | Access token signing secret |
 | `JWT_REFRESH_SECRET` | Refresh token signing secret |
 | `JWT_EXPIRY` | Access token TTL (e.g. `15m`) |
