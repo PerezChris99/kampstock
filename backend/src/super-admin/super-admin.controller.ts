@@ -1,6 +1,15 @@
 import {
-  Controller, Get, Patch, Post, Delete, Param, Body,
-  ParseIntPipe, UseGuards, Query, Req,
+  Controller,
+  Get,
+  Patch,
+  Post,
+  Delete,
+  Param,
+  Body,
+  ParseIntPipe,
+  UseGuards,
+  Query,
+  Req,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { SuperAdminService } from './super-admin.service';
@@ -47,10 +56,7 @@ export class SuperAdminController {
 
   /** GET /super-admin/audit — platform-wide audit log */
   @Get('audit')
-  auditLogs(
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
-  ) {
+  auditLogs(@Query('page') page?: string, @Query('limit') limit?: string) {
     return this.service.auditLogs(
       page ? parseInt(page, 10) : 1,
       limit ? Math.min(parseInt(limit, 10), 100) : 50,
@@ -71,7 +77,16 @@ export class SuperAdminController {
 
   /** POST /super-admin/announcements */
   @Post('announcements')
-  createAnnouncement(@Body() body: { title: string; body: string; severity?: string; targetPlan?: string; expiresAt?: string }) {
+  createAnnouncement(
+    @Body()
+    body: {
+      title: string;
+      body: string;
+      severity?: string;
+      targetPlan?: string;
+      expiresAt?: string;
+    },
+  ) {
     return this.service.createAnnouncement(body);
   }
 
@@ -79,7 +94,15 @@ export class SuperAdminController {
   @Patch('announcements/:id')
   updateAnnouncement(
     @Param('id', ParseIntPipe) id: number,
-    @Body() body: { title?: string; body?: string; severity?: string; targetPlan?: string; isActive?: boolean; expiresAt?: string },
+    @Body()
+    body: {
+      title?: string;
+      body?: string;
+      severity?: string;
+      targetPlan?: string;
+      isActive?: boolean;
+      expiresAt?: string;
+    },
   ) {
     return this.service.updateAnnouncement(id, body);
   }
@@ -131,7 +154,13 @@ export class SuperAdminController {
   /** POST /super-admin/security/lock — admin manually locks an account */
   @Post('security/lock')
   adminLockAccount(
-    @Body() body: { username: string; reason: string; notes?: string; lockedUntil?: string },
+    @Body()
+    body: {
+      username: string;
+      reason: string;
+      notes?: string;
+      lockedUntil?: string;
+    },
     @Req() req: Request & { user: any },
   ) {
     return this.service.adminLockAccount({ ...body, adminId: req.user.id });

@@ -26,7 +26,8 @@ export class AuthService {
 
   /** Per-username brute-force tracking (in-memory, suitable for single-instance) */
   private readonly attempts = new Map<string, AttemptRecord>();
-  private readonly MAX_ATTEMPTS = process.env.NODE_ENV === 'production' ? 5 : 100;
+  private readonly MAX_ATTEMPTS =
+    process.env.NODE_ENV === 'production' ? 5 : 100;
   private readonly LOCKOUT_MS = 15 * 60 * 1000; // 15 minutes
 
   private checkLock(key: string): void {
@@ -81,7 +82,10 @@ export class AuthService {
             ipAddress: ip,
             failCount,
             lockedUntil,
-            metadata: JSON.stringify({ ip, triggeredAt: new Date().toISOString() }),
+            metadata: JSON.stringify({
+              ip,
+              triggeredAt: new Date().toISOString(),
+            }),
           },
         }),
       )
@@ -99,7 +103,8 @@ export class AuthService {
     });
 
     // Always run bcrypt compare to prevent timing attacks, even if user not found
-    const dummyHash = '$2a$12$invaliddummyhashforsecuritypurposesonly00000000000000000';
+    const dummyHash =
+      '$2a$12$invaliddummyhashforsecuritypurposesonly00000000000000000';
     const passwordMatch = user
       ? await bcrypt.compare(dto.password, user.passwordHash)
       : (await bcrypt.compare(dto.password, dummyHash), false);
@@ -108,7 +113,17 @@ export class AuthService {
       this.recordFail(`user:${dto.username}`, dto.username, ip);
       this.recordFail(`ip:${ip}`);
       // Log failed attempt (fire-and-forget — never blocks login)
-      this.audit.log(null, 'LOGIN_FAIL', 'User', null, null, { username: dto.username, ip }, ip).catch(() => {});
+      this.audit
+        .log(
+          null,
+          'LOGIN_FAIL',
+          'User',
+          null,
+          null,
+          { username: dto.username, ip },
+          ip,
+        )
+        .catch(() => {});
       // Identical message regardless of whether user exists (prevents user enumeration)
       throw new UnauthorizedException('Invalid credentials');
     }
@@ -123,8 +138,21 @@ export class AuthService {
     this.clearAttempts(`ip:${ip}`);
 
     // Record last login + audit (fire-and-forget — don't block the response)
-    this.prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } }).catch(() => {});
-    this.audit.log(user.id, 'LOGIN_SUCCESS', 'User', user.id, null, { ip }, ip, user.tenantId).catch(() => {});
+    this.prisma.user
+      .update({ where: { id: user.id }, data: { lastLoginAt: new Date() } })
+      .catch(() => {});
+    this.audit
+      .log(
+        user.id,
+        'LOGIN_SUCCESS',
+        'User',
+        user.id,
+        null,
+        { ip },
+        ip,
+        user.tenantId,
+      )
+      .catch(() => {});
 
     return this.generateTokens(user);
   }
@@ -173,7 +201,8 @@ export class AuthService {
     });
     const refreshToken = this.jwtService.sign(payload, {
       secret: this.config.get<string>('JWT_REFRESH_SECRET'),
-      expiresIn: (this.config.get<string>('JWT_REFRESH_EXPIRES_IN') || '7d') as any,
+      expiresIn: (this.config.get<string>('JWT_REFRESH_EXPIRES_IN') ||
+        '7d') as any,
     });
     return {
       accessToken,

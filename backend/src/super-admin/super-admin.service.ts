@@ -24,14 +24,24 @@ export class SuperAdminService {
       this.prisma.user.count(),
       this.prisma.product.count(),
       this.prisma.sale.count({ where: { status: 'COMPLETED' } }),
-      this.prisma.sale.aggregate({ where: { status: 'COMPLETED' }, _sum: { grandTotal: true } }),
+      this.prisma.sale.aggregate({
+        where: { status: 'COMPLETED' },
+        _sum: { grandTotal: true },
+      }),
       this.prisma.tenant.count({
         where: { isActive: true, trialEndsAt: { gt: new Date() } },
       }),
       this.prisma.tenant.findMany({
         orderBy: { createdAt: 'desc' },
         take: 5,
-        select: { id: true, name: true, subdomain: true, plan: true, isActive: true, createdAt: true },
+        select: {
+          id: true,
+          name: true,
+          subdomain: true,
+          plan: true,
+          isActive: true,
+          createdAt: true,
+        },
       }),
       // Revenue breakdown per plan (approximate via tenant count)
       this.prisma.tenant.groupBy({
@@ -52,7 +62,10 @@ export class SuperAdminService {
         revenue: totalRevenueAgg._sum.grandTotal ?? 0,
       },
       recentTenants,
-      tenantsByPlan: revenueByPlan.map((r) => ({ plan: r.plan, count: r._count.id })),
+      tenantsByPlan: revenueByPlan.map((r) => ({
+        plan: r.plan,
+        count: r._count.id,
+      })),
     };
   }
 
@@ -61,15 +74,31 @@ export class SuperAdminService {
     const tenants = await this.prisma.tenant.findMany({
       orderBy: { createdAt: 'desc' },
       select: {
-        id: true, name: true, subdomain: true, plan: true, isActive: true,
-        ownerEmail: true, ownerPhone: true, address: true, businessType: true, description: true,
-        trialEndsAt: true, planExpiresAt: true, createdAt: true, updatedAt: true,
+        id: true,
+        name: true,
+        subdomain: true,
+        plan: true,
+        isActive: true,
+        ownerEmail: true,
+        ownerPhone: true,
+        address: true,
+        businessType: true,
+        description: true,
+        trialEndsAt: true,
+        planExpiresAt: true,
+        createdAt: true,
+        updatedAt: true,
         subscriptions: {
           orderBy: { createdAt: 'desc' },
           take: 5,
           select: {
-            id: true, status: true, confirmedAt: true, expiresAt: true,
-            plan: true, amount: true, periodMonths: true,
+            id: true,
+            status: true,
+            confirmedAt: true,
+            expiresAt: true,
+            plan: true,
+            amount: true,
+            periodMonths: true,
           },
         },
       },
@@ -80,7 +109,9 @@ export class SuperAdminService {
       tenants.map(async (t) => {
         const [users, sales, revenue] = await Promise.all([
           this.prisma.user.count({ where: { tenantId: t.id } }),
-          this.prisma.sale.count({ where: { tenantId: t.id, status: 'COMPLETED' } }),
+          this.prisma.sale.count({
+            where: { tenantId: t.id, status: 'COMPLETED' },
+          }),
           this.prisma.sale.aggregate({
             where: { tenantId: t.id, status: 'COMPLETED' },
             _sum: { grandTotal: true },
@@ -138,8 +169,13 @@ export class SuperAdminService {
         skip,
         take: limit,
         select: {
-          id: true, tenantId: true, userId: true, action: true,
-          entityType: true, entityId: true, createdAt: true,
+          id: true,
+          tenantId: true,
+          userId: true,
+          action: true,
+          entityType: true,
+          entityId: true,
+          createdAt: true,
           user: { select: { name: true, username: true } },
         },
       }),
@@ -150,7 +186,12 @@ export class SuperAdminService {
 
   /** MRR + signup trend for last 12 months */
   async mrrAnalytics() {
-    const months: { month: string; mrr: number; signups: number; churn: number }[] = [];
+    const months: {
+      month: string;
+      mrr: number;
+      signups: number;
+      churn: number;
+    }[] = [];
     const now = new Date();
 
     for (let i = 11; i >= 0; i--) {
@@ -164,11 +205,15 @@ export class SuperAdminService {
           where: { status: 'PAID', confirmedAt: { gte: start, lte: end } },
           _sum: { amount: true },
         }),
-        this.prisma.tenant.count({ where: { createdAt: { gte: start, lte: end } } }),
+        this.prisma.tenant.count({
+          where: { createdAt: { gte: start, lte: end } },
+        }),
         this.prisma.tenant.count({
           where: {
             planExpiresAt: { gte: start, lte: end },
-            subscriptions: { none: { status: 'PAID', confirmedAt: { gte: start } } },
+            subscriptions: {
+              none: { status: 'PAID', confirmedAt: { gte: start } },
+            },
           },
         }),
       ]);
@@ -186,10 +231,18 @@ export class SuperAdminService {
 
   /** Announcements CRUD */
   async getAnnouncements() {
-    return this.prisma.announcement.findMany({ orderBy: { createdAt: 'desc' } });
+    return this.prisma.announcement.findMany({
+      orderBy: { createdAt: 'desc' },
+    });
   }
 
-  async createAnnouncement(data: { title: string; body: string; severity?: string; targetPlan?: string; expiresAt?: string }) {
+  async createAnnouncement(data: {
+    title: string;
+    body: string;
+    severity?: string;
+    targetPlan?: string;
+    expiresAt?: string;
+  }) {
     return this.prisma.announcement.create({
       data: {
         title: data.title,
@@ -201,7 +254,17 @@ export class SuperAdminService {
     });
   }
 
-  async updateAnnouncement(id: number, data: { title?: string; body?: string; severity?: string; targetPlan?: string; isActive?: boolean; expiresAt?: string }) {
+  async updateAnnouncement(
+    id: number,
+    data: {
+      title?: string;
+      body?: string;
+      severity?: string;
+      targetPlan?: string;
+      isActive?: boolean;
+      expiresAt?: string;
+    },
+  ) {
     return this.prisma.announcement.update({
       where: { id },
       data: {
@@ -210,7 +273,9 @@ export class SuperAdminService {
         ...(data.severity !== undefined && { severity: data.severity }),
         ...(data.targetPlan !== undefined && { targetPlan: data.targetPlan }),
         ...(data.isActive !== undefined && { isActive: data.isActive }),
-        ...(data.expiresAt !== undefined && { expiresAt: data.expiresAt ? new Date(data.expiresAt) : null }),
+        ...(data.expiresAt !== undefined && {
+          expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
+        }),
       },
     });
   }
@@ -233,7 +298,15 @@ export class SuperAdminService {
         skip,
         take: limit,
         include: {
-          user: { select: { id: true, name: true, username: true, isActive: true, role: { select: { name: true } } } },
+          user: {
+            select: {
+              id: true,
+              name: true,
+              username: true,
+              isActive: true,
+              role: { select: { name: true } },
+            },
+          },
           unlockedBy: { select: { id: true, name: true, username: true } },
         },
       }),
@@ -249,8 +322,13 @@ export class SuperAdminService {
       include: {
         user: {
           select: {
-            id: true, name: true, username: true, phone: true, isActive: true,
-            lastLoginAt: true, createdAt: true,
+            id: true,
+            name: true,
+            username: true,
+            phone: true,
+            isActive: true,
+            lastLoginAt: true,
+            createdAt: true,
             role: { select: { name: true } },
           },
         },
@@ -265,7 +343,13 @@ export class SuperAdminService {
           where: { userId: lock.userId },
           orderBy: { createdAt: 'desc' },
           take: 20,
-          select: { id: true, action: true, entityType: true, createdAt: true, ipAddress: true },
+          select: {
+            id: true,
+            action: true,
+            entityType: true,
+            createdAt: true,
+            ipAddress: true,
+          },
         })
       : [];
 
@@ -274,7 +358,9 @@ export class SuperAdminService {
 
   /** Admin manually unlocks an account — clears in-memory block is handled by auth.service on next login */
   async unlockAccount(lockId: number, adminId: number, notes?: string) {
-    const lock = await this.prisma.accountLock.findUnique({ where: { id: lockId } });
+    const lock = await this.prisma.accountLock.findUnique({
+      where: { id: lockId },
+    });
     if (!lock) throw new NotFoundException('Lock record not found');
 
     const updated = await this.prisma.accountLock.update({
@@ -311,7 +397,9 @@ export class SuperAdminService {
     lockedUntil?: string;
     adminId: number;
   }) {
-    const user = await this.prisma.user.findUnique({ where: { username: data.username } });
+    const user = await this.prisma.user.findUnique({
+      where: { username: data.username },
+    });
 
     const lock = await this.prisma.accountLock.create({
       data: {
@@ -322,7 +410,10 @@ export class SuperAdminService {
         failCount: 0,
         lockedUntil: data.lockedUntil ? new Date(data.lockedUntil) : null,
         notes: data.notes,
-        metadata: JSON.stringify({ adminId: data.adminId, adminReason: data.reason }),
+        metadata: JSON.stringify({
+          adminId: data.adminId,
+          adminReason: data.reason,
+        }),
       },
     });
 
@@ -333,7 +424,10 @@ export class SuperAdminService {
         entityType: 'AccountLock',
         entityId: lock.id,
         previousValue: null,
-        newValue: JSON.stringify({ username: data.username, reason: data.reason }),
+        newValue: JSON.stringify({
+          username: data.username,
+          reason: data.reason,
+        }),
         ipAddress: null,
       },
     });
@@ -396,7 +490,10 @@ export class SuperAdminService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('User not found');
 
-    await this.prisma.user.update({ where: { id: userId }, data: { isActive: false } });
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { isActive: false },
+    });
 
     await this.prisma.auditLog.create({
       data: {
@@ -418,7 +515,10 @@ export class SuperAdminService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('User not found');
 
-    await this.prisma.user.update({ where: { id: userId }, data: { isActive: true } });
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { isActive: true },
+    });
 
     await this.prisma.auditLog.create({
       data: {
@@ -437,17 +537,18 @@ export class SuperAdminService {
 
   /** Summary stats for the security dashboard */
   async securityStats() {
-    const [activeLocks, totalLocks, recentFailed, flaggedUsers] = await Promise.all([
-      this.prisma.accountLock.count({ where: { isActive: true } }),
-      this.prisma.accountLock.count(),
-      this.prisma.auditLog.count({
-        where: {
-          action: 'LOGIN_FAIL',
-          createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
-        },
-      }),
-      this.prisma.user.count({ where: { flaggedForReview: true } }),
-    ]);
+    const [activeLocks, totalLocks, recentFailed, flaggedUsers] =
+      await Promise.all([
+        this.prisma.accountLock.count({ where: { isActive: true } }),
+        this.prisma.accountLock.count(),
+        this.prisma.auditLog.count({
+          where: {
+            action: 'LOGIN_FAIL',
+            createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+          },
+        }),
+        this.prisma.user.count({ where: { flaggedForReview: true } }),
+      ]);
 
     const locksByReason = await this.prisma.accountLock.groupBy({
       by: ['reason'],
@@ -460,8 +561,10 @@ export class SuperAdminService {
       totalLocks,
       recentFailedLogins24h: recentFailed,
       flaggedUsers,
-      locksByReason: locksByReason.map((r) => ({ reason: r.reason, count: r._count.id })),
+      locksByReason: locksByReason.map((r) => ({
+        reason: r.reason,
+        count: r._count.id,
+      })),
     };
   }
 }
-

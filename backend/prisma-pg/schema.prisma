@@ -9,13 +9,13 @@ datasource db {
 }
 
 model User {
-    id           Int       @id @default(autoincrement())
-    name         String
-    username     String    @unique
-    passwordHash String    @map("password_hash")
-    phone        String?
-    roleId       Int       @map("role_id")
-    tenantId     Int       @default(1) @map("tenant_id")
+    id                 Int       @id @default(autoincrement())
+    name               String
+    username           String    @unique
+    passwordHash       String    @map("password_hash")
+    phone              String?
+    roleId             Int       @map("role_id")
+    tenantId           Int       @default(1) @map("tenant_id")
     isActive           Boolean   @default(true) @map("is_active")
     isSuperAdmin       Boolean   @default(false) @map("is_super_admin")
     lastLoginAt        DateTime? @map("last_login_at")
@@ -534,7 +534,7 @@ model AccountLock {
     id            Int       @id @default(autoincrement())
     username      String
     userId        Int?      @map("user_id")
-    reason        String    // BRUTE_FORCE | RATE_LIMIT | ADMIN_LOCK | SUSPICIOUS_ACTIVITY
+    reason        String // BRUTE_FORCE | RATE_LIMIT | ADMIN_LOCK | SUSPICIOUS_ACTIVITY
     triggerSource String    @default("SYSTEM") @map("trigger_source")
     ipAddress     String?   @map("ip_address")
     failCount     Int       @default(0) @map("fail_count")
