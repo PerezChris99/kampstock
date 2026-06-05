@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { lazy, Suspense } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import AppLayout from './layouts/AppLayout';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -13,17 +14,25 @@ import SuppliersPage from './pages/SuppliersPage';
 import PurchaseOrdersPage from './pages/PurchaseOrdersPage';
 import CustomersPage from './pages/CustomersPage';
 import ExpensesPage from './pages/ExpensesPage';
-import ReportsPage from './pages/ReportsPage';
 import SalesPage from './pages/SalesPage';
 import UsersPage from './pages/UsersPage';
 import BillingPage from './pages/BillingPage';
 import BillingCallbackPage from './pages/BillingCallbackPage';
 import SuperAdminPage from './pages/SuperAdminPage';
-import AdminCalendarPage from './pages/AdminCalendarPage';
 import LockedPage from './pages/LockedPage';
 import SettingsPage from './pages/SettingsPage';
 import SuperAdminRoute from './components/SuperAdminRoute';
-import ManagerCalendarPage from './pages/ManagerCalendarPage';
+
+// Heavy pages lazy-loaded to reduce initial bundle (react-big-calendar + recharts)
+const ReportsPage = lazy(() => import('./pages/ReportsPage'));
+const ManagerCalendarPage = lazy(() => import('./pages/ManagerCalendarPage'));
+const AdminCalendarPage = lazy(() => import('./pages/AdminCalendarPage'));
+
+const PageLoader = () => (
+  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', color: '#64748b', fontSize: '0.9rem' }}>
+    Loading...
+  </div>
+);
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -58,10 +67,10 @@ export default function App() {
             <Route path="customers" element={<CustomersPage />} />
             <Route path="expenses" element={<ExpensesPage />} />
             <Route path="sales" element={<SalesPage />} />
-            <Route path="reports" element={<ReportsPage />} />
+            <Route path="reports" element={<Suspense fallback={<PageLoader />}><ReportsPage /></Suspense>} />
             <Route path="users" element={<UsersPage />} />
             <Route path="billing" element={<BillingPage />} />
-            <Route path="calendar" element={<ManagerCalendarPage />} />
+            <Route path="calendar" element={<Suspense fallback={<PageLoader />}><ManagerCalendarPage /></Suspense>} />
             <Route path="settings" element={<SettingsPage />} />
             <Route
               path="super-admin"
@@ -75,7 +84,9 @@ export default function App() {
               path="super-admin/calendar"
               element={
                 <SuperAdminRoute>
-                  <AdminCalendarPage />
+                  <Suspense fallback={<PageLoader />}>
+                    <AdminCalendarPage />
+                  </Suspense>
                 </SuperAdminRoute>
               }
             />
