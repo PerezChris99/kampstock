@@ -12,8 +12,16 @@ export class AuditController {
   findAll(
     @Query('entityType') entityType?: string,
     @Query('entityId') entityId?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
     @CurrentUser('tenantId') tenantId?: number,
   ) {
-    return this.auditService.findAll(entityType, entityId ? parseInt(entityId) : undefined, tenantId);
+    return this.auditService.findAll(
+      entityType,
+      entityId ? parseInt(entityId) : undefined,
+      tenantId,
+      page ? parseInt(page) : 1,
+      limit ? parseInt(limit) : 50,
+    );
   }
 }

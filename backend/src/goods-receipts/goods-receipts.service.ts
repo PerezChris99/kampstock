@@ -77,16 +77,23 @@ export class GoodsReceiptsService {
     });
   }
 
-  async findAll(tenantId?: number) {
-    return this.prisma.goodsReceipt.findMany({
-      where: { ...(tenantId && { tenantId }) },
-      include: {
-        receivedBy: { select: { id: true, name: true } },
-        purchaseOrder: { include: { supplier: true } },
-        supplierInvoice: true,
-      },
-      orderBy: { receiptDate: 'desc' },
-    });
+  async findAll(tenantId?: number, limit = 50, offset = 0) {
+    const where = { ...(tenantId && { tenantId }) };
+    const [data, total] = await Promise.all([
+      this.prisma.goodsReceipt.findMany({
+        where,
+        include: {
+          receivedBy: { select: { id: true, name: true } },
+          purchaseOrder: { include: { supplier: true } },
+          supplierInvoice: true,
+        },
+        orderBy: { receiptDate: 'desc' },
+        take: Math.min(limit, 200),
+        skip: offset,
+      }),
+      this.prisma.goodsReceipt.count({ where }),
+    ]);
+    return { data, total, limit: Math.min(limit, 200), offset };
   }
 
   async findOne(id: number) {

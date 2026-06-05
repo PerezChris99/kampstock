@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Param, Body, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Param, Body, ParseIntPipe, Query } from '@nestjs/common';
 import { GoodsReceiptsService } from './goods-receipts.service';
 import { CreateGoodsReceiptDto, CreateSupplierInvoiceDto } from './dto/goods-receipt.dto';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -15,8 +15,12 @@ export class GoodsReceiptsController {
   }
 
   @Get()
-  findAll(@CurrentUser('tenantId') tenantId?: number) {
-    return this.grService.findAll(tenantId);
+  findAll(
+    @CurrentUser('tenantId') tenantId?: number,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ) {
+    return this.grService.findAll(tenantId, limit ? parseInt(limit) : 50, offset ? parseInt(offset) : 0);
   }
 
   @Get(':id')
