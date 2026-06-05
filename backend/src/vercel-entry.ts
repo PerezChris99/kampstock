@@ -79,15 +79,28 @@ export async function createNestServer(): Promise<Express> {
   const httpAdapterHost = app.get(HttpAdapterHost);
   app.useGlobalFilters(new GlobalExceptionFilter(httpAdapterHost));
 
-  // Build allowed-origins list: prefer ALLOWED_ORIGINS env var, always include
-  // FRONTEND_URL as a fallback so the app works even when the env var is not set.
-  const rawOrigins = (process.env.ALLOWED_ORIGINS || '')
+  // Build allowed-origins list.
+  // PRODUCTION_FRONTEND is the canonical frontend URL — always allowed so that
+  // login works even if ALLOWED_ORIGINS / FRONTEND_URL env vars are not set in
+  // the Vercel dashboard. ConfigService Joi defaults don't apply here because
+  // vercel-entry.ts reads process.env directly before NestJS is fully wired.
+  const PRODUCTION_FRONTEND = 'https://kampstock-avmu.vercel.app';
+
+  const rawOrigins = new Set<string>();
+  rawOrigins.add(PRODUCTION_FRONTEND); // unconditional fallback
+
+  // Add any explicitly configured origins (comma-separated list)
+  const envAllowed = (process.env.ALLOWED_ORIGINS || '')
     .split(',')
     .map((o) => o.trim())
     .filter(Boolean);
-  const frontendUrl = process.env.FRONTEND_URL;
-  if (frontendUrl && !rawOrigins.includes(frontendUrl)) rawOrigins.push(frontendUrl);
-  const allowedOrigins = rawOrigins;
+  envAllowed.forEach((o) => rawOrigins.add(o));
+
+  // Also honour FRONTEND_URL if set (overrides / extends the default)
+  const envFrontend = process.env.FRONTEND_URL;
+  if (envFrontend) rawOrigins.add(envFrontend);
+
+  const allowedOrigins = [...rawOrigins];
 
   app.enableCors({
     origin: (origin, callback) => {
