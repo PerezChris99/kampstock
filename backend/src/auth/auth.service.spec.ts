@@ -17,7 +17,12 @@ import * as bcrypt from 'bcryptjs';
 const mockPrisma = {
   user: {
     findUnique: jest.fn(),
+    findFirst: jest.fn().mockResolvedValue(null), // needed by persistLock
     update: jest.fn().mockResolvedValue({}),
+  },
+  accountLock: {
+    create: jest.fn().mockResolvedValue({}),
+    updateMany: jest.fn().mockResolvedValue({ count: 0 }),
   },
 };
 
@@ -195,7 +200,7 @@ describe('AuthService', () => {
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
       await expect(
         service.login({ username: 'alice', password: 'Password1!' }, '127.0.0.1'),
-      ).rejects.toThrow(/Too many failed attempts/);
+      ).rejects.toThrow(/temporarily limited|too many failed attempts/i);
     });
   });
 
