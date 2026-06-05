@@ -36,7 +36,7 @@ export default function LoginPage() {
         (typeof err?.response?.data === 'string' ? err.response.data : undefined);
       if (status === 429) {
         setError(
-          serverMsg || 'Too many login attempts. Please wait a few minutes before trying again.',
+          'Login temporarily limited due to multiple sign-in attempts from this device. This resets automatically — please wait a few minutes and try again.',
         );
       } else if (status === 401) {
         // Server returns informative message e.g. "Account temporarily locked due to ... try again in X minutes"

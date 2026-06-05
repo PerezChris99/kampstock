@@ -1,8 +1,9 @@
 import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { WinstonModule } from 'nest-winston';
+import { CustomThrottlerGuard } from './common/guards/custom-throttler.guard';
 import { PrismaModule } from './prisma/prisma.module';
 import { SubdomainTenantMiddleware } from './common/middleware/subdomain-tenant.middleware';
 import { TenantLockMiddleware } from './common/middleware/tenant-lock.middleware';
@@ -38,8 +39,8 @@ import { CacheModule } from './cache/cache.module';
     }),
     WinstonModule.forRoot({ instance: winstonLogger }),
     ThrottlerModule.forRoot([
-      { name: 'short', ttl: 60_000, limit: 120 }, // 120 req/min per IP (general)
-      { name: 'long', ttl: 3_600_000, limit: 1200 }, // 1200 req/hr per IP (general)
+      { name: 'short', ttl: 60_000, limit: 200 }, // 200 req/min per IP (general)
+      { name: 'long', ttl: 3_600_000, limit: 2000 }, // 2000 req/hr per IP (general)
     ]),
     PrismaModule,
     AuthModule,
@@ -63,7 +64,7 @@ import { CacheModule } from './cache/cache.module';
     SuperAdminModule,
     NotificationsModule,
   ],
-  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
+  providers: [{ provide: APP_GUARD, useClass: CustomThrottlerGuard }],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {

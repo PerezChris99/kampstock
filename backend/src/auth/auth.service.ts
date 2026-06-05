@@ -27,8 +27,8 @@ export class AuthService {
   /** Per-username brute-force tracking (in-memory, suitable for single-instance) */
   private readonly attempts = new Map<string, AttemptRecord>();
   private readonly MAX_ATTEMPTS =
-    process.env.NODE_ENV === 'production' ? 8 : 100; // 8 attempts before lockout
-  private readonly LOCKOUT_MS = 10 * 60 * 1000; // 10 minutes
+    process.env.NODE_ENV === 'production' ? 20 : 100; // 20 attempts before lockout
+  private readonly LOCKOUT_MS = 5 * 60 * 1000; // 5 minutes
 
   private checkLock(key: string): void {
     const rec = this.attempts.get(key);
@@ -40,8 +40,8 @@ export class AuthService {
         minute: '2-digit',
       });
       throw new UnauthorizedException(
-        `Account temporarily locked due to too many failed login attempts. ` +
-          `Please try again in ${minsLeft} minute${minsLeft === 1 ? '' : 's'} (at approximately ${unlockAt}).`,
+        `Login temporarily limited due to too many failed attempts. ` +
+          `Please try again in ${minsLeft} minute${minsLeft === 1 ? '' : 's'} (resets at approximately ${unlockAt}).`,
       );
     }
     // Clear expired lock automatically

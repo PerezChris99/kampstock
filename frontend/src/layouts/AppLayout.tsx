@@ -1,9 +1,24 @@
 import { useState } from 'react';
 import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard, ShoppingCart, Package, Warehouse, Truck,
-  ClipboardList, Users, Receipt, BarChart3, Settings, LogOut,
-  Menu, X, ChevronRight, Store, CreditCard, Shield, CalendarDays,
+  LayoutDashboard,
+  ShoppingCart,
+  Package,
+  Warehouse,
+  Truck,
+  ClipboardList,
+  Users,
+  Receipt,
+  BarChart3,
+  Settings,
+  LogOut,
+  Menu,
+  X,
+  ChevronRight,
+  Store,
+  CreditCard,
+  Shield,
+  CalendarDays,
 } from 'lucide-react';
 import { useAuthStore } from '../store/auth.store';
 import ExpiryWarningBanner from '../components/ExpiryWarningBanner';
@@ -42,7 +57,7 @@ export default function AppLayout() {
     navigate('/login');
   };
 
-  const currentPage = visibleNavItems.find(n => n.to === location.pathname)?.label ?? 'KampStock';
+  const currentPage = visibleNavItems.find((n) => n.to === location.pathname)?.label ?? 'KampStock';
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
@@ -126,7 +141,10 @@ export default function AppLayout() {
           <div className="absolute inset-0 bg-black/50" onClick={() => setSidebarOpen(false)} />
           <aside className="absolute left-0 top-0 h-full w-60 bg-slate-900 flex flex-col z-10">
             <div className="absolute right-3 top-3">
-              <button onClick={() => setSidebarOpen(false)} className="p-1.5 rounded-md text-slate-400 hover:text-white">
+              <button
+                onClick={() => setSidebarOpen(false)}
+                className="p-1.5 rounded-md text-slate-400 hover:text-white"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>

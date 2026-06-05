@@ -14,4 +14,7 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL });
   );
   console.log('Updated rows:', result.rowCount);
   await pool.end();
-})().catch((e) => { console.error(e); process.exit(1); });
+})().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});
