@@ -3,7 +3,7 @@ import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, ShoppingCart, Package, Warehouse, Truck,
   ClipboardList, Users, Receipt, BarChart3, Settings, LogOut,
-  Menu, X, Bell, ChevronRight, Store, CreditCard, Shield,
+  Menu, X, ChevronRight, Store, CreditCard, Shield,
 } from 'lucide-react';
 import { useAuthStore } from '../store/auth.store';
 import ExpiryWarningBanner from '../components/ExpiryWarningBanner';

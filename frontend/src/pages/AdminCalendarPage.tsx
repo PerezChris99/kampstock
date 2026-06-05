@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Calendar, dateFnsLocalizer, View } from 'react-big-calendar';
+import { Calendar, dateFnsLocalizer, type View } from 'react-big-calendar';
 import { format, parse, startOfWeek, getDay } from 'date-fns';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import api from '../lib/api';
@@ -61,7 +61,6 @@ function getColor(tenant: Tenant): { color: string; type: CalEvent['type'] } {
 
 function ModalOverlay({ tenant, onClose }: { tenant: Tenant; onClose: () => void }) {
   const { color } = getColor(tenant);
-  const now = new Date();
   const expiry = tenant.planExpiresAt ? new Date(tenant.planExpiresAt) : null;
   const trial = tenant.trialEndsAt ? new Date(tenant.trialEndsAt) : null;
   const daysLeft = expiry ? daysUntil(expiry) : trial ? daysUntil(trial) : null;

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Users, Plus, Search, X, ChevronDown, ChevronUp,
-  CreditCard, Clock, CheckCircle, AlertTriangle,
+  CreditCard, CheckCircle, AlertTriangle,
   Phone, Mail, MapPin, TrendingDown,
 } from 'lucide-react';
 import api from '../lib/api';

@@ -10,7 +10,7 @@ import {
   ToggleLeft, ToggleRight, ChevronDown, ChevronUp,
   Shield, AlertTriangle, CalendarDays, Search,
   Phone, Mail, MapPin, Clock, Star, Layers, BadgeCheck,
-  Package, Megaphone, Plus, X, Trash2,
+  Package, Megaphone, Plus, Trash2,
 } from 'lucide-react';
 
 // ─── types ────────────────────────────────────────────────────────────────────
@@ -647,7 +647,7 @@ export default function SuperAdminPage() {
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                     <XAxis dataKey="month" tick={{ fontSize: 11 }} />
                     <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => (v >= 1000 ? `${(v/1000).toFixed(0)}k` : v)} />
-                    <Tooltip formatter={(v: number) => fmtUGX(v)} />
+                    <Tooltip formatter={(v: unknown) => fmtUGX(Number(v))} />
                     <Line type="monotone" dataKey="mrr" stroke="#6366f1" strokeWidth={2} dot={false} />
                   </LineChart>
                 </ResponsiveContainer>

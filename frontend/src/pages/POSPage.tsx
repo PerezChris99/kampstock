@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../lib/api';
-import { useAuthStore } from '../store/auth.store';
 import { enqueueOfflineSale } from '../lib/offlineQueue';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 
@@ -26,7 +25,6 @@ export default function POSPage() {
   const [scanError, setScanError] = useState('');
   const [offlineSaleMsg, setOfflineSaleMsg] = useState('');
   const barcodeRef = useRef<HTMLInputElement>(null);
-  const { user } = useAuthStore();
   const qc = useQueryClient();
 
   // Track online status and auto-flush offline queue on reconnect

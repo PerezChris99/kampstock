@@ -2,9 +2,9 @@
 import { useQuery } from "@tanstack/react-query";
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
-  LineChart, Line, PieChart, Pie, Cell,
+  PieChart, Pie, Cell,
 } from "recharts";
-import { Download, TrendingUp, TrendingDown, DollarSign, Package, BarChart2, AlertTriangle } from "lucide-react";
+import { Download, TrendingUp, TrendingDown, DollarSign, BarChart2, AlertTriangle } from "lucide-react";
 import api from "../lib/api";
 import { generatePLReport, generateStockReport, generateSlowMoversReport } from "../lib/pdf";
 
