@@ -40,6 +40,17 @@ class GlobalExceptionFilter implements ExceptionFilter {
       const res = exception.getResponse();
       message =
         typeof res === 'string' ? res : ((res as any)?.message ?? message);
+    } else {
+      // Non-HTTP exception → log the real error + stack so the cause is
+      // visible in Vercel runtime logs (previously these surfaced as an
+      // opaque 500 with no diagnostic information).
+      const req = ctx.getRequest();
+      console.error(
+        `[500] ${req?.method ?? '?'} ${req?.url ?? '?'} →`,
+        exception instanceof Error
+          ? `${exception.name}: ${exception.message}\n${exception.stack}`
+          : exception,
+      );
     }
 
     httpAdapter.reply(
@@ -182,7 +193,12 @@ export async function createNestServer(): Promise<Express> {
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
       if (allowedOrigins.includes(origin)) return callback(null, true);
-      callback(new Error('Not allowed by CORS'));
+      // Deny without throwing — throwing an Error here propagates to the
+      // exception filter and surfaces as a 500 on the preflight, which is
+      // misleading. Returning false simply omits CORS headers so the browser
+      // blocks the response cleanly.
+      console.warn(`[cors] Blocked origin: ${origin}`);
+      return callback(null, false);
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
