@@ -121,7 +121,8 @@ async function bootstrap() {
     .map((o) => o.trim())
     .filter(Boolean);
   const frontendUrl = process.env.FRONTEND_URL;
-  if (frontendUrl && !rawOrigins.includes(frontendUrl)) rawOrigins.push(frontendUrl);
+  if (frontendUrl && !rawOrigins.includes(frontendUrl))
+    rawOrigins.push(frontendUrl);
   const allowedOrigins = rawOrigins;
   app.enableCors({
     origin: (origin, callback) => {

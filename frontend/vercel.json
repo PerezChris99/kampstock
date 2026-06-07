@@ -1,5 +1,4 @@
 {
-  "ignoreCommand": "git diff HEAD~1 --quiet -- frontend/",
   "rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }],
   "headers": [
     {
