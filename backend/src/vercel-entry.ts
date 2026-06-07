@@ -214,9 +214,12 @@ export async function createNestServer(): Promise<Express> {
   app.setGlobalPrefix('api');
   await app.init();
 
-  // Initialize DB schema + seed at runtime (runs once per cold start)
+  // Initialize DB schema + seed at runtime (runs once per cold start).
+  // MUST be awaited: if we return before the admin/tenant are seeded, the very
+  // first request after a cold start races the seed and fails (e.g. login 401
+  // because the admin user does not exist yet).
   const prisma = app.get(PrismaService);
-  initializeDatabase(prisma).catch((err) =>
+  await initializeDatabase(prisma).catch((err) =>
     console.error('[bootstrap] Unexpected error:', err),
   );
 

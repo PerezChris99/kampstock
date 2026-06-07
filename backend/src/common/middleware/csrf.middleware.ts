@@ -37,7 +37,10 @@ function verifyCsrfToken(token: string, expected: string): boolean {
 @Injectable()
 export class CsrfMiddleware implements NestMiddleware {
   use(req: Request, res: Response, next: NextFunction) {
-    const path = req.path ?? '';
+    // Use req.originalUrl (not req.path): NestJS mounts middleware at the '/api'
+    // global prefix, so Express sets req.path to '/' and the real path lives in
+    // req.baseUrl. req.originalUrl reliably contains e.g. '/api/auth/login'.
+    const path = (req.originalUrl ?? '').split('?')[0];
     const method = (req.method ?? '').toUpperCase();
 
     // Always issue/refresh the CSRF cookie on every response
@@ -53,6 +56,13 @@ export class CsrfMiddleware implements NestMiddleware {
         secure: isProd,
         maxAge: 24 * 60 * 60 * 1000, // 24 hours
       });
+      // Expose the freshly-generated token on req.cookies so downstream handlers
+      // (e.g. GET /auth/csrf) can return it on the SAME request. Without this,
+      // the very first call returns null because the cookie isn't echoed back
+      // by the browser until the next request — which breaks cross-origin
+      // clients that cannot read the cookie via document.cookie.
+      if (!req.cookies) (req as any).cookies = {};
+      req.cookies[CSRF_COOKIE] = csrfToken;
     }
 
     // Only validate for unsafe methods

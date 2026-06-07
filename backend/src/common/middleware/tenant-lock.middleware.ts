@@ -39,7 +39,10 @@ export class TenantLockMiddleware implements NestMiddleware {
   constructor(private readonly prisma: PrismaService) {}
 
   async use(req: Request, _res: Response, next: NextFunction) {
-    const path = req.path;
+    // Use req.originalUrl (not req.path): when NestJS mounts middleware at the
+    // '/api' global prefix, Express sets req.path to '/' and puts the real path
+    // in req.baseUrl, so req.path can never match these bypass prefixes.
+    const path = req.originalUrl.split('?')[0];
 
     // Skip bypass routes
     if (BYPASS_PREFIXES.some((prefix) => path.startsWith(prefix))) {

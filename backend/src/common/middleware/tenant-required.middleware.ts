@@ -39,8 +39,12 @@ export class TenantRequiredMiddleware implements NestMiddleware {
     // Skip safe HTTP methods
     if (SAFE_METHODS.has(req.method)) return next();
 
-    // Skip bypass routes
-    const path = req.path;
+    // Skip bypass routes.
+    // NOTE: use req.originalUrl, NOT req.path. When NestJS mounts middleware at
+    // the global '/api' prefix, Express puts the matched path into req.baseUrl
+    // and leaves req.path as '/', so req.path can never match these prefixes.
+    // req.originalUrl always contains the real path (e.g. '/api/auth/login').
+    const path = req.originalUrl.split('?')[0];
     if (BYPASS_PREFIXES.some((prefix) => path.startsWith(prefix)))
       return next();
 
