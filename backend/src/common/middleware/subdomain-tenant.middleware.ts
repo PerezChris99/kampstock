@@ -53,7 +53,10 @@ export class SubdomainTenantMiddleware implements NestMiddleware {
       }
     }
 
-    // 2. Extract from reverse-proxy or host header
+    // 2. Extract from reverse-proxy or host header using the configured root domain.
+    // APP_DOMAIN is the authoritative way: only "sub.APP_DOMAIN" is a tenant hostname.
+    // Without APP_DOMAIN we fall back to the old heuristic but with a strict SKIP list
+    // so Vercel project hostnames (e.g. kampstock-pzmh.vercel.app) are never matched.
     if (!subdomain) {
       const host =
         (req.headers['x-forwarded-host'] as string | undefined)
@@ -62,22 +65,36 @@ export class SubdomainTenantMiddleware implements NestMiddleware {
         req.headers.host ||
         '';
       const hostname = host.split(':')[0].toLowerCase(); // strip port
-      const parts = hostname.split('.');
-      // Needs at least 3 parts (sub.domain.tld), skip 'www', 'api', 'mail' etc.
-      // Skip generic prefixes AND the known Vercel app hostnames so that
-      // kampstock-pzmh.vercel.app is never resolved as tenant subdomain "kampstock-pzmh".
-      const APP_HOST_SKIP = (process.env.APP_HOST_SKIP || '')
-        .split(',')
-        .map((h) => h.trim())
-        .filter(Boolean);
-      const SKIP = new Set([
-        'www', 'api', 'mail', 'localhost', 'kampstock',
-        'kampstock-avmu',   // production frontend on Vercel
-        'kampstock-pzmh',   // production backend on Vercel
-        ...APP_HOST_SKIP,
-      ]);
-      if (parts.length >= 3 && !SKIP.has(parts[0])) {
-        subdomain = parts[0];
+
+      const appDomain = (process.env.APP_DOMAIN || '').toLowerCase().trim();
+
+      if (appDomain) {
+        // Env-var driven: only "<sub>.<appDomain>" is a tenant hostname
+        const suffix = `.${appDomain}`;
+        if (hostname !== appDomain && hostname.endsWith(suffix)) {
+          const sub = hostname.slice(0, hostname.length - suffix.length);
+          const RESERVED = new Set(['www', 'api', 'mail', 'app', 'admin']);
+          if (sub && !sub.includes('.') && !RESERVED.has(sub)) {
+            subdomain = sub;
+          }
+        }
+      } else {
+        // Fallback heuristic — only used when APP_DOMAIN is not configured.
+        // Requires 3+ hostname parts AND the first part must not be a known
+        // non-tenant label (including the Vercel project hostname prefixes).
+        const parts = hostname.split('.');
+        const SKIP = new Set([
+          'www', 'api', 'mail', 'localhost', 'kampstock',
+          'kampstock-avmu',   // production frontend Vercel project
+          'kampstock-pzmh',   // production backend Vercel project
+        ]);
+        // Accept additional skip entries from APP_HOST_SKIP env var
+        const extra = (process.env.APP_HOST_SKIP || '')
+          .split(',').map((h) => h.trim()).filter(Boolean);
+        extra.forEach((h) => SKIP.add(h));
+        if (parts.length >= 3 && !SKIP.has(parts[0])) {
+          subdomain = parts[0];
+        }
       }
     }
 
