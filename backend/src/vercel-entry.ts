@@ -16,9 +16,8 @@ import {
 } from '@nestjs/common';
 import { ExpressAdapter } from '@nestjs/platform-express';
 import type { Express } from 'express';
-import { execSync } from 'child_process';
-import * as path from 'path';
 import * as bcrypt from 'bcryptjs';
+import cookieParser from 'cookie-parser';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const express = require('express');
 import helmet from 'helmet';
@@ -57,30 +56,22 @@ let isDbInitialized = false;
 
 /**
  * Runs once per cold start (at runtime, where DATABASE_URL is available).
- * 1. Pushes the Prisma schema to Neon so all tables exist.
- * 2. Creates the default tenant + admin user if the DB is empty.
- * This is intentionally kept separate from the build phase because Vercel
- * does not expose DATABASE_URL to the build environment by default.
+ * Creates the default tenant + admin user if the DB has no admin yet.
+ *
+ * NOTE: The Prisma schema must already exist in Neon. It is provisioned by
+ * running `npx prisma db push --schema=prisma-pg/schema.prisma` once against
+ * the production DATABASE_URL (see README). We deliberately do NOT run db push
+ * here on every cold start because spawning the Prisma CLI inside a serverless
+ * function is slow and unreliable and was causing intermittent 500s.
  */
 async function initializeDatabase(prisma: PrismaService): Promise<void> {
   if (isDbInitialized) return;
   isDbInitialized = true;
 
-  // 1. Push schema (CREATE TABLE IF NOT EXISTS equivalent — safe to repeat)
   try {
-    const schemaPath = path.join(__dirname, '..', 'prisma-pg', 'schema.prisma');
-    execSync(
-      `node "${path.join(__dirname, '..', 'node_modules', '.bin', 'prisma')}" db push --schema="${schemaPath}" --skip-generate --accept-data-loss`,
-      { env: process.env, stdio: 'pipe' },
-    );
-    console.log('[bootstrap] Schema pushed to Neon');
-  } catch (err: unknown) {
-    console.error('[bootstrap] db push failed (tables may already exist — continuing):', (err as Error).message ?? err);
-  }
-
-  // 2. Seed minimal data: tenant → admin role → admin user
-  try {
-    const existing = await prisma.user.findFirst({ where: { username: 'admin' } });
+    const existing = await prisma.user.findFirst({
+      where: { username: 'admin' },
+    });
     if (existing) {
       console.log('[bootstrap] Already seeded — skipping');
       return;
@@ -119,7 +110,9 @@ async function initializeDatabase(prisma: PrismaService): Promise<void> {
       },
     });
 
-    console.log('[bootstrap] Default tenant and admin user created successfully');
+    console.log(
+      '[bootstrap] Default tenant and admin user created successfully',
+    );
   } catch (err: unknown) {
     console.error('[bootstrap] Seed failed:', (err as Error).message ?? err);
   }
@@ -135,6 +128,14 @@ export async function createNestServer(): Promise<Express> {
   );
 
   app.use(compression());
+  // Body parsers — REQUIRED so JSON request bodies (login credentials, etc.)
+  // are populated on req.body. Without these, DTO validation sees undefined
+  // fields and rejects every POST with 400.
+  app.use(express.json({ limit: '5mb' }));
+  app.use(express.urlencoded({ limit: '5mb', extended: true }));
+  // Cookie parser — REQUIRED so req.cookies is populated for httpOnly JWT
+  // access/refresh tokens and the CSRF double-submit cookie.
+  app.use(cookieParser());
   app.use(
     helmet({
       crossOriginEmbedderPolicy: false,
