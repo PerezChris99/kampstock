@@ -9,21 +9,31 @@ import { PrismaService } from '../../prisma/prisma.service';
  *  3. `Host` header                 (direct subdomain hosting, e.g. acme.kampstock.com)
  *
  * Attaches to req:
- *   req.subdomainTenantId  — number | undefined
- *   req.subdomainTenant    — tenant object | undefined
+ *   req.subdomainTenantId  � number | undefined
+ *   req.subdomainTenant    � tenant object | undefined
  *
  * Results are cached for 60 seconds per subdomain to avoid a DB hit on every request.
  */
 
+interface TenantInfo {
+  id: number;
+  name: string;
+  subdomain: string;
+  isActive: boolean;
+  plan: string | null;
+}
+
 interface TenantCacheEntry {
-  tenant: {
-    id: number;
-    name: string;
-    subdomain: string;
-    isActive: boolean;
-    plan: string | null;
-  } | null;
+  tenant: TenantInfo | null;
   cachedAt: number;
+}
+
+// Extend Express Request so subdomainTenantId / subdomainTenant are typed
+declare module 'express' {
+  interface Request {
+    subdomainTenantId?: number;
+    subdomainTenant?: TenantInfo;
+  }
 }
 
 const tenantCache = new Map<string, TenantCacheEntry>();
@@ -53,23 +63,22 @@ export class SubdomainTenantMiddleware implements NestMiddleware {
       }
     }
 
-    // 2. Extract from reverse-proxy or host header using the configured root domain.
-    // APP_DOMAIN is the authoritative way: only "sub.APP_DOMAIN" is a tenant hostname.
-    // Without APP_DOMAIN we fall back to the old heuristic but with a strict SKIP list
-    // so Vercel project hostnames (e.g. kampstock-pzmh.vercel.app) are never matched.
+    // 2. Extract from reverse-proxy or host header.
+    // APP_DOMAIN is the authoritative approach: only "sub.APP_DOMAIN" is a tenant.
+    // Without APP_DOMAIN we use the heuristic with a SKIP list so Vercel project
+    // hostnames (e.g. kampstock-pzmh.vercel.app) are never matched.
     if (!subdomain) {
       const host =
         (req.headers['x-forwarded-host'] as string | undefined)
           ?.split(',')[0]
-          ?.trim() ||
-        req.headers.host ||
+          ?.trim() ??
+        req.headers.host ??
         '';
-      const hostname = host.split(':')[0].toLowerCase(); // strip port
+      const hostname = host.split(':')[0].toLowerCase();
 
-      const appDomain = (process.env.APP_DOMAIN || '').toLowerCase().trim();
+      const appDomain = (process.env.APP_DOMAIN ?? '').toLowerCase().trim();
 
       if (appDomain) {
-        // Env-var driven: only "<sub>.<appDomain>" is a tenant hostname
         const suffix = `.${appDomain}`;
         if (hostname !== appDomain && hostname.endsWith(suffix)) {
           const sub = hostname.slice(0, hostname.length - suffix.length);
@@ -79,19 +88,21 @@ export class SubdomainTenantMiddleware implements NestMiddleware {
           }
         }
       } else {
-        // Fallback heuristic — only used when APP_DOMAIN is not configured.
-        // Requires 3+ hostname parts AND the first part must not be a known
-        // non-tenant label (including the Vercel project hostname prefixes).
         const parts = hostname.split('.');
         const SKIP = new Set([
-          'www', 'api', 'mail', 'localhost', 'kampstock',
-          'kampstock-avmu',   // production frontend Vercel project
-          'kampstock-pzmh',   // production backend Vercel project
+          'www',
+          'api',
+          'mail',
+          'localhost',
+          'kampstock',
+          'kampstock-avmu',
+          'kampstock-pzmh',
         ]);
-        // Accept additional skip entries from APP_HOST_SKIP env var
-        const extra = (process.env.APP_HOST_SKIP || '')
-          .split(',').map((h) => h.trim()).filter(Boolean);
-        extra.forEach((h) => SKIP.add(h));
+        (process.env.APP_HOST_SKIP ?? '')
+          .split(',')
+          .map((h) => h.trim())
+          .filter(Boolean)
+          .forEach((h) => SKIP.add(h));
         if (parts.length >= 3 && !SKIP.has(parts[0])) {
           subdomain = parts[0];
         }
@@ -99,17 +110,15 @@ export class SubdomainTenantMiddleware implements NestMiddleware {
     }
 
     if (subdomain) {
-      // Check cache first
       const cached = tenantCache.get(subdomain);
       if (cached && Date.now() - cached.cachedAt < CACHE_TTL_MS) {
         if (cached.tenant) {
-          (req as any).subdomainTenantId = cached.tenant.id;
-          (req as any).subdomainTenant = cached.tenant;
+          req.subdomainTenantId = cached.tenant.id;
+          req.subdomainTenant = cached.tenant;
         }
         return next();
       }
 
-      // Cache miss — query DB
       const tenant = await this.prisma.tenant.findUnique({
         where: { subdomain },
         select: {
@@ -121,15 +130,14 @@ export class SubdomainTenantMiddleware implements NestMiddleware {
         },
       });
 
-      // Cache the result (even null — to avoid hammering DB for unknown subdomains)
       tenantCache.set(subdomain, {
         tenant: tenant?.isActive ? tenant : null,
         cachedAt: Date.now(),
       });
 
-      if (tenant && tenant.isActive) {
-        (req as any).subdomainTenantId = tenant.id;
-        (req as any).subdomainTenant = tenant;
+      if (tenant?.isActive) {
+        req.subdomainTenantId = tenant.id;
+        req.subdomainTenant = tenant;
       }
     }
 
