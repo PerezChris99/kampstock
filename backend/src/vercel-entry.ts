@@ -16,11 +16,15 @@ import {
 } from '@nestjs/common';
 import { ExpressAdapter } from '@nestjs/platform-express';
 import type { Express } from 'express';
+import { execSync } from 'child_process';
+import * as path from 'path';
+import * as bcrypt from 'bcryptjs';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const express = require('express');
 import helmet from 'helmet';
 import compression from 'compression';
 import { AppModule } from './app.module';
+import { PrismaService } from './prisma/prisma.service';
 
 @Catch()
 class GlobalExceptionFilter implements ExceptionFilter {
@@ -49,6 +53,77 @@ class GlobalExceptionFilter implements ExceptionFilter {
 
 const expressApp: Express = express();
 let isBootstrapped = false;
+let isDbInitialized = false;
+
+/**
+ * Runs once per cold start (at runtime, where DATABASE_URL is available).
+ * 1. Pushes the Prisma schema to Neon so all tables exist.
+ * 2. Creates the default tenant + admin user if the DB is empty.
+ * This is intentionally kept separate from the build phase because Vercel
+ * does not expose DATABASE_URL to the build environment by default.
+ */
+async function initializeDatabase(prisma: PrismaService): Promise<void> {
+  if (isDbInitialized) return;
+  isDbInitialized = true;
+
+  // 1. Push schema (CREATE TABLE IF NOT EXISTS equivalent — safe to repeat)
+  try {
+    const schemaPath = path.join(__dirname, '..', 'prisma-pg', 'schema.prisma');
+    execSync(
+      `node "${path.join(__dirname, '..', 'node_modules', '.bin', 'prisma')}" db push --schema="${schemaPath}" --skip-generate --accept-data-loss`,
+      { env: process.env, stdio: 'pipe' },
+    );
+    console.log('[bootstrap] Schema pushed to Neon');
+  } catch (err: unknown) {
+    console.error('[bootstrap] db push failed (tables may already exist — continuing):', (err as Error).message ?? err);
+  }
+
+  // 2. Seed minimal data: tenant → admin role → admin user
+  try {
+    const existing = await prisma.user.findFirst({ where: { username: 'admin' } });
+    if (existing) {
+      console.log('[bootstrap] Already seeded — skipping');
+      return;
+    }
+
+    await prisma.tenant.upsert({
+      where: { subdomain: 'kampstock' },
+      update: {},
+      create: {
+        name: 'KampStock',
+        subdomain: 'kampstock',
+        plan: 'enterprise',
+        isActive: true,
+        businessType: 'retail',
+        description: 'Default KampStock tenant',
+      },
+    });
+
+    const adminRole = await prisma.role.upsert({
+      where: { name_tenantId: { name: 'Admin', tenantId: 1 } },
+      update: {},
+      create: {
+        name: 'Admin',
+        permissions: JSON.stringify({ all: true }),
+        tenantId: 1,
+      },
+    });
+
+    await prisma.user.create({
+      data: {
+        name: 'Nakiganda Christine',
+        username: 'admin',
+        passwordHash: await bcrypt.hash('K@mpSt0ck#Admin!2026', 12),
+        roleId: adminRole.id,
+        tenantId: 1,
+      },
+    });
+
+    console.log('[bootstrap] Default tenant and admin user created successfully');
+  } catch (err: unknown) {
+    console.error('[bootstrap] Seed failed:', (err as Error).message ?? err);
+  }
+}
 
 export async function createNestServer(): Promise<Express> {
   if (isBootstrapped) return expressApp;
@@ -121,6 +196,12 @@ export async function createNestServer(): Promise<Express> {
 
   app.setGlobalPrefix('api');
   await app.init();
+
+  // Initialize DB schema + seed at runtime (runs once per cold start)
+  const prisma = app.get(PrismaService);
+  initializeDatabase(prisma).catch((err) =>
+    console.error('[bootstrap] Unexpected error:', err),
+  );
 
   isBootstrapped = true;
   return expressApp;

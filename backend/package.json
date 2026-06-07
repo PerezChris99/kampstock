@@ -22,7 +22,7 @@
     "db:seed": "npx ts-node prisma/seed.ts",
     "db:migrate": "npx prisma migrate dev",
     "db:push": "npx prisma db push",
-    "vercel-build": "prisma generate --schema=prisma-pg/schema.prisma && prisma db push --schema=prisma-pg/schema.prisma --skip-generate && npx ts-node prisma/seed.ts && nest build"
+    "vercel-build": "prisma generate --schema=prisma-pg/schema.prisma && nest build"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"
