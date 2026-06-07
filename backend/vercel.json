@@ -1,6 +1,7 @@
 {
   "version": 2,
   "buildCommand": "npm run vercel-build",
+  "ignoreCommand": "git diff HEAD~1 --name-only | grep -q '^backend/'",
   "functions": {
     "api/index.js": {
       "memory": 1024,
