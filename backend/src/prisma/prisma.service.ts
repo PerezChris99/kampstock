@@ -25,7 +25,20 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
   }
 
   async onModuleInit() {
-    await this._db.$connect();
+    // Resilient connect: on serverless (Neon pooler) a cold-start connection
+    // can transiently fail or time out. Do NOT let that reject app bootstrap —
+    // if it did, the whole lambda instance would serve 500 for every request
+    // (including endpoints that never touch the DB). Prisma connects lazily on
+    // the first query anyway, so a failed eager connect is fully recoverable.
+    try {
+      await this._db.$connect();
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error(
+        '[prisma] Eager $connect failed — will connect lazily on first query:',
+        (err as Error)?.message ?? err,
+      );
+    }
   }
   async onModuleDestroy() {
     await this._db.$disconnect();
