@@ -1095,6 +1095,24 @@ async function main() {
     return;
   }
 
+  // --- TENANT (must be created first — all other records reference tenantId: 1) ---
+  // In PostgreSQL, FK constraints are enforced: roles, users, products etc. all
+  // have tenantId: 1 hardcoded. We upsert by subdomain (unique) so this is safe
+  // to run multiple times. On a fresh database the auto-increment gives id=1.
+  await prisma.tenant.upsert({
+    where: { subdomain: 'kampstock' },
+    update: {},
+    create: {
+      name: 'KampStock',
+      subdomain: 'kampstock',
+      plan: 'enterprise',
+      isActive: true,
+      businessType: 'retail',
+      description: 'Default KampStock tenant',
+    },
+  });
+  console.log('[ok] Default tenant ensured');
+
   // --- ROLES ---
   const adminRole = await prisma.role.upsert({
     where: { name_tenantId: { name: 'Admin', tenantId: 1 } },

@@ -60,7 +60,7 @@ export class CsrfMiddleware implements NestMiddleware {
 
     // Check bypass list
     const isBypassed = CSRF_BYPASS_PREFIXES.some((prefix) =>
-      path.startsWith(prefix.replace('/api', '')),
+      path.startsWith(prefix),
     );
     if (isBypassed) return next();
 
