@@ -29,7 +29,14 @@ export function getSubdomain(): string | null {
   // Standard domain with subdomain (3+ parts)
   if (parts.length >= 3) {
     const sub = parts[0];
-    const SKIP = new Set(['www', 'api', 'mail', 'app']);
+    // Skip generic prefixes AND the known Vercel app hostnames for this deployment
+    // so that kampstock-avmu.vercel.app and kampstock-pzmh.vercel.app are never
+    // mistaken for tenant subdomains.
+    const SKIP = new Set([
+      'www', 'api', 'mail', 'app',
+      'kampstock-avmu',  // production frontend on Vercel
+      'kampstock-pzmh',  // production backend on Vercel
+    ]);
     return sub && !SKIP.has(sub) ? sub : null;
   }
 

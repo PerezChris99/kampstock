@@ -64,7 +64,18 @@ export class SubdomainTenantMiddleware implements NestMiddleware {
       const hostname = host.split(':')[0].toLowerCase(); // strip port
       const parts = hostname.split('.');
       // Needs at least 3 parts (sub.domain.tld), skip 'www', 'api', 'mail' etc.
-      const SKIP = new Set(['www', 'api', 'mail', 'localhost', 'kampstock']);
+      // Skip generic prefixes AND the known Vercel app hostnames so that
+      // kampstock-pzmh.vercel.app is never resolved as tenant subdomain "kampstock-pzmh".
+      const APP_HOST_SKIP = (process.env.APP_HOST_SKIP || '')
+        .split(',')
+        .map((h) => h.trim())
+        .filter(Boolean);
+      const SKIP = new Set([
+        'www', 'api', 'mail', 'localhost', 'kampstock',
+        'kampstock-avmu',   // production frontend on Vercel
+        'kampstock-pzmh',   // production backend on Vercel
+        ...APP_HOST_SKIP,
+      ]);
       if (parts.length >= 3 && !SKIP.has(parts[0])) {
         subdomain = parts[0];
       }
