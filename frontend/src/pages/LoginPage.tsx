@@ -34,6 +34,11 @@ export default function LoginPage() {
       const serverMsg: string | undefined =
         err?.response?.data?.message ??
         (typeof err?.response?.data === 'string' ? err.response.data : undefined);
+
+      // err.response is undefined when the browser blocks the request (CORS,
+      // network down, DNS failure). err.code covers axios timeout / no-network.
+      const isNetworkError = !err?.response;
+
       if (status === 429) {
         setError(
           'Login temporarily limited due to multiple sign-in attempts from this device. This resets automatically — please wait a few minutes and try again.',
@@ -45,6 +50,13 @@ export default function LoginPage() {
         setError('Invalid username or password. Please check your credentials.');
       } else if (status === 403) {
         setError(serverMsg || 'Your account has been locked. Please contact your administrator.');
+      } else if (status && status >= 500) {
+        setError('The server encountered an error. Please try again in a moment.');
+      } else if (isNetworkError) {
+        setError(
+          'Cannot reach the server. Please check your internet connection and try again. ' +
+          'If the problem persists, the service may be temporarily unavailable.',
+        );
       } else {
         setError('Unable to connect to the server. Please try again shortly.');
       }

@@ -30,16 +30,21 @@ async function getOrFetchCsrfToken(): Promise<string | null> {
     _csrfToken = fromCookie;
     return _csrfToken;
   }
-  // 3. Fetch from endpoint — works for cross-origin because endpoint returns body
-  try {
-    const res = await axios.get(`${API_BASE}/auth/csrf`, { withCredentials: true });
-    const token = res.data?.csrfToken ?? getCsrfCookie();
-    if (token) {
-      _csrfToken = token;
-      return _csrfToken;
+  // 3. Fetch from endpoint — retry up to 2 times on transient network failure
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const res = await axios.get(`${API_BASE}/auth/csrf`, {
+        withCredentials: true,
+        timeout: 8000,
+      });
+      const token = res.data?.csrfToken ?? getCsrfCookie();
+      if (token) {
+        _csrfToken = token;
+        return _csrfToken;
+      }
+    } catch {
+      if (attempt < 2) await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
     }
-  } catch {
-    // Non-fatal: proceed without CSRF (server will reject if required)
   }
   return null;
 }
@@ -75,8 +80,10 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    // 401 — access token expired; attempt silent refresh via httpOnly refresh cookie
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // 401 — access token expired; attempt silent refresh via httpOnly refresh cookie.
+    // Skip auto-redirect on the login page itself to avoid redirect loops.
+    const isLoginPage = window.location.pathname.startsWith('/login');
+    if (error.response?.status === 401 && !originalRequest._retry && !isLoginPage) {
       originalRequest._retry = true;
       try {
         await axios.post(`${API_BASE}/auth/refresh`, {}, { withCredentials: true });
