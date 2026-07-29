@@ -162,8 +162,8 @@ export default function POSPage() {
 
   if (receipt) {
     return (
-      <div className="flex-1 flex items-center justify-center p-6">
-        <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
+      <div className="h-full flex items-center justify-center p-4 sm:p-6">
+        <div className="bg-white rounded-2xl shadow-xl p-6 sm:p-8 text-center w-full max-w-sm">
           <div className="text-5xl mb-4">✅</div>
           <h2 className="text-2xl font-bold text-gray-800">Sale Complete</h2>
           <p className="text-gray-500 mt-1">Receipt #{receipt.saleNumber}</p>
@@ -201,11 +201,11 @@ export default function POSPage() {
           {failedCount > 0 && <span className="ml-2 bg-red-100 text-red-700 rounded-full px-2 py-0.5 text-xs font-bold">{failedCount} failed</span>}
         </div>
       )}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 flex-col lg:flex-row overflow-y-auto lg:overflow-hidden">
       {/* Cart panel */}
-      <div className="flex-1 p-6 flex flex-col">
-        <div className="flex items-center gap-4 mb-4">
-          <h2 className="text-2xl font-bold text-gray-800 flex-1">POS</h2>
+      <div className="flex-1 p-4 sm:p-6 flex flex-col min-w-0">
+        <div className="flex flex-wrap items-center gap-3 sm:gap-4 mb-4">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-800 flex-1">POS</h2>
           <select
             value={saleType}
             onChange={(e) => setSaleType(e.target.value as any)}
@@ -247,8 +247,8 @@ export default function POSPage() {
         )}
 
         {/* Cart table */}
-        <div className="flex-1 bg-white rounded-xl shadow overflow-auto">
-          <table className="w-full text-sm">
+        <div className="flex-1 min-h-[240px] bg-white rounded-xl shadow overflow-auto">
+          <table className="w-full text-sm min-w-[420px]">
             <thead className="bg-gray-50 text-gray-600">
               <tr>
                 <th className="text-left px-4 py-2">Item</th>
@@ -296,7 +296,7 @@ export default function POSPage() {
       </div>
 
       {/* Checkout sidebar */}
-      <div className="w-80 bg-white shadow-lg p-6 flex flex-col">
+      <div className="w-full lg:w-80 flex-shrink-0 bg-white shadow-lg border-t lg:border-t-0 lg:border-l border-gray-100 p-4 sm:p-6 flex flex-col">
         <h3 className="font-semibold text-gray-700 mb-4">Checkout</h3>
 
         <div className="mb-3">
@@ -327,7 +327,7 @@ export default function POSPage() {
           </select>
         </div>
 
-        <div className="mt-auto">
+        <div className="mt-4 lg:mt-auto">
           <div className="flex justify-between text-sm text-gray-500 mb-1">
             <span>Items</span><span>{cart.length}</span>
           </div>
