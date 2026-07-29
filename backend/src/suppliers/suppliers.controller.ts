@@ -9,7 +9,7 @@ export class SuppliersController {
   constructor(private suppliersService: SuppliersService) {}
 
   @Post()
-  @Roles('Admin', 'Manager')
+  @Roles('Admin', 'Manager', 'Storekeeper')
   create(@Body() dto: CreateSupplierDto, @CurrentUser('tenantId') tenantId: number) {
     return this.suppliersService.create(dto, tenantId);
   }

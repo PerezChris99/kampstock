@@ -45,9 +45,11 @@ function usePOPermissions() {
     !!user?.isSuperAdmin ||
     role === 'admin' ||
     role === 'manager' ||
+    role === 'storekeeper' ||
     !!perms.all ||
-    !!perms.manage_purchase_orders;
-  const canReceive = canManage || role === 'storekeeper' || !!perms.manage_stock;
+    !!perms.manage_purchase_orders ||
+    !!perms.manage_stock;
+  const canReceive = canManage;
   return { canManage, canReceive };
 }
 

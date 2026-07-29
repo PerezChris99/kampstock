@@ -78,7 +78,7 @@ function AddSupplierModal({ onClose }: { onClose: () => void }) {
 export default function SuppliersPage() {
   const { user } = useAuthStore();
   const role = normRole(user?.role);
-  const canManage = !!user?.isSuperAdmin || role === 'admin' || role === 'manager';
+  const canManage = !!user?.isSuperAdmin || role === 'admin' || role === 'manager' || role === 'storekeeper';
   const [showAdd, setShowAdd] = useState(false);
 
   const { data: suppliersPage, isLoading } = useQuery({

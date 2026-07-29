@@ -21,7 +21,7 @@ export class PurchaseOrdersController {
   constructor(private poService: PurchaseOrdersService) {}
 
   @Post()
-  @Roles('Admin', 'Manager')
+  @Roles('Admin', 'Manager', 'Storekeeper')
   create(
     @Body() dto: CreatePurchaseOrderDto,
     @CurrentUser('id') actorId: number,
@@ -58,7 +58,7 @@ export class PurchaseOrdersController {
   }
 
   @Patch(':id/status')
-  @Roles('Admin', 'Manager')
+  @Roles('Admin', 'Manager', 'Storekeeper')
   updateStatus(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdatePOStatusDto,

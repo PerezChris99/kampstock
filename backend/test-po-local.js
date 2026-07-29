@@ -214,7 +214,14 @@ async function main() {
   const reopen = await patch(`/api/purchase-orders/${poId}/status`, { status: 'SENT' });
   check('RECEIVED → SENT rejected (400)', reopen.status === 400, `status ${reopen.status}`);
 
-  // ── 8. Role enforcement: cashier cannot create POs ──
+  // ── 8. Role enforcement: storekeeper CAN create POs, cashier cannot ──
+  await login('storekeeper', 'store123');
+  const skPo = await post('/api/purchase-orders', {
+    supplierId,
+    lines: [{ productId, quantity: 2, unitPrice: 1000 }],
+  });
+  check('storekeeper can create PO (2xx)', skPo.status === 201 || skPo.status === 200, `status ${skPo.status} body=${JSON.stringify(skPo.body).slice(0, 150)}`);
+
   await login('cashier', 'cashier123');
   const forbidden = await post('/api/purchase-orders', {
     supplierId,
