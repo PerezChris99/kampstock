@@ -31,6 +31,20 @@ function StatusBadge({ status }: { status: string }) {
 const inputCls =
   'w-full mt-0.5 px-3 py-2 text-sm rounded-xl border border-gray-200 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500';
 
+/**
+ * Normalize role names for permission checks: strips the legacy `_<tenantId>`
+ * suffix (e.g. "Admin_1") and lowercases, mirroring the backend RolesGuard.
+ */
+const normRole = (role?: string) => (role ?? '').replace(/_\d+$/, '').toLowerCase();
+
+function usePOPermissions() {
+  const { user } = useAuthStore();
+  const role = normRole(user?.role);
+  const canManage = !!user?.isSuperAdmin || role === 'admin' || role === 'manager';
+  const canReceive = canManage || role === 'storekeeper';
+  return { canManage, canReceive };
+}
+
 // ─── Create PO modal ─────────────────────────────────────────────────────────
 
 interface DraftLine {
@@ -49,12 +63,28 @@ function CreatePOModal({ onClose }: { onClose: () => void }) {
   const [notes, setNotes] = useState('');
   const [lines, setLines] = useState<DraftLine[]>([emptyLine()]);
   const [err, setErr] = useState('');
+  const [newSupplierName, setNewSupplierName] = useState('');
+  const [showQuickSupplier, setShowQuickSupplier] = useState(false);
 
   const { data: suppliersPage } = useQuery({
     queryKey: ['suppliers'],
     queryFn: () => api.get('/suppliers?limit=500').then((r) => r.data),
   });
   const suppliers: any[] = suppliersPage?.data ?? [];
+
+  const quickSupplier = useMutation({
+    mutationFn: () => api.post('/suppliers', { name: newSupplierName.trim() }),
+    onSuccess: (res) => {
+      qc.invalidateQueries({ queryKey: ['suppliers'] });
+      setSupplierId(String(res.data.id));
+      setNewSupplierName('');
+      setShowQuickSupplier(false);
+    },
+    onError: (e: any) => {
+      const msg = e?.response?.data?.message;
+      setErr(Array.isArray(msg) ? msg.join('; ') : msg ?? 'Failed to create supplier');
+    },
+  });
 
   const { data: productsPage } = useQuery({
     queryKey: ['products-all'],
@@ -117,6 +147,26 @@ function CreatePOModal({ onClose }: { onClose: () => void }) {
                   <option key={s.id} value={s.id}>{s.name}</option>
                 ))}
               </select>
+              {showQuickSupplier ? (
+                <div className="flex gap-2 mt-2">
+                  <input value={newSupplierName} onChange={(e) => setNewSupplierName(e.target.value)}
+                    placeholder="Supplier name" className={inputCls} autoFocus />
+                  <button onClick={() => quickSupplier.mutate()}
+                    disabled={!newSupplierName.trim() || quickSupplier.isPending}
+                    className="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold disabled:opacity-40 whitespace-nowrap">
+                    {quickSupplier.isPending ? 'Adding…' : 'Add'}
+                  </button>
+                  <button onClick={() => { setShowQuickSupplier(false); setNewSupplierName(''); }}
+                    className="px-2 py-2 rounded-xl border text-gray-500 text-xs hover:bg-gray-50">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <button onClick={() => setShowQuickSupplier(true)}
+                  className="text-xs text-indigo-600 hover:text-indigo-800 font-medium mt-1 flex items-center gap-1">
+                  <Plus className="w-3 h-3" /> New supplier
+                </button>
+              )}
             </div>
             <div>
               <label className="text-xs text-gray-500">Expected Date</label>
@@ -288,9 +338,7 @@ function ReceiveGoodsModal({ po, onClose }: { po: any; onClose: () => void }) {
 
 function PODetailModal({ poId, onClose }: { poId: number; onClose: () => void }) {
   const qc = useQueryClient();
-  const { user } = useAuthStore();
-  const canManage = user?.role === 'Admin' || user?.role === 'Manager';
-  const canReceive = canManage || user?.role === 'Storekeeper';
+  const { canManage, canReceive } = usePOPermissions();
   const [showReceive, setShowReceive] = useState(false);
   const [err, setErr] = useState('');
 
@@ -429,8 +477,7 @@ function PODetailModal({ poId, onClose }: { poId: number; onClose: () => void })
 const PAGE_SIZE = 20;
 
 export default function PurchaseOrdersPage() {
-  const { user } = useAuthStore();
-  const canManage = user?.role === 'Admin' || user?.role === 'Manager';
+  const { canManage } = usePOPermissions();
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [page, setPage] = useState(0);
   const [showCreate, setShowCreate] = useState(false);
@@ -507,7 +554,15 @@ export default function PurchaseOrdersPage() {
             </tbody>
           </table>
           {(!orders || orders.length === 0) && (
-            <p className="text-center text-gray-400 py-8">No purchase orders found.</p>
+            <div className="text-center py-10">
+              <p className="text-gray-400 mb-3">No purchase orders found.</p>
+              {canManage && statusFilter === 'ALL' && (
+                <button onClick={() => setShowCreate(true)}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold">
+                  <Plus className="w-4 h-4" /> Create your first purchase order
+                </button>
+              )}
+            </div>
           )}
           {total > PAGE_SIZE && (
             <div className="flex items-center justify-between px-5 py-3 border-t bg-gray-50 text-sm">

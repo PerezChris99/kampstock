@@ -1157,10 +1157,12 @@ async function main() {
   });
 
   // --- USERS ---
+  // Demo/admin passwords are re-synced on every seed run (update clause)
+  // so re-seeding always restores the documented demo credentials.
   const adminHash = await bcrypt.hash('K@mpSt0ck#Admin!2026', 12);
   const admin = await prisma.user.upsert({
     where: { username_tenantId: { username: 'admin', tenantId: 1 } },
-    update: {},
+    update: { passwordHash: adminHash, roleId: adminRole.id, isActive: true },
     create: {
       name: 'Nakiganda Christine',
       username: 'admin',
@@ -1173,7 +1175,7 @@ async function main() {
   const managerHash = await bcrypt.hash('manager123', 12);
   await prisma.user.upsert({
     where: { username_tenantId: { username: 'manager', tenantId: 1 } },
-    update: {},
+    update: { passwordHash: managerHash, roleId: managerRole.id, isActive: true },
     create: {
       name: 'Ssekandi Robert',
       username: 'manager',
@@ -1186,7 +1188,7 @@ async function main() {
   const cashierHash = await bcrypt.hash('cashier123', 12);
   const cashier = await prisma.user.upsert({
     where: { username_tenantId: { username: 'cashier', tenantId: 1 } },
-    update: {},
+    update: { passwordHash: cashierHash, roleId: cashierRole.id, isActive: true },
     create: {
       name: 'Namutebi Fiona',
       username: 'cashier',
@@ -1196,13 +1198,18 @@ async function main() {
       tenantId: 1,
     },
   });
+  const storekeeperHash = await bcrypt.hash('store123', 12);
   await prisma.user.upsert({
     where: { username_tenantId: { username: 'storekeeper', tenantId: 1 } },
-    update: {},
+    update: {
+      passwordHash: storekeeperHash,
+      roleId: storekeeperRole.id,
+      isActive: true,
+    },
     create: {
       name: 'Okello Patrick',
       username: 'storekeeper',
-      passwordHash: await bcrypt.hash('store123', 12),
+      passwordHash: storekeeperHash,
       phone: '0752-100004',
       roleId: storekeeperRole.id,
       tenantId: 1,

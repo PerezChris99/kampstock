@@ -16,7 +16,6 @@ import {
 } from '@nestjs/common';
 import { ExpressAdapter } from '@nestjs/platform-express';
 import type { Express } from 'express';
-import * as bcrypt from 'bcryptjs';
 import cookieParser from 'cookie-parser';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const express = require('express');
@@ -75,19 +74,64 @@ let isDbInitialized = false;
  * here on every cold start because spawning the Prisma CLI inside a serverless
  * function is slow and unreliable and was causing intermittent 500s.
  */
+/**
+ * Pre-computed bcrypt hashes (cost 12) for the built-in accounts, so cold
+ * starts never pay for 4x bcrypt.hash. The demo account passwords are
+ * PUBLIC — they are advertised on the login page ("Demo / Test Accounts"),
+ * so their hashes are re-synced on every bootstrap to guarantee the
+ * advertised credentials always work. The admin password is only set on
+ * first creation (it may legitimately be changed after go-live).
+ *   admin       / K@mpSt0ck#Admin!2026
+ *   manager     / manager123
+ *   cashier     / cashier123
+ *   storekeeper / store123
+ */
+const ADMIN_HASH =
+  '$2b$12$ezZReyqfb.4MIfLIIkNB4.XAK5cJ3OrCd9LEvnqh/cDgvYmOW.aaa';
+const DEMO_USERS: {
+  username: string;
+  name: string;
+  role: string;
+  hash: string;
+}[] = [
+  {
+    username: 'manager',
+    name: 'Ssekandi Robert',
+    role: 'Manager',
+    hash: '$2b$12$37HDqf2bdQKkWMvOl7VfCuOOwV/zJjnvxXOpGc/82yhvBy/sRMAr6',
+  },
+  {
+    username: 'cashier',
+    name: 'Namutebi Fiona',
+    role: 'Cashier',
+    hash: '$2b$12$5hRjgfyRJ3gmdF19AfuZFex3D/gYQRlY/v8Fd.gR5rMW2DHGzmqjm',
+  },
+  {
+    username: 'storekeeper',
+    name: 'Okello Patrick',
+    role: 'Storekeeper',
+    hash: '$2b$12$iLRCtEMp.r/2o0LbEXjume801NrHETf0iNgs.vdqLabgDj.ZmUZNO',
+  },
+];
+
+const ROLE_PERMISSIONS: Record<string, object> = {
+  Admin: { all: true },
+  Manager: {
+    manage_products: true,
+    manage_stock: true,
+    manage_purchase_orders: true,
+    create_sales: true,
+    view_reports: true,
+  },
+  Cashier: { create_sales: true },
+  Storekeeper: { manage_stock: true },
+};
+
 async function initializeDatabase(prisma: PrismaService): Promise<void> {
   if (isDbInitialized) return;
   isDbInitialized = true;
 
   try {
-    const existing = await prisma.user.findFirst({
-      where: { username: 'admin' },
-    });
-    if (existing) {
-      console.log('[bootstrap] Already seeded — skipping');
-      return;
-    }
-
     await prisma.tenant.upsert({
       where: { subdomain: 'kampstock' },
       update: {},
@@ -101,29 +145,71 @@ async function initializeDatabase(prisma: PrismaService): Promise<void> {
       },
     });
 
-    const adminRole = await prisma.role.upsert({
-      where: { name_tenantId: { name: 'Admin', tenantId: 1 } },
-      update: {},
-      create: {
-        name: 'Admin',
-        permissions: JSON.stringify({ all: true }),
-        tenantId: 1,
-      },
-    });
+    // Roles — upsert all four so demo users always have a valid role to
+    // point at, even on databases seeded before this bootstrap existed.
+    const roleIds: Record<string, number> = {};
+    for (const [name, permissions] of Object.entries(ROLE_PERMISSIONS)) {
+      const role = await prisma.role.upsert({
+        where: { name_tenantId: { name, tenantId: 1 } },
+        update: {},
+        create: { name, permissions: JSON.stringify(permissions), tenantId: 1 },
+      });
+      roleIds[name] = role.id;
+    }
 
-    await prisma.user.create({
-      data: {
-        name: 'Nakiganda Christine',
-        username: 'admin',
-        passwordHash: await bcrypt.hash('K@mpSt0ck#Admin!2026', 12),
-        roleId: adminRole.id,
-        tenantId: 1,
-      },
+    // Admin — create-only (never reset: the owner may have changed it).
+    const adminExisting = await prisma.user.findFirst({
+      where: { username: 'admin', tenantId: 1 },
+      select: { id: true },
     });
+    if (!adminExisting) {
+      await prisma.user.create({
+        data: {
+          name: 'Nakiganda Christine',
+          username: 'admin',
+          passwordHash: ADMIN_HASH,
+          roleId: roleIds.Admin,
+          tenantId: 1,
+        },
+      });
+      console.log('[bootstrap] Admin user created');
+    }
 
-    console.log(
-      '[bootstrap] Default tenant and admin user created successfully',
-    );
+    // Demo accounts — upsert AND re-sync password hash + role + active flag
+    // so the credentials advertised on the login page always work.
+    for (const demo of DEMO_USERS) {
+      await prisma.user.upsert({
+        where: {
+          username_tenantId: { username: demo.username, tenantId: 1 },
+        },
+        update: {
+          passwordHash: demo.hash,
+          roleId: roleIds[demo.role],
+          isActive: true,
+        },
+        create: {
+          name: demo.name,
+          username: demo.username,
+          passwordHash: demo.hash,
+          roleId: roleIds[demo.role],
+          tenantId: 1,
+        },
+      });
+    }
+
+    // Default stock location — required by the goods-receipt (PO receiving)
+    // flow; without at least one location, stock can never be received.
+    const locationCount = await prisma.stockLocation.count({
+      where: { tenantId: 1 },
+    });
+    if (locationCount === 0) {
+      await prisma.stockLocation.create({
+        data: { name: 'Main Store', tenantId: 1 },
+      });
+      console.log('[bootstrap] Default stock location created');
+    }
+
+    console.log('[bootstrap] Tenant, roles and demo users ensured');
   } catch (err: unknown) {
     console.error('[bootstrap] Seed failed:', (err as Error).message ?? err);
   }
