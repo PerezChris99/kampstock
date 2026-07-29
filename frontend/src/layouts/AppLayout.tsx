@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -23,6 +23,7 @@ import {
 import { useAuthStore } from '../store/auth.store';
 import ExpiryWarningBanner from '../components/ExpiryWarningBanner';
 import NotificationBell from '../components/NotificationBell';
+import api from '../lib/api';
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -42,10 +43,24 @@ const navItems = [
 ];
 
 export default function AppLayout() {
-  const { user, logout } = useAuthStore();
+  const { user, logout, setUser } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Refresh the user object from the server once on mount so role/permissions
+  // are never stale (persisted store may predate role/permission changes).
+  useEffect(() => {
+    api
+      .post('/auth/refresh')
+      .then((res) => {
+        if (res.data?.user) setUser(res.data.user);
+      })
+      .catch(() => {
+        /* not fatal — interceptor handles real auth failures */
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const visibleNavItems = [
     ...navItems,

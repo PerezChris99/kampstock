@@ -9,6 +9,7 @@ interface User {
   roleId?: number;
   tenantId: number;
   isSuperAdmin?: boolean;
+  permissions?: Record<string, boolean>;
 }
 
 interface AuthState {

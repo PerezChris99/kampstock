@@ -221,6 +221,7 @@ export default function ManagerCalendarPage() {
   `;
 
   return (
+    <div style={{ background: '#0f172a', minHeight: '100%' }}>
     <div
       style={{
         maxWidth: 1100,
@@ -601,6 +602,7 @@ export default function ManagerCalendarPage() {
           </p>
         )}
       </div>
+    </div>
     </div>
   );
 }

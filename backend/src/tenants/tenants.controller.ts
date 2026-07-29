@@ -32,6 +32,23 @@ export class TenantsController {
     return this.service.findAll();
   }
 
+  /** Tenant owner updates their own business profile.
+   *  NOTE: 'profile' routes MUST be declared before ':id' routes, otherwise
+   *  GET /tenants/profile matches ':id' and ParseIntPipe rejects it with 400. */
+  @Patch('profile')
+  updateProfile(
+    @Body() dto: { ownerEmail?: string; ownerPhone?: string; address?: string; businessType?: string; description?: string },
+    @CurrentUser('tenantId') tenantId: number,
+  ) {
+    return this.service.updateProfile(tenantId, dto);
+  }
+
+  /** GET /tenants/profile — current tenant profile */
+  @Get('profile')
+  getProfile(@CurrentUser('tenantId') tenantId: number) {
+    return this.service.findOne(tenantId);
+  }
+
   @UseGuards(RolesGuard)
   @Roles('Admin')
   @Get(':id')
@@ -51,20 +68,5 @@ export class TenantsController {
   @Patch(':id/toggle')
   toggle(@Param('id', ParseIntPipe) id: number) {
     return this.service.toggleActive(id);
-  }
-
-  /** Tenant owner updates their own business profile */
-  @Patch('profile')
-  updateProfile(
-    @Body() dto: { ownerEmail?: string; ownerPhone?: string; address?: string; businessType?: string; description?: string },
-    @CurrentUser('tenantId') tenantId: number,
-  ) {
-    return this.service.updateProfile(tenantId, dto);
-  }
-
-  /** GET /tenants/profile — current tenant profile */
-  @Get('profile')
-  getProfile(@CurrentUser('tenantId') tenantId: number) {
-    return this.service.findOne(tenantId);
   }
 }

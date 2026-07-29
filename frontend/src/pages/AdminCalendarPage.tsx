@@ -222,7 +222,7 @@ export default function AdminCalendarPage() {
   ];
 
   return (
-    <div style={{ padding: '24px', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+    <div style={{ background: '#0f172a', minHeight: '100%', padding: '24px', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
       {selectedTenant && (
         <ModalOverlay tenant={selectedTenant} onClose={() => setSelectedTenant(null)} />
       )}

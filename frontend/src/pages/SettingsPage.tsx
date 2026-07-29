@@ -35,7 +35,7 @@ export default function SettingsPage() {
   const qc = useQueryClient();
   const [saved, setSaved] = useState(false);
 
-  const { data: profile, isLoading } = useQuery<Profile>({
+  const { data: profile, isLoading, isError, refetch } = useQuery<Profile>({
     queryKey: ['tenant-profile'],
     queryFn: () => api.get('/tenants/profile').then(r => r.data),
   });
@@ -52,7 +52,19 @@ export default function SettingsPage() {
   });
 
   if (isLoading) return <div className="p-8 text-gray-400">Loading profile...</div>;
-  if (!profile) return null;
+  if (isError || !profile)
+    return (
+      <div className="p-8 max-w-md mx-auto text-center">
+        <p className="text-gray-700 font-medium mb-1">Could not load your business profile.</p>
+        <p className="text-sm text-gray-500 mb-4">Please check your connection and try again.</p>
+        <button
+          onClick={() => refetch()}
+          className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold"
+        >
+          Retry
+        </button>
+      </div>
+    );
 
   const val = (field: keyof Profile) =>
     field in form ? (form[field] as string) ?? '' : (profile[field] as string) ?? '';

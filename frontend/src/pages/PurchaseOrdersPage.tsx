@@ -40,8 +40,14 @@ const normRole = (role?: string) => (role ?? '').replace(/_\d+$/, '').toLowerCas
 function usePOPermissions() {
   const { user } = useAuthStore();
   const role = normRole(user?.role);
-  const canManage = !!user?.isSuperAdmin || role === 'admin' || role === 'manager';
-  const canReceive = canManage || role === 'storekeeper';
+  const perms = user?.permissions ?? {};
+  const canManage =
+    !!user?.isSuperAdmin ||
+    role === 'admin' ||
+    role === 'manager' ||
+    !!perms.all ||
+    !!perms.manage_purchase_orders;
+  const canReceive = canManage || role === 'storekeeper' || !!perms.manage_stock;
   return { canManage, canReceive };
 }
 

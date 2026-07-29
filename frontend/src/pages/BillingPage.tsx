@@ -117,6 +117,7 @@ export default function BillingPage() {
     : 0;
 
   return (
+    <div style={{ background: '#0f172a', minHeight: '100%' }}>
     <div style={{ maxWidth: 960, margin: '0 auto', padding: '1.5rem 1rem' }}>
       <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#f4f4f5', marginBottom: '0.25rem' }}>Billing & Subscription</h1>
       <p style={{ color: '#71717a', marginBottom: '1.5rem', fontSize: '0.875rem' }}>Manage your plan and payment history</p>
@@ -333,6 +334,7 @@ export default function BillingPage() {
           </div>
         </>
       )}
+    </div>
     </div>
   );
 }
