@@ -1,5 +1,32 @@
-import { IsInt, IsOptional, IsDateString, IsString, IsArray, ValidateNested, IsNumber, Min } from 'class-validator';
+import {
+  IsInt,
+  IsOptional,
+  IsDateString,
+  IsString,
+  IsArray,
+  ValidateNested,
+  IsNumber,
+  IsIn,
+  Min,
+  ArrayMinSize,
+  MaxLength,
+} from 'class-validator';
 import { Type } from 'class-transformer';
+
+/**
+ * Purchase order lifecycle:
+ *   DRAFT → SENT → PARTIAL → RECEIVED
+ *   DRAFT | SENT | PARTIAL → CANCELLED
+ * RECEIVED and CANCELLED are terminal.
+ */
+export const PO_STATUSES = [
+  'DRAFT',
+  'SENT',
+  'PARTIAL',
+  'RECEIVED',
+  'CANCELLED',
+] as const;
+export type POStatus = (typeof PO_STATUSES)[number];
 
 export class CreatePOLineDto {
   @IsInt()
@@ -15,6 +42,7 @@ export class CreatePOLineDto {
 
   @IsOptional()
   @IsNumber()
+  @Min(0)
   discount?: number;
 }
 
@@ -28,9 +56,11 @@ export class CreatePurchaseOrderDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   notes?: string;
 
   @IsArray()
+  @ArrayMinSize(1)
   @ValidateNested({ each: true })
   @Type(() => CreatePOLineDto)
   lines: CreatePOLineDto[];
@@ -38,5 +68,6 @@ export class CreatePurchaseOrderDto {
 
 export class UpdatePOStatusDto {
   @IsString()
-  status: string;
+  @IsIn(PO_STATUSES)
+  status: POStatus;
 }

@@ -33,6 +33,7 @@ export class PurchaseOrdersController {
   @Get()
   findAll(
     @Query('supplierId') supplierId?: string,
+    @Query('status') status?: string,
     @Query('limit') limitStr?: string,
     @Query('offset') offsetStr?: string,
     @CurrentUser('tenantId') tenantId?: number,
@@ -44,12 +45,16 @@ export class PurchaseOrdersController {
       tenantId,
       limit,
       offset,
+      status,
     );
   }
 
   @Get(':id')
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.poService.findOne(id);
+  findOne(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser('tenantId') tenantId?: number,
+  ) {
+    return this.poService.findOne(id, tenantId);
   }
 
   @Patch(':id/status')
@@ -57,7 +62,9 @@ export class PurchaseOrdersController {
   updateStatus(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdatePOStatusDto,
+    @CurrentUser('id') actorId?: number,
+    @CurrentUser('tenantId') tenantId?: number,
   ) {
-    return this.poService.updateStatus(id, dto);
+    return this.poService.updateStatus(id, dto, actorId, tenantId);
   }
 }

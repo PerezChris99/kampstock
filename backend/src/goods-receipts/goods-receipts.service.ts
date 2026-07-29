@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   CreateGoodsReceiptDto,
@@ -10,6 +14,21 @@ export class GoodsReceiptsService {
   constructor(private prisma: PrismaService) {}
 
   async create(dto: CreateGoodsReceiptDto, actorId: number, tenantId: number) {
+    // Validate the linked PO up-front: must belong to this tenant and must
+    // not be in a terminal state (RECEIVED / CANCELLED).
+    if (dto.purchaseOrderId) {
+      const po = await this.prisma.purchaseOrder.findFirst({
+        where: { id: dto.purchaseOrderId, tenantId },
+        select: { id: true, status: true },
+      });
+      if (!po) throw new BadRequestException('Purchase order not found');
+      if (po.status === 'CANCELLED' || po.status === 'RECEIVED') {
+        throw new BadRequestException(
+          `Cannot receive goods against a ${po.status} purchase order`,
+        );
+      }
+    }
+
     return this.prisma.$transaction(async (tx) => {
       const receipt = await tx.goodsReceipt.create({
         data: {
@@ -76,11 +95,36 @@ export class GoodsReceiptsService {
         });
       }
 
-      // Mark PO as received if applicable
+      // Update the PO status based on how much has been received so far
+      // (across ALL receipts for this PO, including this one):
+      //   every ordered line fully received → RECEIVED, otherwise → PARTIAL.
       if (dto.purchaseOrderId) {
+        const [poLines, receiptLines] = await Promise.all([
+          tx.purchaseOrderLine.findMany({
+            where: { purchaseOrderId: dto.purchaseOrderId },
+            select: { productId: true, quantity: true },
+          }),
+          tx.goodsReceiptLine.findMany({
+            where: { goodsReceipt: { purchaseOrderId: dto.purchaseOrderId } },
+            select: { productId: true, quantity: true },
+          }),
+        ]);
+
+        const receivedByProduct = new Map<number, number>();
+        for (const rl of receiptLines) {
+          receivedByProduct.set(
+            rl.productId,
+            (receivedByProduct.get(rl.productId) ?? 0) + Number(rl.quantity),
+          );
+        }
+        const fullyReceived = poLines.every(
+          (pl) =>
+            (receivedByProduct.get(pl.productId) ?? 0) >= Number(pl.quantity),
+        );
+
         await tx.purchaseOrder.update({
           where: { id: dto.purchaseOrderId },
-          data: { status: 'RECEIVED' },
+          data: { status: fullyReceived ? 'RECEIVED' : 'PARTIAL' },
         });
       }
 
