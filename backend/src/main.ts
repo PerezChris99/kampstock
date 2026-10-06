@@ -58,6 +58,8 @@ async function bootstrap() {
     logger: WinstonModule.createLogger({ instance: winstonLogger }),
   });
 
+  app.enableShutdownHooks();
+
   const isProd = process.env.NODE_ENV === 'production';
   if (isProd) {
     // Only trust the immediate reverse proxy. This is required for secure
