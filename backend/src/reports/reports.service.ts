@@ -100,7 +100,7 @@ export class ReportsService {
       take: 5000,
     });
     const recentMovements = await this.prisma.stockMovement.findMany({
-      where: { createdAt: { gte: cutoff }, movementType: 'SALE' },
+      where: { createdAt: { gte: cutoff }, movementType: 'SALE', ...(tenantId && { product: { tenantId } }) },
       select: { productId: true, quantity: true },
       take: 50000,
     });
