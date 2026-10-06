@@ -62,7 +62,7 @@ export class AuthService {
     const sharedCount = await this.cache.increment(`auth:attempts:${key}`, Math.ceil(this.LOCKOUT_MS / 1000));
     const rec = this.attempts.get(key) ?? { count: 0 };
     if (sharedCount !== null) rec.count = sharedCount;
-    rec.count += 1;
+    else rec.count += 1;
     if (rec.count >= this.MAX_ATTEMPTS) {
       rec.lockedUntil = Date.now() + this.LOCKOUT_MS;
       await this.cache.set(`auth:lock:${key}`, rec.lockedUntil, Math.ceil(this.LOCKOUT_MS / 1000));
@@ -85,6 +85,7 @@ export class AuthService {
         })
         .catch(() => {});
     }
+    await this.cache.del(`auth:attempts:${key}`, `auth:lock:${key}`);
     this.attempts.delete(key);
   }
 
