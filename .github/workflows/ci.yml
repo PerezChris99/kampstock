@@ -41,7 +41,7 @@ jobs:
       - name: TypeScript check
         run: npx tsc --noEmit
       - name: Prepare test database
-        run: npx prisma db push --schema=./prisma/schema.prisma --skip-generate
+        run: npx prisma db push --schema=./prisma/schema.prisma
       - name: Unit tests
         run: npm run test -- --runInBand --no-coverage
         env:
