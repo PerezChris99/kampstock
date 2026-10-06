@@ -14,9 +14,9 @@ services:
     env: node
     plan: free
     rootDir: backend
-    buildCommand: npm install && npx prisma generate && npm run build && npx prisma db push
+    buildCommand: npm ci && npx prisma generate && npx prisma db push && npm run build
     startCommand: node dist/main
-    healthCheckPath: /api/health
+    healthCheckPath: /api/health/ready
     envVars:
       - key: DATABASE_URL
         fromDatabase:
