@@ -16,116 +16,128 @@ export class TenantsService {
    * Creates: Tenant record + 4 default roles + 1 admin user.
    */
   async register(dto: CreateTenantDto) {
-    const subdomainConflict = await this.prisma.tenant.findUnique({
-      where: { subdomain: dto.subdomain },
-    });
-    if (subdomainConflict)
-      throw new ConflictException('Subdomain already taken');
+    const normalizedSubdomain = dto.subdomain
+      .toLowerCase()
+      .replace(/[^a-z0-9-]/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
 
-    const nameConflict = await this.prisma.tenant.findUnique({
-      where: { name: dto.name },
-    });
-    if (nameConflict)
-      throw new ConflictException('Business name already registered');
+    if (!normalizedSubdomain) {
+      throw new ConflictException('A valid business subdomain is required');
+    }
 
-    // Note: username uniqueness is scoped per-tenant so no global pre-check needed here.
-
-    // Create tenant
-    const tenant = await this.prisma.tenant.create({
-      data: {
-        name: dto.name,
-        subdomain: dto.subdomain.toLowerCase().replace(/[^a-z0-9-]/g, '-'),
-        ownerEmail: dto.ownerEmail,
-        ownerPhone: dto.ownerPhone,
-        address: dto.address,
-        businessType: dto.businessType ?? 'retail',
-        description: dto.description,
-        plan: dto.plan ?? 'starter',
-        trialEndsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30-day trial
-      },
-    });
-
-    // Create default roles for this tenant (normalized names — tenantId scopes them uniquely)
-    const [adminRole] = await Promise.all([
-      this.prisma.role.create({
-        data: {
-          name: 'Admin',
-          permissions: JSON.stringify({ all: true }),
-          tenantId: tenant.id,
-        },
+    const [subdomainConflict, nameConflict] = await Promise.all([
+      this.prisma.tenant.findUnique({
+        where: { subdomain: normalizedSubdomain },
       }),
-      this.prisma.role.create({
-        data: {
-          name: 'Manager',
-          permissions: JSON.stringify({
-            manage_products: true,
-            manage_sales: true,
-            view_reports: true,
-            manage_stock: true,
-            manage_expenses: true,
-            manage_suppliers: true,
-            manage_purchase_orders: true,
-            manage_customers: true,
-          }),
-          tenantId: tenant.id,
-        },
-      }),
-      this.prisma.role.create({
-        data: {
-          name: 'Cashier',
-          permissions: JSON.stringify({
-            create_sales: true,
-            manage_customers: true,
-          }),
-          tenantId: tenant.id,
-        },
-      }),
-      this.prisma.role.create({
-        data: {
-          name: 'Storekeeper',
-          permissions: JSON.stringify({
-            manage_stock: true,
-            manage_purchase_orders: true,
-          }),
-          tenantId: tenant.id,
-        },
+      this.prisma.tenant.findUnique({
+        where: { name: dto.name },
       }),
     ]);
 
-    // Create default stock location
-    await this.prisma.stockLocation.create({
-      data: {
-        name: 'Main Store',
-        description: 'Primary stock location',
-        tenantId: tenant.id,
-      },
-    });
+    if (subdomainConflict)
+      throw new ConflictException('Subdomain already taken');
+    if (nameConflict)
+      throw new ConflictException('Business name already registered');
 
-    // Create admin user
     const passwordHash = await bcrypt.hash(dto.adminPassword, 12);
-    const admin = await this.prisma.user.create({
-      data: {
-        name: dto.adminName,
-        username: dto.adminUsername,
-        passwordHash,
-        roleId: adminRole.id,
-        tenantId: tenant.id,
-      },
-      include: { role: true },
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      const tenant = await tx.tenant.create({
+        data: {
+          name: dto.name,
+          subdomain: normalizedSubdomain,
+          ownerEmail: dto.ownerEmail,
+          ownerPhone: dto.ownerPhone,
+          address: dto.address,
+          businessType: dto.businessType ?? 'retail',
+          description: dto.description,
+          plan: dto.plan ?? 'starter',
+          trialEndsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        },
+      });
+
+      const [adminRole] = await Promise.all([
+        tx.role.create({
+          data: {
+            name: 'Admin',
+            permissions: JSON.stringify({ all: true }),
+            tenantId: tenant.id,
+          },
+        }),
+        tx.role.create({
+          data: {
+            name: 'Manager',
+            permissions: JSON.stringify({
+              manage_products: true,
+              manage_sales: true,
+              view_reports: true,
+              manage_stock: true,
+              manage_expenses: true,
+              manage_suppliers: true,
+              manage_purchase_orders: true,
+              manage_customers: true,
+            }),
+            tenantId: tenant.id,
+          },
+        }),
+        tx.role.create({
+          data: {
+            name: 'Cashier',
+            permissions: JSON.stringify({
+              create_sales: true,
+              manage_customers: true,
+            }),
+            tenantId: tenant.id,
+          },
+        }),
+        tx.role.create({
+          data: {
+            name: 'Storekeeper',
+            permissions: JSON.stringify({
+              manage_stock: true,
+              manage_purchase_orders: true,
+            }),
+            tenantId: tenant.id,
+          },
+        }),
+      ]);
+
+      await tx.stockLocation.create({
+        data: {
+          name: 'Main Store',
+          description: 'Primary stock location',
+          tenantId: tenant.id,
+        },
+      });
+
+      const admin = await tx.user.create({
+        data: {
+          name: dto.adminName,
+          username: dto.adminUsername,
+          passwordHash,
+          roleId: adminRole.id,
+          tenantId: tenant.id,
+        },
+        include: { role: true },
+      });
+
+      const { passwordHash: _, ...adminSafe } = admin;
+
+      return {
+        tenant: {
+          id: tenant.id,
+          name: tenant.name,
+          subdomain: tenant.subdomain,
+          plan: tenant.plan,
+          trialEndsAt: tenant.trialEndsAt,
+        },
+        admin: adminSafe,
+        message: `Tenant "${tenant.name}" registered successfully. Login at /${tenant.subdomain} with username "${dto.adminUsername}".`,
+      };
     });
 
-    const { passwordHash: _, ...adminSafe } = admin;
-    return {
-      tenant: {
-        id: tenant.id,
-        name: tenant.name,
-        subdomain: tenant.subdomain,
-        plan: tenant.plan,
-        trialEndsAt: tenant.trialEndsAt,
-      },
-      admin: adminSafe,
-      message: `Tenant "${tenant.name}" registered successfully. Login at /${tenant.subdomain} with username "${dto.adminUsername}".`,
-    };
+    return result;
   }
 
   async findAll() {
