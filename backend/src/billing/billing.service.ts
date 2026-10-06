@@ -149,35 +149,43 @@ export class BillingService {
     return { status: 'pending' };
   }
 
-  async verifyUnlockCode(tenantId: number, code: string): Promise<{ success: boolean; planExpiresAt: Date | null }> {
-    if (!code || code.length < 8) throw new BadRequestException('Invalid unlock code');
+  async verifyUnlockCode(
+    tenantId: number,
+    code: string,
+  ): Promise<{ success: boolean; planExpiresAt: Date | null }> {
+    if (!code || code.length < 8)
+      throw new BadRequestException('Invalid unlock code');
 
-    // Find a COMPLETED subscription for this tenant with this exact unlock code
-    const sub = await this.prisma.subscription.findFirst({
-      where: {
-        tenantId,
-        status: 'COMPLETED',
-        unlockCode: code.trim().toLowerCase(),
-      },
-      orderBy: { confirmedAt: 'desc' },
-    });
+    const normalizedCode = code.trim().toLowerCase();
 
-    if (!sub) throw new BadRequestException('Invalid or already-used unlock code');
-
-    // Fetch current tenant planExpiresAt
     const tenant = await this.prisma.tenant.findUnique({
       where: { id: tenantId },
       select: { planExpiresAt: true },
     });
 
-    // Clear the unlock code (single-use) and bust cache
-    await this.prisma.subscription.update({
-      where: { id: sub.id },
+    if (!tenant) throw new NotFoundException('Tenant not found');
+
+    // Consume the code atomically. Only one concurrent request can match the
+    // completed subscription and clear its unlock code.
+    const consumed = await this.prisma.subscription.updateMany({
+      where: {
+        tenantId,
+        status: 'COMPLETED',
+        unlockCode: normalizedCode,
+      },
       data: { unlockCode: null },
     });
+
+    if (consumed.count !== 1) {
+      throw new BadRequestException('Invalid or already-used unlock code');
+    }
+
     bustLockCache(tenantId);
 
-    return { success: true, planExpiresAt: tenant?.planExpiresAt ?? null };
+    return {
+      success: true,
+      planExpiresAt: tenant.planExpiresAt ?? null,
+    };
   }
 
   async getByTenant(tenantId: number) {
