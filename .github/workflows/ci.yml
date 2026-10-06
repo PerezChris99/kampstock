@@ -97,7 +97,7 @@ jobs:
           npx prisma migrate diff --from-empty --to-schema=./prisma-pg/schema.prisma --script > prisma-pg/migrations/20261006203200_baseline/migration.sql
           printf 'provider = "postgresql"\n' > prisma-pg/migrations/migration_lock.toml
       - name: Commit generated PostgreSQL migration baseline
-        if: github.event_name == 'pull_request' && github.head_ref == 'gate/pg-migrations'
+        if: github.ref == 'refs/heads/gate/pg-migrations'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
