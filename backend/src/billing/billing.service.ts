@@ -81,6 +81,10 @@ export class BillingService {
       this.logger.warn(`IPN for unknown trackingId: ${orderTrackingId}`);
       return { status: 'ignored' };
     }
+    if (sub.merchantRef !== merchantReference) {
+      this.logger.warn(`IPN merchant reference mismatch for trackingId ${orderTrackingId}`);
+      return { status: 'ignored' };
+    }
     if (sub.status === 'COMPLETED') return { status: 'already_processed' };
 
     let txStatus: Awaited<ReturnType<PesapalService['getTransactionStatus']>>;
@@ -101,9 +105,11 @@ export class BillingService {
       // The code is only ever created here — triggered by Pesapal payment confirmation
       const unlockCode = randomBytes(16).toString('hex'); // 32-char hex
 
-      await this.prisma.$transaction([
-        this.prisma.subscription.update({
-          where: { id: sub.id },
+      const completed = await this.prisma.$transaction(async (tx) => {
+        // Claim the pending subscription atomically. Duplicate IPNs may arrive
+        // concurrently; only one request is allowed to transition PENDING -> COMPLETED.
+        const claimed = await tx.subscription.updateMany({
+          where: { id: sub.id, status: 'PENDING' },
           data: {
             status: 'COMPLETED',
             paymentMethod: txStatus.paymentMethod,
@@ -111,12 +117,19 @@ export class BillingService {
             expiresAt,
             unlockCode,
           },
-        }),
-        this.prisma.tenant.update({
+        });
+
+        if (claimed.count !== 1) return false;
+
+        await tx.tenant.update({
           where: { id: sub.tenantId },
           data: { plan: sub.plan, planExpiresAt: expiresAt, isActive: true },
-        }),
-      ]);
+        });
+
+        return true;
+      });
+
+      if (!completed) return { status: 'already_processed' };
 
       // Bust the in-memory lock cache so the tenant can access immediately after unlock
       bustLockCache(sub.tenantId);
