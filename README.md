@@ -1,8 +1,12 @@
 # KampStock
 
-KampStock is a multi-tenant inventory, point-of-sale, purchasing, customer-credit and business-reporting platform designed for wholesale and retail businesses in Uganda.
+> **Production SaaS platform for Ugandan wholesale and retail businesses**
 
-It is built around the realities of shop operations: fast POS transactions, barcode-driven product handling, stock control, supplier purchasing, customer credit, multiple payment methods, intermittent connectivity and UGX-denominated business records.
+[![CI](https://github.com/PerezChris99/kampstock/actions/workflows/ci.yml/badge.svg)](https://github.com/PerezChris99/kampstock/actions/workflows/ci.yml)
+
+KampStock is a multi-tenant inventory, point-of-sale, purchasing, customer-credit and business-reporting platform built around the operational realities of shops in Uganda: fast POS transactions, UGX-denominated records, stock accountability, credit customers, supplier purchasing and unreliable connectivity.
+
+It is designed as a serious SaaS product rather than a demo application. Financial and stock records remain database-authoritative, tenant boundaries are treated as security boundaries, and operational failures are surfaced instead of silently discarded.
 
 > **Production principle:** beautiful on the surface, solid underneath, built for production.
 
@@ -347,6 +351,8 @@ Do not bypass CI to force a release.
 
 ## Production readiness standard
 
+The checklist below deliberately separates **code-level readiness** from **external launch prerequisites**. A green build does not by itself prove that a payment provider account, regulatory registration, backup restore or production infrastructure has been validated.
+
 KampStock should only be called production-ready when all of the following are true:
 
 - [x] Authentication and authorization controls are implemented.
@@ -355,7 +361,9 @@ KampStock should only be called production-ready when all of the following are t
 - [x] Financial and stock writes use transactional database operations.
 - [x] Pagination and database indexing are present on major list paths.
 - [x] Offline POS has explicit failed-sale handling.
-- [x] CI has fail-closed frontend/backend quality gates.
+- [x] CI has fail-closed frontend/backend quality gates and browser smoke tests.
+- [x] Authentication brute-force state can use shared Redis counters for multi-instance deployments, with safe local fallback.
+- [x] Outbound Pesapal requests have bounded timeouts and sanitized provider-facing errors.
 - [ ] PostgreSQL integration suite is a mandatory CI gate.
 - [ ] Prisma migration history is established and deployed through migrations.
 - [ ] Production payment-provider credentials and callbacks are configured and verified.
