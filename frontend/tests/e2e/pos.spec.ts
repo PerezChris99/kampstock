@@ -20,7 +20,7 @@ test.describe('POS page', () => {
     // Log in before each test
     await page.goto('/login');
     await page.getByLabel(/email/i).fill(EMAIL);
-    await page.getByLabel(/password/i).fill(PASSWORD);
+    await page.getByRole('textbox', { name: 'Password' }).fill(PASSWORD);
     await page.getByRole('button', { name: /sign in|log in/i }).click();
     // Wait for navigation away from /login (either dashboard or POS)
     await page.waitForURL((url) => !url.pathname.includes('/login'), {
