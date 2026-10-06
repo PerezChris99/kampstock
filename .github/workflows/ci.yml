@@ -7,12 +7,12 @@ name: CI
 
 on:
   push:
-    branches: [main, perez, gate/pg-migrations]
+    branches: [main, perez]
   pull_request:
     branches: [main]
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
