@@ -7,7 +7,7 @@ name: CI
 
 on:
   push:
-    branches: [main, perez]
+    branches: [main, perez, gate/pg-migrations]
   pull_request:
     branches: [main]
 
