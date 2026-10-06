@@ -10,8 +10,10 @@ export class SalesController {
 
   @Post()
   @Roles('Admin', 'Manager', 'Cashier')
-  create(@Body() dto: CreateSaleDto, @CurrentUser('id') actorId: number, @CurrentUser('tenantId') tenantId: number) {
-    return this.salesService.create(dto, actorId, tenantId);
+  create(@Body() dto: CreateSaleDto, @CurrentUser('id') actorId: number, @CurrentUser('tenantId') tenantId: number,
+    @CurrentUser('role') role: string,
+  ) {
+    return this.salesService.create(dto, actorId, tenantId, role);
   }
 
   @Get()
