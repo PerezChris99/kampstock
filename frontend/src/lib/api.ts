@@ -1,7 +1,11 @@
 import axios from 'axios';
 import { getSubdomain } from '../utils/subdomain';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+const configuredApiBase = import.meta.env.VITE_API_URL?.trim();
+if (import.meta.env.PROD && !configuredApiBase) {
+  throw new Error('VITE_API_URL must be configured for production builds');
+}
+const API_BASE = configuredApiBase || 'http://localhost:3000/api';
 
 const api = axios.create({
   baseURL: API_BASE,
@@ -15,6 +19,8 @@ const api = axios.create({
 // cookies from the backend domain aren't readable by JS on the frontend domain,
 // so we read the token from the /auth/csrf response body instead.
 let _csrfToken: string | null = null;
+let _csrfRequest: Promise<string | null> | null = null;
+let _refreshRequest: Promise<void> | null = null;
 
 function getCsrfCookie(): string | null {
   const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]+)/);
@@ -30,7 +36,11 @@ async function getOrFetchCsrfToken(): Promise<string | null> {
     _csrfToken = fromCookie;
     return _csrfToken;
   }
-  // 3. Fetch from endpoint — retry up to 2 times on transient network failure
+  // 3. Coalesce concurrent CSRF requests so a burst of mutations does not
+  // create redundant authentication/bootstrap traffic.
+  if (_csrfRequest) return _csrfRequest;
+  _csrfRequest = (async () => {
+  // Fetch from endpoint — retry up to 2 times on transient network failure
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       const res = await axios.get(`${API_BASE}/auth/csrf`, {
@@ -47,6 +57,12 @@ async function getOrFetchCsrfToken(): Promise<string | null> {
     }
   }
   return null;
+  })();
+  try {
+    return await _csrfRequest;
+  } finally {
+    _csrfRequest = null;
+  }
 }
 
 const UNSAFE_METHODS = new Set(['post', 'put', 'patch', 'delete']);
@@ -86,10 +102,17 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry && !isLoginPage) {
       originalRequest._retry = true;
       try {
-        await axios.post(`${API_BASE}/auth/refresh`, {}, { withCredentials: true });
-        // New access_token cookie is now set; retry the original request
+        if (!_refreshRequest) {
+          _refreshRequest = axios
+            .post(`${API_BASE}/auth/refresh`, {}, { withCredentials: true })
+            .then(() => undefined)
+            .finally(() => {
+              _refreshRequest = null;
+            });
+        }
+        await _refreshRequest;
+        // New access_token cookie is now set; retry the original request.
         return api(originalRequest);
-      } catch {
         _csrfToken = null; // Clear stale CSRF token on session expiry
         window.location.href = '/login';
       }
