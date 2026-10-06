@@ -180,7 +180,14 @@ jobs:
           CSRF_SECRET: ci-kampstock-${{ github.run_id }}-csrf-secret-2026
           ALLOWED_ORIGINS: http://127.0.0.1:5173
       - name: Wait for backend
-        run: npx wait-on http://127.0.0.1:3000/api/health --timeout 30000
+        run: |
+          if ! npx wait-on http://127.0.0.1:3000/api/health --timeout 30000; then
+            echo '--- KampStock API startup log ---'
+            cat /tmp/kampstock-api.log || true
+            echo '--- Listening sockets ---'
+            (ss -ltnp || true)
+            exit 1
+          fi
       - name: Verify seeded authentication endpoint
         run: |
           curl --fail-with-body -sS -c /tmp/kampstock-cookies \
