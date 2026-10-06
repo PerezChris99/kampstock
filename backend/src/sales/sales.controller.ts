@@ -30,8 +30,8 @@ export class SalesController {
   }
 
   @Get(':id')
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.salesService.findOne(id);
+  findOne(@Param('id', ParseIntPipe) id: number, @CurrentUser('tenantId') tenantId: number) {
+    return this.salesService.findOne(id, tenantId);
   }
 
   @Post(':id/payments')
@@ -40,13 +40,14 @@ export class SalesController {
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: AddPaymentDto,
     @CurrentUser('id') actorId: number,
+    @CurrentUser('tenantId') tenantId: number,
   ) {
-    return this.salesService.addPayment(id, dto, actorId);
+    return this.salesService.addPayment(id, dto, actorId, tenantId);
   }
 
   @Post(':id/return')
   @Roles('Admin', 'Manager')
-  returnSale(@Param('id', ParseIntPipe) id: number, @CurrentUser('id') actorId: number) {
-    return this.salesService.returnSale(id, actorId);
+  returnSale(@Param('id', ParseIntPipe) id: number, @CurrentUser('id') actorId: number, @CurrentUser('tenantId') tenantId: number) {
+    return this.salesService.returnSale(id, actorId, tenantId);
   }
 }
