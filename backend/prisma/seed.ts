@@ -1082,6 +1082,12 @@ function randomChoice<T>(arr: T[]): T {
 }
 
 async function main() {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      'Production seeding is disabled. Use reviewed production migrations and controlled administrative onboarding instead.',
+    );
+  }
+
   if (process.env.NODE_ENV === 'production' && process.env.ALLOW_DEMO_SEED !== 'true') {
     throw new Error('Refusing to seed demo data in production. Set ALLOW_DEMO_SEED=true only for an explicitly approved fixture environment.');
   }
