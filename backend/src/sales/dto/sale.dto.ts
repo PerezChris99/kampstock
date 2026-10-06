@@ -47,6 +47,10 @@ export class CreateSaleDto {
   clientReference?: string;
 
   @IsOptional()
+  @IsString()
+  clientReference?: string;
+
+  @IsOptional()
   @IsInt()
   customerId?: number;
 
