@@ -43,6 +43,10 @@ export class CreatePaymentDto {
 
 export class CreateSaleDto {
   @IsOptional()
+  @IsString()
+  clientReference?: string;
+
+  @IsOptional()
   @IsInt()
   customerId?: number;
 
