@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ArrowRight, BarChart3, Boxes, CreditCard, PackageCheck, ShoppingCart, Store, Users } from 'lucide-react';
+import { ArrowRight, BarChart3, Boxes, PackageCheck, ShoppingCart, Store, Users } from 'lucide-react';
 
 const steps = [
   { n:'01', icon:Store, title:'Set up your business', text:'Create the business workspace, add your team, define roles and establish the locations where stock is held.' },
