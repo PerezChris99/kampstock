@@ -92,7 +92,7 @@ jobs:
         env:
           DATABASE_URL: postgresql://kampstock:kampstock@127.0.0.1:5432/kampstock_test
       - name: Generate PostgreSQL baseline migration artifact
-        run: npx prisma migrate diff --from-empty --to-schema-datamodel=./prisma-pg/schema.prisma --script > /tmp/kampstock-initial.sql
+        run: npx prisma migrate diff --from-empty --to-schema=./prisma-pg/schema.prisma --script > /tmp/kampstock-initial.sql
         env:
           DATABASE_URL: postgresql://kampstock:kampstock@127.0.0.1:5432/kampstock_test
       - name: Upload PostgreSQL baseline migration artifact
