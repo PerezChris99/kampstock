@@ -20,7 +20,7 @@ test.describe('Authentication flow', () => {
   test('login page renders the username and password fields', async ({ page }) => {
     await page.goto('/login');
     await expect(page.getByLabel(/username/i)).toBeVisible();
-    await expect(page.getByLabel(/password/i)).toBeVisible();
+    await expect(page.getByRole('textbox', { name: 'Password' })).toBeVisible();
     await expect(page.getByRole('button', { name: /sign in|log in/i })).toBeVisible();
   });
 
