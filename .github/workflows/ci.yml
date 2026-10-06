@@ -56,6 +56,48 @@ jobs:
           DATABASE_URL: file:./prisma/test.db
           CSRF_SECRET: ci-csrf-secret-value
 
+  backend-postgres:
+    name: Backend — PostgreSQL integration
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: kampstock
+          POSTGRES_PASSWORD: kampstock
+          POSTGRES_DB: kampstock_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U kampstock -d kampstock_test"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Generate PostgreSQL Prisma client
+        run: npx prisma generate --schema=./prisma-pg/schema.prisma
+        env:
+          DATABASE_URL: postgresql://kampstock:kampstock@127.0.0.1:5432/kampstock_test
+      - name: Apply schema to ephemeral PostgreSQL
+        run: npx prisma db push --schema=./prisma-pg/schema.prisma --accept-data-loss
+        env:
+          DATABASE_URL: postgresql://kampstock:kampstock@127.0.0.1:5432/kampstock_test
+      - name: TypeScript check against PostgreSQL client
+        run: npx tsc --noEmit
+        env:
+          DATABASE_URL: postgresql://kampstock:kampstock@127.0.0.1:5432/kampstock_test
+
   frontend:
     name: Frontend — quality and build
     runs-on: ubuntu-latest
