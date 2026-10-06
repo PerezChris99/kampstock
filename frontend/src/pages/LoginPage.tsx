@@ -128,7 +128,7 @@ export default function LoginPage() {
               </li>
             ))}
           </ul>
-          <div className="auth-brand-badge">Trusted by 200+ shops across Uganda</div>
+          <div className="auth-brand-badge">Built for Ugandan wholesale and retail businesses</div>
         </div>
       </div>
 
