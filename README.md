@@ -1,214 +1,382 @@
-<div align="center">
+# KampStock
 
-# 🏪 KampStock
+KampStock is a multi-tenant inventory, point-of-sale, purchasing, customer-credit and business-reporting platform designed for wholesale and retail businesses in Uganda.
 
-### Wholesale & Retail Stock Management System
+It is built around the realities of shop operations: fast POS transactions, barcode-driven product handling, stock control, supplier purchasing, customer credit, multiple payment methods, intermittent connectivity and UGX-denominated business records.
 
-**A production-grade inventory, POS, and business management platform built for Kampala shops.**
+> **Production principle:** beautiful on the surface, solid underneath, built for production.
 
-[![NestJS](https://img.shields.io/badge/Backend-NestJS%2011-E0234E?logo=nestjs&logoColor=white)](https://nestjs.com)
-[![React](https://img.shields.io/badge/Frontend-React%2019-61DAFB?logo=react&logoColor=black)](https://react.dev)
-[![Prisma](https://img.shields.io/badge/ORM-Prisma%207-2D3748?logo=prisma&logoColor=white)](https://prisma.io)
-[![TypeScript](https://img.shields.io/badge/Language-TypeScript-3178C6?logo=typescript&logoColor=white)](https://typescriptlang.org)
-[![TailwindCSS](https://img.shields.io/badge/Styles-TailwindCSS%20v4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
+## Product scope
 
----
+KampStock provides a single operational system for:
 
-*Built for FMCG and household goods retailers in Uganda — handling multi-tier pricing, real-time stock, credit customers, and full business reporting.*
+- **POS and sales** — retail/wholesale pricing, payments, receipts, returns and credit sales.
+- **Inventory** — products, units, locations, stock movements, adjustments, transfers, low-stock and expiry views.
+- **Purchasing** — suppliers, purchase orders, goods receipts and supplier invoices.
+- **Customers and credit** — customer accounts, outstanding balances, ageing and payment allocation.
+- **Finance and reporting** — sales summaries, profitability, expenses, stock valuation and management reporting.
+- **Users and permissions** — tenant-scoped users, roles and permission policies.
+- **SaaS operations** — tenants, plans, trials, subscription state, payment processing and account locking.
+- **Offline POS** — IndexedDB-backed pending-sale queue with retry and failed-sale recovery.
+- **Audit and observability** — mutation audit trails and Sentry integration.
 
-</div>
+## Architecture
 
----
+```
+┌──────────────────────────────┐
+│        React + Vite SPA      │
+│  POS • Inventory • Reports   │
+│  TanStack Query • Zustand    │
+│  PWA / IndexedDB offline     │
+└──────────────┬───────────────┘
+               │ HTTPS / JSON
+               ▼
+┌──────────────────────────────┐
+│        NestJS REST API       │
+│ Auth • RBAC • Tenant guards  │
+│ Validation • CSRF • Helmet   │
+│ Rate limits • Audit • Sentry │
+└──────────────┬───────────────┘
+               │ Prisma
+               ▼
+┌──────────────────────────────┐
+│       PostgreSQL (prod)      │
+│ Tenants • Users • Stock      │
+│ Sales • Purchasing • Finance │
+└──────────────┬───────────────┘
+               │
+        ┌──────┴──────┐
+        ▼             ▼
+      Redis        Pesapal
+    cache/state    payments
+```
 
-## ✨ Features
+Development can use SQLite through the development Prisma schema. Production is designed around PostgreSQL.
 
-<table>
-<tr>
-<td width="50%">
-
-### 🧑‍💼 Access & Security
-- Role-based access control (Admin, Manager, Cashier, Storekeeper)
-- JWT authentication with refresh token rotation
-- Brute-force protection & rate limiting
-- Full audit trail on all mutations
-
-### 🛒 Point of Sale
-- Fast keyboard & barcode POS interface
-- Retail and wholesale pricing modes
-- Cash, Mobile Money, Bank, and Credit payments
-- Sales returns & refunds
-- Offline mode — queues sales locally, syncs on reconnect
-
-### 📦 Inventory & Products
-- Product catalog with categories, barcodes, multi-unit pricing
-- Real-time stock levels across locations
-- Stock movement history and audit log
-- Low-stock alerts and expiry tracking
-
-</td>
-<td width="50%">
-
-### 🏭 Purchasing
-- Purchase order creation and approval workflow
-- Goods received notes and supplier invoicing
-- Supplier balance and payment tracking
-
-### 👥 Customers & Credit
-- Customer profiles with credit limits
-- Outstanding balance ageing reports
-- Credit sale workflows
-
-### 💰 Finance & Reporting
-- Daily sales summary and trends
-- Gross profit / P&L by period
-- Top products, category breakdown, payment method split
-- Expense tracking and categorisation
-- Stock valuation report
-
-### 📊 Dashboard
-- Live revenue, order count, low-stock indicators
-- 30-day sales trend chart
-- 6-month P&L summary
-- Payment method distribution
-
-</td>
-</tr>
-</table>
-
----
-
-## 🗂️ Project Structure
+## Repository layout
 
 ```
 kampstock/
-├── backend/                  # NestJS API server
+├── backend/
 │   ├── src/
-│   │   ├── auth/             # JWT auth, RBAC guards
-│   │   ├── products/         # Product catalog & units
-│   │   ├── inventory/        # Stock locations & movements
-│   │   ├── sales/            # POS engine, receipts, returns
-│   │   ├── purchasing/       # Purchase orders, GRNs
-│   │   ├── customers/        # Customer profiles, credit
-│   │   ├── suppliers/        # Supplier management
-│   │   ├── expenses/         # Expense categories & records
-│   │   ├── reports/          # Analytics & reporting
-│   │   └── users/            # User management
-│   ├── prisma/               # SQLite schema (dev)
-│   └── prisma-pg/            # PostgreSQL schema (production)
-│
-├── frontend/                 # React 19 web app
+│   │   ├── auth/
+│   │   ├── users/
+│   │   ├── products/
+│   │   ├── stock/
+│   │   ├── sales/
+│   │   ├── purchase-orders/
+│   │   ├── goods-receipts/
+│   │   ├── suppliers/
+│   │   ├── customers/
+│   │   ├── expenses/
+│   │   ├── reports/
+│   │   ├── billing/
+│   │   ├── tenants/
+│   │   ├── audit/
+│   │   ├── health/
+│   │   ├── cache/
+│   │   └── common/
+│   ├── prisma/
+│   └── prisma-pg/
+├── frontend/
 │   └── src/
-│       ├── pages/            # Dashboard, POS, Products, Sales, …
-│       ├── layouts/          # AppLayout with role-aware nav
-│       ├── store/            # Zustand auth store
-│       └── lib/              # Axios client, offline queue
-│
-└── docs/                     # Architecture & development docs
+│       ├── components/
+│       ├── layouts/
+│       ├── pages/
+│       ├── store/
+│       └── lib/
+├── docs/
+└── .github/workflows/
 ```
 
----
+## Security model
 
-## ⚙️ Tech Stack
+KampStock treats tenant isolation as a security boundary.
 
-| Layer | Technology | Purpose |
-|-------|-----------|---------|
-| **Backend** | NestJS 11, TypeScript | REST API, business logic |
-| **Database (dev)** | SQLite + Prisma 7 | Local development |
-| **Database (prod)** | PostgreSQL + Prisma 7 | Production deployment |
-| **Frontend** | React 19, Vite 8, TypeScript | SPA web interface |
-| **Styling** | TailwindCSS v4 | Utility-first UI |
-| **Charts** | Recharts | Reporting & dashboards |
-| **Auth** | JWT + Refresh Tokens, Throttler | Secure authentication |
-| **State** | Zustand, TanStack Query | Client state & caching |
-| **Offline** | IndexedDB (via custom queue) | Offline POS sales sync |
+### Authentication
 
----
+- Short-lived JWT access tokens.
+- httpOnly cookies for browser sessions.
+- Refresh-token rotation.
+- Token-version revocation.
+- Logout invalidates the user's current token family.
+- Password hashing with bcrypt.
+- Generic authentication failure messages to reduce account enumeration.
+- Brute-force tracking and throttling.
+- Forced password-reset support.
 
-## 🚀 Quick Start
+### API protection
 
-### Prerequisites
+- Global DTO validation with whitelisting.
+- Unknown request fields are rejected.
+- CSRF protection for state-changing browser requests.
+- CORS allow-listing in production.
+- Helmet security headers.
+- HSTS in production.
+- Request-body size limits.
+- Response compression.
+- Global exception sanitisation.
+- Rate limiting.
+- Tenant context enforcement.
 
-- **Node.js** ≥ 18
-- **npm** ≥ 9
-- **PostgreSQL** ≥ 14 *(production only — SQLite used in dev)*
+### Tenant isolation
 
-### 1. Backend
+Tenant IDs are attached to authenticated sessions and validated at the application boundary. Sensitive resource lookups and mutations must remain tenant-scoped; IDs from one tenant must never be sufficient to access another tenant's records.
+
+Database uniqueness constraints also include tenant identifiers where appropriate, for example:
+
+`username + tenantId`, `sku + tenantId`, `barcode + tenantId`, and `saleNumber + tenantId`.
+
+## Data integrity
+
+Sales and stock operations use database transactions and atomic stock updates.
+
+Important invariants include:
+
+- A sale cannot consume more stock than is available when negative stock is disabled.
+- Concurrent stock deductions use database-side conditional updates.
+- Sale numbers and purchase-order numbers are collision-safe.
+- Customer balances are updated as part of financial workflows.
+- Purchase orders validate referenced suppliers/products against the current tenant.
+- Goods receipts validate their purchase order, products and stock location.
+- Supplier and customer resources are tenant-scoped.
+- Audit records preserve important business mutations.
+
+## Performance strategy
+
+KampStock uses several layers of performance protection:
+
+- PostgreSQL indexes on high-selectivity tenant, status, timestamp and foreign-key paths.
+- Bounded list endpoints with server-side pagination.
+- TanStack Query client caching.
+- Optional Redis server-side caching.
+- HTTP compression.
+- Lazy loading for heavier reporting/calendar views.
+- PWA asset caching.
+- IndexedDB offline storage for POS continuity.
+- PostgreSQL connection-pool settings appropriate to serverless deployments.
+
+Caching must never become the source of truth for financial or stock data. Business writes remain database-authoritative and cache invalidation is treated as part of the write path.
+
+## Offline POS flow
+
+```
+Cashier creates sale
+       │
+       ├── Online ──► API ──► DB ──► receipt
+       │
+       └── Offline ─► IndexedDB queue
+                         │
+                    connection returns
+                         │
+                         ▼
+                  retry queued sale
+                    │          │
+                  success    permanent error
+                    │          │
+                 remove     failed-sales
+                              │
+                         manager review
+```
+
+Offline mode is a resilience mechanism, not permission to silently discard failed transactions. A failed synchronization remains visible for recovery.
+
+## Billing
+
+Subscription billing is implemented around Pesapal.
+
+The billing lifecycle is:
+
+```
+Select plan
+   │
+Create merchant reference
+   │
+Pesapal order
+   │
+Customer payment
+   │
+Pesapal IPN
+   │
+Verify transaction status
+   │
+Complete subscription
+   │
+Update tenant entitlement
+   │
+Unlock tenant
+```
+
+Production payment processing requires real Pesapal credentials, a registered IPN endpoint and correctly configured production callback URLs. Those external prerequisites cannot be completed by repository code alone.
+
+## Uganda-specific considerations
+
+KampStock is designed for Ugandan businesses and uses **UGX** as the subscription billing currency.
+
+The application contains fiscal-invoicing structures for EFRIS, but EFRIS production readiness depends on the business's URA registration, credentials, endpoint configuration and successful end-to-end certification. Repository code must not be represented as proof of regulatory registration.
+
+Likewise, Mobile Money and other payment channels require the appropriate provider credentials/contracts where direct integrations are used.
+
+Operational compliance requirements, including applicable data-protection, tax and record-retention obligations, must be validated with the business's professional advisers and relevant Ugandan authorities before commercial launch.
+
+## Environment
+
+Backend configuration is supplied through environment variables. At minimum, production requires:
+
+| Variable | Purpose |
+|---|---|
+| `NODE_ENV` | Runtime environment |
+| `DATABASE_URL` | PostgreSQL connection |
+| `JWT_SECRET` | Access-token signing secret |
+| `JWT_REFRESH_SECRET` | Refresh-token signing secret |
+| `JWT_EXPIRES_IN` | Access-token lifetime |
+| `JWT_REFRESH_EXPIRES_IN` | Refresh-token lifetime |
+| `ALLOWED_ORIGINS` | Production frontend allow-list |
+| `FRONTEND_URL` | Frontend origin where used |
+| `CSRF_SECRET` | CSRF protection secret |
+| `REDIS_URL` | Optional shared cache/state backend |
+| `PESAPAL_ENV` | Pesapal environment |
+| `PESAPAL_CONSUMER_KEY` | Pesapal credential |
+| `PESAPAL_CONSUMER_SECRET` | Pesapal credential |
+| `PESAPAL_IPN_ID` | Registered Pesapal IPN identifier |
+| `PESAPAL_IPN_URL` | Pesapal IPN endpoint |
+| `PESAPAL_CALLBACK_URL` | Payment callback |
+
+Never commit real secrets, production database URLs, payment credentials or private keys.
+
+## Local development
+
+### Requirements
+
+- Node.js 20+
+- npm
+- SQLite for lightweight local development
+- PostgreSQL for production-parity integration testing
+
+### Backend
 
 ```bash
 cd backend
-cp .env.example .env          # configure DATABASE_URL, JWT_SECRET, etc.
-npm install
-npx prisma migrate dev        # run migrations
-npx prisma db seed            # seed demo data and user accounts
-npm run start:dev             # starts on http://localhost:3000
+cp .env.example .env
+npm ci
+npx prisma generate --schema=./prisma/schema.prisma
+npm run start:dev
 ```
 
-### 2. Frontend
+### Frontend
 
 ```bash
 cd frontend
-cp .env.example .env          # set VITE_API_URL=http://localhost:3000/api
-npm install
-npm run dev                   # starts on http://localhost:5173
+cp .env.example .env
+npm ci
+npm run dev
 ```
 
----
+The frontend expects the API base URL through `VITE_API_URL`.
 
-## 🔑 Demo Accounts *(seeded)*
+## Testing and CI
 
-| Username | Password | Role |
-|----------|----------|------|
-| `admin` | `admin123` | Admin — full access |
-| `manager` | `manager123` | Manager — no user/role management |
-| `cashier` | `cashier123` | Cashier — POS & sales only |
-| `storekeeper` | `store123` | Storekeeper — inventory & receiving |
+The GitHub Actions pipeline is intended to be a **fail-closed release gate**.
 
----
+```
+push / pull request
+        │
+        ├── Backend
+        │    ├── npm ci
+        │    ├── Prisma generate
+        │    ├── lint
+        │    ├── TypeScript
+        │    └── unit tests
+        │
+        ├── Frontend
+        │    ├── npm ci
+        │    ├── lint
+        │    ├── TypeScript
+        │    └── production build
+        │
+        ├── Playwright browser smoke tests
+        │
+        └── main push
+             └── production Docker image builds
+```
 
-## 🌐 Environment Variables
+A failed E2E test is a failed CI run. There is intentionally no `continue-on-error` bypass for browser tests.
 
-### Backend (`backend/.env`)
+Before production release, CI should be supplemented with PostgreSQL integration tests, migration verification, deployment smoke tests and load testing against infrastructure representative of production.
 
-| Variable | Description |
-|----------|-------------|
-| `DATABASE_URL` | PostgreSQL connection string. **On Vercel/serverless**, append `?connection_limit=1&pool_timeout=20` to the Neon pooler URL to prevent connection exhaustion across concurrent cold starts. |
-| `JWT_SECRET` | Access token signing secret |
-| `JWT_REFRESH_SECRET` | Refresh token signing secret |
-| `JWT_EXPIRY` | Access token TTL (e.g. `15m`) |
-| `JWT_REFRESH_EXPIRY` | Refresh token TTL (e.g. `7d`) |
-| `NODE_ENV` | `development` or `production` |
-| `ALLOWED_ORIGINS` | Comma-separated frontend origin URLs *(prod)* |
+## Deployment
 
-### Frontend (`frontend/.env`)
+The repository contains deployment support for container/serverless environments. The production architecture must be chosen deliberately rather than running multiple partially configured deployment paths.
 
-| Variable | Description |
-|----------|-------------|
-| `VITE_API_URL` | Backend API base URL |
-| `VITE_APP_MODE` | `multi` (role login) or `single` (owner mode) |
+For serverless PostgreSQL, use the provider's pooled connection endpoint and conservative connection limits. For a long-running Node service, configure the PostgreSQL pool for the service's actual concurrency.
 
----
+Production database schema changes should be version-controlled and deployed as migrations. The repository currently contains no checked-in Prisma migration history, so **a production migration baseline remains a release prerequisite** before replacing deployment-time schema pushing with `prisma migrate deploy`.
 
-## 📈 Development Progress
+This is intentionally called out rather than hidden: an empty migration history is not equivalent to a production migration strategy.
 
-| Phase | Description | Status |
-|-------|-------------|--------|
-| 0 | Repository scaffolding | ✅ Complete |
-| 1 | Backend setup + Prisma schema | ✅ Complete |
-| 2 | Auth, users, roles, RBAC | ✅ Complete |
-| 3 | Product catalog & inventory backend | ✅ Complete |
-| 4 | Purchasing & supplier backend | ✅ Complete |
-| 5 | Sales, POS engine, credit logic | ✅ Complete |
-| 6 | Expenses, reports, compliance stubs | ✅ Complete |
-| 7 | Frontend scaffolding + auth UI | ✅ Complete |
-| 8 | Frontend catalog, inventory, purchasing | ✅ Complete |
-| 9 | POS frontend + PWA offline mode | ✅ Complete |
-| 10 | Sales history, reporting UI, UX polish | ✅ Complete |
-| 11 | Documentation + deployment prep | ✅ Complete |
+## Release workflow
 
----
+The development branch is `perez`. `main` is the default/release branch.
 
-## 🔒 License
+```
+work on perez
+    │
+    ▼
+commit focused change
+    │
+    ▼
+push perez
+    │
+    ▼
+CI
+    │
+    ▼
+pull request → main
+    │
+    ▼
+CI green
+    │
+    ▼
+merge main
+    │
+    ▼
+production deployment
+```
 
-Copyright (c) 2024–2026 KampStock. **All rights reserved.**
+Do not bypass CI to force a release.
 
-This software is proprietary and confidential. Unauthorised copying, modification, distribution, or use is strictly prohibited. See [LICENSE](./LICENSE) for full terms.
+## Production readiness standard
+
+KampStock should only be called production-ready when all of the following are true:
+
+- [x] Authentication and authorization controls are implemented.
+- [x] Tenant-scoped resource access is enforced in critical stock, sales and purchasing flows.
+- [x] Request validation and security headers are enabled.
+- [x] Financial and stock writes use transactional database operations.
+- [x] Pagination and database indexing are present on major list paths.
+- [x] Offline POS has explicit failed-sale handling.
+- [x] CI has fail-closed frontend/backend quality gates.
+- [ ] PostgreSQL integration suite is a mandatory CI gate.
+- [ ] Prisma migration history is established and deployed through migrations.
+- [ ] Production payment-provider credentials and callbacks are configured and verified.
+- [ ] EFRIS production integration is externally registered, configured and certified where required.
+- [ ] Production backups and restores have been exercised against the actual deployment.
+- [ ] Production load testing has been completed against representative infrastructure.
+- [ ] Monitoring, alerting and operational runbooks have been validated in the live environment.
+
+The unchecked items are not claims that the code is broken; they are release/operations prerequisites that cannot honestly be marked complete from source code alone.
+
+## Intellectual property
+
+**Copyright © 2024–2026 KampStock. All rights reserved.**
+
+KampStock is proprietary software. The source code, design, architecture, documentation, branding and associated intellectual property are protected.
+
+**Use, copying, modification, redistribution, resale or deployment requires explicit permission from the rights holder unless a separate written licence states otherwise.**
+
+See [LICENSE](./LICENSE) for the applicable terms.
+
+## Project status
+
+KampStock is an actively developed SaaS product for the Ugandan wholesale and retail market. The repository is engineered toward production use, but operational prerequisites such as external payment credentials, regulatory registrations, production migration baselines, backup exercises and live infrastructure validation must be completed before a commercial production launch.
+
