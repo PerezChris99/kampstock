@@ -29,7 +29,7 @@ test.describe('POS page', () => {
   });
 
   test('can navigate to POS page', async ({ page }) => {
-    await page.goto('/pos');
+    await page.goto('/app/pos');
     await expect(page).toHaveURL(/\/pos/);
     // The POS page must have a cart or product list section
     await expect(
@@ -40,7 +40,7 @@ test.describe('POS page', () => {
   });
 
   test('POS page shows product search or product list', async ({ page }) => {
-    await page.goto('/pos');
+    await page.goto('/app/pos');
     // Either a search input or at least one product card should be visible
     const searchInput = page.getByPlaceholder(/scan barcode|type sku/i);
     const productList = page.getByTestId('product-list').or(page.getByRole('list'));
@@ -49,7 +49,7 @@ test.describe('POS page', () => {
   });
 
   test('shows offline banner when simulating offline mode', async ({ page, context }) => {
-    await page.goto('/pos');
+    await page.goto('/app/pos');
     // Simulate going offline via Playwright's network emulation
     await context.setOffline(true);
     // Trigger a network state change so the banner appears
