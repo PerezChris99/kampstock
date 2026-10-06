@@ -11,6 +11,10 @@ export class CategoriesService {
   ) {}
 
   async create(dto: CreateCategoryDto, actorId: number, tenantId: number) {
+    if (dto.parentId) {
+      const parent = await this.prisma.category.findFirst({ where: { id: dto.parentId, tenantId }, select: { id: true } });
+      if (!parent) throw new NotFoundException('Parent category not found');
+    }
     const existing = await this.prisma.category.findUnique({ where: { name_tenantId: { name: dto.name, tenantId } } });
     if (existing) throw new ConflictException('Category name already exists');
 
@@ -38,6 +42,11 @@ export class CategoriesService {
 
   async update(id: number, dto: UpdateCategoryDto, actorId: number, tenantId: number) {
     const cat = await this.findOne(id, tenantId);
+    if (dto.parentId === id) throw new ConflictException('Category cannot be its own parent');
+    if (dto.parentId) {
+      const parent = await this.prisma.category.findFirst({ where: { id: dto.parentId, tenantId }, select: { id: true } });
+      if (!parent) throw new NotFoundException('Parent category not found');
+    }
     if (dto.name && dto.name !== cat.name) {
       const exists = await this.prisma.category.findUnique({ where: { name_tenantId: { name: dto.name, tenantId } } });
       if (exists) throw new ConflictException('Category name already exists');
