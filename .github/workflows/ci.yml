@@ -91,6 +91,16 @@ jobs:
         run: npx prisma generate --schema=./prisma-pg/schema.prisma
         env:
           DATABASE_URL: postgresql://kampstock:kampstock@127.0.0.1:5432/kampstock_test
+      - name: Generate PostgreSQL baseline migration artifact
+        run: npx prisma migrate diff --from-empty --to-schema-datamodel=./prisma-pg/schema.prisma --script > /tmp/kampstock-initial.sql
+        env:
+          DATABASE_URL: postgresql://kampstock:kampstock@127.0.0.1:5432/kampstock_test
+      - name: Upload PostgreSQL baseline migration artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kampstock-postgres-baseline
+          path: /tmp/kampstock-initial.sql
+          retention-days: 1
       - name: Apply schema to ephemeral PostgreSQL
         run: npx prisma db push --schema=./prisma-pg/schema.prisma --accept-data-loss
         env:
