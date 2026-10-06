@@ -5,8 +5,8 @@ import { test, expect } from '@playwright/test';
  *
  * These tests assume a running backend (seeded with at least one product) and
  * a valid test user.  In local dev, set the environment variables:
- *   TEST_USER_EMAIL=admin@demo.com
- *   TEST_USER_PASSWORD=Admin1234!
+ *   TEST_USER_EMAIL=manager
+ *   TEST_USER_PASSWORD=manager123
  *
  * Because the backend may not be seeded in CI (E2E is primarily a smoke test),
  * many assertions use soft expectations or check UI state rather than data.
