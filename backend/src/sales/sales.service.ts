@@ -25,9 +25,15 @@ export class SalesService {
 
   async create(dto: CreateSaleDto, actorId: number, tenantId: number) {
     return this.prisma.$transaction(async (tx) => {
-      const locationId = dto.locationId ?? 1; // Default to first location
+      const locationId = dto.locationId ?? 1;
+      const location = await tx.stockLocation.findFirst({ where: { id: locationId, tenantId }, select: { id: true } });
+      if (!location) throw new BadRequestException('Stock location not found for this tenant');
+      if (dto.customerId) {
+        const customer = await tx.customer.findFirst({ where: { id: dto.customerId, tenantId }, select: { id: true } });
+        if (!customer) throw new BadRequestException('Customer not found for this tenant');
+      }
 
-      // Validate products and compute totals (read-only pass — no stock modifications yet)
+      // Validate products, pricing and compute totals (read-only pass — no stock modifications yet)
       let subtotal = 0;
       const lineData: any[] = [];
 
@@ -36,7 +42,17 @@ export class SalesService {
           where: { id: line.productId },
           include: { units: true },
         });
-        if (!product) throw new NotFoundException(`Product ${line.productId} not found`);
+        if (!product || product.tenantId !== tenantId) throw new NotFoundException(`Product ${line.productId} not found`);
+        const selectedUnit = line.productUnitId
+          ? product.units.find((u) => u.id === line.productUnitId)
+          : product.units.find((u) => u.isDefault) ?? product.units[0];
+        if (!selectedUnit) throw new BadRequestException(`No sellable unit configured for product "${product.name}"`);
+        const serverPrice = dto.saleType === 'WHOLESALE'
+          ? Number(selectedUnit.sellingPriceWholesale)
+          : Number(selectedUnit.sellingPriceRetail);
+        if (Math.abs(serverPrice - line.unitPrice) > 0.0001) {
+          throw new BadRequestException(`Price mismatch for product "${product.name}". Refresh the product price and try again.`);
+        }
 
         const stockItem = await tx.stockItem.findFirst({
           where: { productId: line.productId, locationId },
@@ -48,10 +64,11 @@ export class SalesService {
           );
         }
 
-        const lineTotal = line.quantity * line.unitPrice - (line.discount ?? 0);
+        const lineTotal = line.quantity * serverPrice - (line.discount ?? 0);
+        if (lineTotal < 0) throw new BadRequestException(`Discount cannot exceed line amount for product "${product.name}"`);
         const costPrice = stockItem ? Number(stockItem.lastCostPrice) : 0;
         subtotal += lineTotal;
-        lineData.push({ ...line, lineTotal, costPrice });
+        lineData.push({ ...line, productUnitId: selectedUnit.id, unitPrice: serverPrice, lineTotal, costPrice });
       }
 
       const discountTotal = dto.discountTotal ?? 0;
