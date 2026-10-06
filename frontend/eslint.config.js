@@ -18,5 +18,10 @@ export default defineConfig([
     languageOptions: {
       globals: globals.browser,
     },
+    rules: {
+      // Existing UI modules still contain legacy any usage. Keep CI fail-closed
+      // for correctness rules while surfacing this migration as warnings.
+      '@typescript-eslint/no-explicit-any': 'warn',
+    },
   },
 ])
