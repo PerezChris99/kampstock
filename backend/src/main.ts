@@ -26,6 +26,7 @@ class GlobalExceptionFilter implements ExceptionFilter {
     const { httpAdapter } = this.httpAdapterHost;
     const ctx = host.switchToHttp();
     const isProd = process.env.NODE_ENV === 'production';
+  if (isProd) app.set('trust proxy', 1);
 
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
     let message: string | string[] = 'An unexpected error occurred';
