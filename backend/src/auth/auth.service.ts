@@ -180,6 +180,10 @@ export class AuthService {
     return tokens;
   }
 
+  async logout(userId: number): Promise<void> {
+    await this.prisma.user.update({ where: { id: userId }, data: { tokenVersion: { increment: 1 } } });
+  }
+
   async refresh(refreshToken: string) {
     try {
       const payload = this.jwtService.verify(refreshToken, {
