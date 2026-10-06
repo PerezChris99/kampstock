@@ -39,6 +39,21 @@ export class GoodsReceiptsService {
     if (!location) throw new BadRequestException('Stock location not found');
 
     return this.prisma.$transaction(async (tx) => {
+      // Re-check the PO inside the transaction to close the validation-to-write
+      // race where another receipt could finalize/cancel it after the initial read.
+      if (dto.purchaseOrderId) {
+        const po = await tx.purchaseOrder.findFirst({
+          where: { id: dto.purchaseOrderId, tenantId },
+          select: { id: true, status: true },
+        });
+        if (!po) throw new BadRequestException('Purchase order not found');
+        if (po.status === 'CANCELLED' || po.status === 'RECEIVED') {
+          throw new BadRequestException(
+            `Cannot receive goods against a ${po.status} purchase order`,
+          );
+        }
+      }
+
       const receipt = await tx.goodsReceipt.create({
         data: {
           purchaseOrderId: dto.purchaseOrderId,
@@ -73,7 +88,7 @@ export class GoodsReceiptsService {
           await tx.stockItem.update({
             where: { id: existing.id },
             data: {
-              quantityOnHand: Number(existing.quantityOnHand) + line.quantity,
+              quantityOnHand: { increment: line.quantity },
               lastCostPrice: line.unitCost,
             },
           });
