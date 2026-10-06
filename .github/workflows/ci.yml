@@ -98,9 +98,9 @@ jobs:
         env:
           NODE_ENV: test
           DATABASE_URL: file:./prisma/test.db
-          JWT_SECRET: ci-${{ github.run_id }}-jwt-secret
-          JWT_REFRESH_SECRET: ci-${{ github.run_id }}-refresh-secret
-          CSRF_SECRET: ci-${{ github.run_id }}-csrf-secret
+          JWT_SECRET: ci-kampstock-${{ github.run_id }}-jwt-secret-2026
+          JWT_REFRESH_SECRET: ci-kampstock-${{ github.run_id }}-refresh-secret-2026
+          CSRF_SECRET: ci-kampstock-${{ github.run_id }}-csrf-secret-2026
       - name: Build backend
         working-directory: backend
         run: npm run build
@@ -111,9 +111,9 @@ jobs:
           NODE_ENV: test
           PORT: 3000
           DATABASE_URL: file:./prisma/test.db
-          JWT_SECRET: ci-${{ github.run_id }}-jwt-secret
-          JWT_REFRESH_SECRET: ci-${{ github.run_id }}-refresh-secret
-          CSRF_SECRET: ci-${{ github.run_id }}-csrf-secret
+          JWT_SECRET: ci-kampstock-${{ github.run_id }}-jwt-secret-2026
+          JWT_REFRESH_SECRET: ci-kampstock-${{ github.run_id }}-refresh-secret-2026
+          CSRF_SECRET: ci-kampstock-${{ github.run_id }}-csrf-secret-2026
           ALLOWED_ORIGINS: http://127.0.0.1:5173
       - name: Wait for backend
         run: npx wait-on http://127.0.0.1:3000/api/health --timeout 30000
