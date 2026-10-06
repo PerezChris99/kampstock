@@ -186,9 +186,9 @@ export class SalesService {
     return { data, total, limit, offset };
   }
 
-  async findOne(id: number) {
-    const sale = await this.prisma.sale.findUnique({
-      where: { id },
+  async findOne(id: number, tenantId: number) {
+    const sale = await this.prisma.sale.findFirst({
+      where: { id, tenantId },
       include: {
         lines: { include: { product: { include: { units: true } } } },
         customer: true,
@@ -200,9 +200,9 @@ export class SalesService {
     return sale;
   }
 
-  async addPayment(saleId: number, dto: AddPaymentDto, actorId: number) {
+  async addPayment(saleId: number, dto: AddPaymentDto, actorId: number, tenantId: number) {
     return this.prisma.$transaction(async (tx) => {
-      const sale = await tx.sale.findUnique({ where: { id: saleId } });
+      const sale = await tx.sale.findFirst({ where: { id: saleId, tenantId } });
       if (!sale) throw new NotFoundException('Sale not found');
       if (Number(sale.balance) <= 0) throw new BadRequestException('Sale is already fully paid');
 
@@ -235,10 +235,10 @@ export class SalesService {
     });
   }
 
-  async returnSale(saleId: number, actorId: number) {
+  async returnSale(saleId: number, actorId: number, tenantId: number) {
     return this.prisma.$transaction(async (tx) => {
       const sale = await tx.sale.findUnique({
-        where: { id: saleId },
+        where: { id: saleId, tenantId },
         include: { lines: true },
       });
       if (!sale) throw new NotFoundException('Sale not found');
@@ -249,7 +249,7 @@ export class SalesService {
       // Reverse stock movements
       for (const line of sale.lines) {
         const stockItem = await tx.stockItem.findFirst({
-          where: { productId: line.productId },
+          where: { productId: line.productId, locationId: 1 },
         });
         if (stockItem) {
           await tx.stockItem.update({
