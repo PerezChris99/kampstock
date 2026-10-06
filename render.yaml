@@ -6,7 +6,7 @@
 #   2. Connect your GitHub repo (PerezChris99/kampstock)
 #   3. Click "New Blueprint" and Render will auto-detect this file
 #   4. Set ALLOWED_ORIGINS to your Vercel frontend URL once Vercel is deployed
-#   5. After first deploy, open Render Shell and run: npm run db:seed
+#   5. Do not run the demo seed script against production; production onboarding and data initialization must use reviewed migrations and controlled administrative workflows.
 
 services:
   - type: web
