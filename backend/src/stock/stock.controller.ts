@@ -39,22 +39,23 @@ export class StockController {
   }
 
   @Get('movements')
-  findMovements(@Query('productId') productId?: string, @Query('locationId') locationId?: string) {
+  findMovements(@Query('productId') productId?: string, @Query('locationId') locationId?: string, @CurrentUser('tenantId') tenantId?: number) {
     return this.stockService.findMovements(
       productId ? parseInt(productId) : undefined,
       locationId ? parseInt(locationId) : undefined,
+      tenantId,
     );
   }
 
   @Post('adjust')
   @Roles('Admin', 'Manager', 'Storekeeper')
-  adjust(@Body() dto: StockAdjustmentDto, @CurrentUser('id') actorId: number) {
-    return this.stockService.adjust(dto, actorId);
+  adjust(@Body() dto: StockAdjustmentDto, @CurrentUser('id') actorId: number, @CurrentUser('tenantId') tenantId: number) {
+    return this.stockService.adjust(dto, actorId, tenantId);
   }
 
   @Post('transfer')
   @Roles('Admin', 'Manager', 'Storekeeper')
-  transfer(@Body() dto: StockTransferDto, @CurrentUser('id') actorId: number) {
-    return this.stockService.transfer(dto, actorId);
+  transfer(@Body() dto: StockTransferDto, @CurrentUser('id') actorId: number, @CurrentUser('tenantId') tenantId: number) {
+    return this.stockService.transfer(dto, actorId, tenantId);
   }
 }
