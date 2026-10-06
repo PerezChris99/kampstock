@@ -358,6 +358,7 @@ model Sale {
     createdById   Int      @map("created_by")
     createdAt     DateTime @default(now()) @map("created_at")
     updatedAt     DateTime @updatedAt @map("updated_at")
+    clientReference String?  @map("client_reference")
 
     customer      Customer?      @relation(fields: [customerId], references: [id])
     createdBy     User           @relation(fields: [createdById], references: [id])
