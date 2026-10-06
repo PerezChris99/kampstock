@@ -281,24 +281,21 @@ Merge main
 Deploy
 ```
 
-## Database deployment status
+## Database deployment
 
-Production uses PostgreSQL and has a dedicated PostgreSQL Prisma schema.
+Production uses PostgreSQL with a checked-in Prisma migration history under `backend/prisma-pg/migrations/`.
 
-The repository does **not yet contain a checked-in Prisma migration history representing the existing production schema**.
+Release and deployment schema changes use:
 
-That is a genuine release prerequisite, not a documentation detail.
+```
+prisma migrate deploy --schema=./prisma-pg/schema.prisma
+```
 
-Before production schema changes are managed with prisma migrate deploy, the project needs:
+CI applies the versioned migration chain to disposable PostgreSQL 16 instances. Production containers run the same migration command before the API starts. `prisma db push` remains a development/test convenience and is not the production migration mechanism.
 
-1. An authoritative production schema baseline.
-2. A reviewed initial Prisma migration history.
-3. Disposable PostgreSQL migration testing.
-4. Migration testing against a production-like backup/restore copy.
-5. Replacement of deployment-time schema pushing with versioned migration deployment.
-6. Documented rollback and recovery procedures.
+For an existing populated production database, the baseline migration must **not** be replayed blindly. First verify that the live schema matches the baseline, then mark the baseline as already applied with Prisma's `migrate resolve --applied` procedure. Future schema changes are delivered only through reviewed, versioned migrations.
 
-A development db push is not being represented as a production migration strategy.
+Migration changes must be tested against disposable PostgreSQL, reviewed for destructive operations, and validated against a production-like restore before release.
 
 ## Production-readiness matrix
 
