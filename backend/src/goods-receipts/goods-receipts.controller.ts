@@ -43,13 +43,13 @@ export class GoodsReceiptsController {
   }
 
   @Get(':id')
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.grService.findOne(id);
+  findOne(@Param('id', ParseIntPipe) id: number, @CurrentUser('tenantId') tenantId: number) {
+    return this.grService.findOne(id, tenantId);
   }
 
   @Post('invoices')
   @Roles('Admin', 'Manager')
-  createInvoice(@Body() dto: CreateSupplierInvoiceDto) {
-    return this.grService.createInvoice(dto);
+  createInvoice(@Body() dto: CreateSupplierInvoiceDto, @CurrentUser('tenantId') tenantId: number) {
+    return this.grService.createInvoice(dto, tenantId);
   }
 }
