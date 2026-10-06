@@ -23,7 +23,7 @@ export class SalesService {
     return `${prefix}-${suffix}`;
   }
 
-  async create(dto: CreateSaleDto, actorId: number, tenantId: number) {
+  async create(dto: CreateSaleDto, actorId: number, tenantId: number, role: string) {
     return this.prisma.$transaction(async (tx) => {
       const locationId = dto.locationId ?? 1;
       const location = await tx.stockLocation.findFirst({ where: { id: locationId, tenantId }, select: { id: true } });
@@ -58,7 +58,8 @@ export class SalesService {
           where: { productId: line.productId, locationId },
         });
         const onHand = stockItem ? Number(stockItem.quantityOnHand) : 0;
-        if (!dto.allowNegativeStock && onHand < line.quantity) {
+        const allowNegativeStock = dto.allowNegativeStock === true && ['Admin', 'Manager'].includes(role);
+        if (!allowNegativeStock && onHand < line.quantity) {
           throw new BadRequestException(
             `Insufficient stock for product "${product.name}". Available: ${onHand}`,
           );
@@ -121,7 +122,7 @@ export class SalesService {
       // in the DB. If another concurrent transaction already consumed the stock,
       // count === 0 and we throw — preventing overselling without a separate lock.
       for (const line of lineData) {
-        if (!dto.allowNegativeStock) {
+        if (!(dto.allowNegativeStock === true && ['Admin', 'Manager'].includes(role))) {
           const updated = await tx.stockItem.updateMany({
             where: {
               productId: line.productId,
@@ -141,7 +142,7 @@ export class SalesService {
             );
           }
         } else {
-          // Negative stock allowed — just decrement without the floor check
+          // Explicit negative-stock override is limited to privileged roles.
           await tx.stockItem.updateMany({
             where: { productId: line.productId, locationId },
             data: { quantityOnHand: { decrement: line.quantity } },
