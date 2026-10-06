@@ -25,6 +25,10 @@ export class SalesService {
 
   async create(dto: CreateSaleDto, actorId: number, tenantId: number, role: string) {
     return this.prisma.$transaction(async (tx) => {
+      if (dto.clientReference) {
+        const existing = await tx.sale.findFirst({ where: { tenantId, clientReference: dto.clientReference } });
+        if (existing) return existing;
+      }
       const locationId = dto.locationId ?? 1;
       const location = await tx.stockLocation.findFirst({ where: { id: locationId, tenantId }, select: { id: true } });
       if (!location) throw new BadRequestException('Stock location not found for this tenant');
