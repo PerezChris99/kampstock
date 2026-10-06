@@ -28,9 +28,9 @@ test.describe('Authentication flow', () => {
     await page.goto('/login');
     await page.getByRole('button', { name: /sign in|log in/i }).click();
     // Either HTML5 required validation or an error message must appear
-    const emailField = page.getByLabel(/email/i);
+    const usernameField = page.getByLabel(/username/i);
     const validationError = page.getByRole('alert');
-    const hasHtml5Required = await emailField.evaluate(
+    const hasHtml5Required = await usernameField.evaluate(
       (el: HTMLInputElement) => el.validity.valueMissing,
     );
     if (!hasHtml5Required) {
@@ -40,7 +40,7 @@ test.describe('Authentication flow', () => {
 
   test('shows error message with invalid credentials', async ({ page }) => {
     await page.goto('/login');
-    await page.getByLabel(/email/i).fill('nonexistent-user');
+    await page.getByLabel(/username/i).fill('nonexistent-user');
     await page.getByLabel(/password/i).fill('wrongpassword');
     await page.getByRole('button', { name: /sign in|log in/i }).click();
     // Expect an error notification — exact text varies by implementation
