@@ -91,8 +91,12 @@ jobs:
         run: npx prisma generate --schema=./prisma-pg/schema.prisma
         env:
           DATABASE_URL: postgresql://kampstock:kampstock@127.0.0.1:5432/kampstock_test
-      - name: Apply schema to ephemeral PostgreSQL
-        run: npx prisma db push --schema=./prisma-pg/schema.prisma --accept-data-loss
+      - name: Validate versioned PostgreSQL migration chain
+        run: npx prisma migrate status --schema=./prisma-pg/schema.prisma
+        env:
+          DATABASE_URL: postgresql://kampstock:kampstock@127.0.0.1:5432/kampstock_test
+      - name: Apply versioned PostgreSQL migrations
+        run: npx prisma migrate deploy --schema=./prisma-pg/schema.prisma
         env:
           DATABASE_URL: postgresql://kampstock:kampstock@127.0.0.1:5432/kampstock_test
       - name: TypeScript check against PostgreSQL client
