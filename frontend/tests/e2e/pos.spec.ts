@@ -12,8 +12,8 @@ import { test, expect } from '@playwright/test';
  * many assertions use soft expectations or check UI state rather than data.
  */
 
-const EMAIL = process.env.TEST_USER_EMAIL ?? 'admin@demo.com';
-const PASSWORD = process.env.TEST_USER_PASSWORD ?? 'Admin1234!';
+const EMAIL = process.env.TEST_USER_EMAIL ?? 'manager';
+const PASSWORD = process.env.TEST_USER_PASSWORD ?? 'manager123';
 
 test.describe('POS page', () => {
   test.beforeEach(async ({ page }) => {
