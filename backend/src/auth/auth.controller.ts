@@ -96,8 +96,8 @@ export class AuthController {
 
   @Post('logout')
   @HttpCode(HttpStatus.NO_CONTENT)
-  logout(@CurrentUser('id') userId: number, @Res({ passthrough: true }) res: Response) {
-    this.authService.logout(userId).catch(() => {});
+  async logout(@CurrentUser('id') userId: number, @Res({ passthrough: true }) res: Response) {
+    await this.authService.logout(userId);
     res.clearCookie('access_token');
     res.clearCookie('refresh_token', { path: '/api/auth' });
   }
