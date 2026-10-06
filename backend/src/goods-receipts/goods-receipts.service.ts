@@ -162,7 +162,7 @@ export class GoodsReceiptsService {
   }
 
   async findOne(id: number, tenantId: number) {
-    const receipt = await this.prisma.goodsReceipt.findUnique({
+    const receipt = await this.prisma.goodsReceipt.findFirst({
       where: { id, tenantId },
       include: {
         lines: { include: { product: true } },
