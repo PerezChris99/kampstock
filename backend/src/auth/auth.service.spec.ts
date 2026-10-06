@@ -5,6 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { CacheService } from '../cache/cache.service';
 
 // Mock bcryptjs to avoid slow real hashing in unit tests
 jest.mock('bcryptjs', () => ({
@@ -44,6 +45,12 @@ const mockConfig = {
 };
 
 const mockAudit = { log: jest.fn().mockResolvedValue({}) };
+const mockCache = {
+  get: jest.fn().mockResolvedValue(null),
+  set: jest.fn().mockResolvedValue(undefined),
+  del: jest.fn().mockResolvedValue(undefined),
+  increment: jest.fn().mockResolvedValue(null),
+};
 
 const activeUser = {
   id: 1,
@@ -75,6 +82,7 @@ describe('AuthService', () => {
         { provide: JwtService, useValue: mockJwt },
         { provide: ConfigService, useValue: mockConfig },
         { provide: AuditService, useValue: mockAudit },
+        { provide: CacheService, useValue: mockCache },
       ],
     }).compile();
 
