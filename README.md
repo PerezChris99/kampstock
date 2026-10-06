@@ -291,11 +291,11 @@ Release and deployment schema changes use:
 prisma migrate deploy --schema=./prisma-pg/schema.prisma
 ```
 
-CI applies the versioned migration chain to disposable PostgreSQL 16 on release candidates. `prisma db push` is not used as the production migration mechanism.
+CI applies the versioned migration chain to disposable PostgreSQL 16 instances. Production containers run the same migration command before the API starts. `prisma db push` remains a development/test convenience and is not the production migration mechanism.
 
-For an existing production database, the baseline migration must **not** be replayed against an already-populated schema. First verify schema equivalence, then mark the baseline as applied with Prisma's `migrate resolve --applied` procedure. Future releases use `prisma migrate deploy`.
+For an existing populated production database, the baseline migration must **not** be replayed blindly. First verify that the live schema matches the baseline, then mark the baseline as already applied with Prisma's `migrate resolve --applied` procedure. Future schema changes are delivered only through reviewed, versioned migrations.
 
-Production migration changes must be reviewed, tested against ephemeral PostgreSQL, validated against a production-like restore where available, and deployed through the versioned migration chain.
+Migration changes must be tested against disposable PostgreSQL, reviewed for destructive operations, and validated against a production-like restore before release.
 
 ## Production-readiness matrix
 
