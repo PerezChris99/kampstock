@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  ArrowRight, BarChart3, Boxes, Check, ChevronLeft, ChevronRight,
-  CircleDollarSign, CloudOff, PackageCheck, ShieldCheck, Store, Users,
+  ArrowRight, BarChart3, Boxes, ChevronLeft, ChevronRight,
+  CircleDollarSign, CloudOff, ShieldCheck, Store, Users,
 } from 'lucide-react';
 
 const slides = [
