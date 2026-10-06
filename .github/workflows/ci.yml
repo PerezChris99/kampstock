@@ -12,7 +12,7 @@ on:
     branches: [main]
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -91,6 +91,23 @@ jobs:
         run: npx prisma generate --schema=./prisma-pg/schema.prisma
         env:
           DATABASE_URL: postgresql://kampstock:kampstock@127.0.0.1:5432/kampstock_test
+      - name: Generate PostgreSQL baseline migration
+        run: |
+          mkdir -p prisma-pg/migrations/20261006203200_baseline
+          npx prisma migrate diff --from-empty --to-schema=./prisma-pg/schema.prisma --script > prisma-pg/migrations/20261006203200_baseline/migration.sql
+          printf 'provider = "postgresql"\n' > prisma-pg/migrations/migration_lock.toml
+      - name: Commit generated PostgreSQL migration baseline
+        if: github.event_name == 'pull_request' && github.head_ref == 'gate/pg-migrations'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add prisma-pg/migrations
+          if git diff --cached --quiet; then
+            echo "Migration baseline already committed"
+            exit 0
+          fi
+          git commit -m "feat(db): establish PostgreSQL migration baseline"
+          git push origin HEAD:gate/pg-migrations
       - name: Apply schema to ephemeral PostgreSQL
         run: npx prisma db push --schema=./prisma-pg/schema.prisma --accept-data-loss
         env:
