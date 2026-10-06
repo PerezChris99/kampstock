@@ -58,7 +58,7 @@ export class AuthService {
     }
   }
 
-  private async recordFail(key: string, username?: string, ip?: string): Promise<void> {
+  private async recordFail(key: string, username?: string, ip?: string, tenantId?: number): Promise<void> {
     const sharedCount = await this.cache.increment(`auth:attempts:${key}`, Math.ceil(this.LOCKOUT_MS / 1000));
     const rec = this.attempts.get(key) ?? { count: 0 };
     if (sharedCount !== null) rec.count = sharedCount;
@@ -68,7 +68,7 @@ export class AuthService {
       await this.cache.set(`auth:lock:${key}`, rec.lockedUntil, Math.ceil(this.LOCKOUT_MS / 1000));
       // Persist the lockout to DB so admins can see and manage it
       if (username && ip && key.startsWith('user:')) {
-        this.persistLock(username, ip, rec.count);
+        this.persistLock(username, ip, rec.count, tenantId);
       }
     }
     this.attempts.set(key, rec);
@@ -90,10 +90,10 @@ export class AuthService {
   }
 
   /** Persist a brute-force lockout to the database so admins can view/manage it */
-  private persistLock(username: string, ip: string, failCount: number): void {
+  private persistLock(username: string, ip: string, failCount: number, tenantId = 1): void {
     const lockedUntil = new Date(Date.now() + this.LOCKOUT_MS);
     this.prisma.user
-      .findFirst({ where: { username } }) // findFirst: username no longer globally unique
+      .findUnique({ where: { username_tenantId: { username, tenantId } }, select: { id: true } })
       .then((user) =>
         this.prisma.accountLock.create({
           data: {
@@ -115,6 +115,8 @@ export class AuthService {
   }
 
   async login(dto: LoginDto, ip = 'unknown', subdomainTenantId?: number) {
+    const tenantId = subdomainTenantId ?? 1;
+
     // Check lockout by both username and IP
     await this.checkLock(`user:${dto.username}`);
     await this.checkLock(`ip:${ip}`);
@@ -123,7 +125,7 @@ export class AuthService {
       where: {
         username_tenantId: {
           username: dto.username,
-          tenantId: subdomainTenantId ?? 1,
+          tenantId,
         },
       },
       include: { role: true },
@@ -137,8 +139,8 @@ export class AuthService {
       : (await bcrypt.compare(dto.password, dummyHash), false);
 
     if (!user || !user.isActive || !passwordMatch) {
-      await this.recordFail(`user:${dto.username}`, dto.username, ip);
-      await this.recordFail(`ip:${ip}`);
+      await this.recordFail(`user:${dto.username}`, dto.username, ip, tenantId);
+      await this.recordFail(`ip:${ip}`, undefined, undefined, tenantId);
       // Log failed attempt (fire-and-forget — never blocks login)
       this.audit
         .log(
@@ -193,7 +195,11 @@ export class AuthService {
   }
 
   async logout(userId: number): Promise<void> {
-    await this.prisma.user.update({ where: { id: userId }, data: { tokenVersion: { increment: 1 } } });
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { tokenVersion: { increment: 1 } },
+    });
+    await this.cache.del(`auth:user:${userId}`);
   }
 
   async refresh(refreshToken: string) {
@@ -217,6 +223,7 @@ export class AuthService {
         data: { tokenVersion: { increment: 1 } },
         include: { role: true },
       });
+      await this.cache.del(`auth:user:${user.id}`);
       return this.generateTokens(updated);
     } catch {
       throw new UnauthorizedException('Invalid refresh token');
