@@ -1,0 +1,18 @@
+import { Link } from 'react-router-dom';
+import { Store } from 'lucide-react';
+
+const faqs = [
+ ['What is KampStock?','KampStock is a business operations platform for wholesale and retail businesses. It connects products, inventory, purchasing, POS sales, customers, suppliers, expenses and reporting in one tenant-isolated system.'],
+ ['Who is it for?','It is designed for businesses that buy, hold and sell physical stock, including retail shops, wholesalers and businesses operating both models.'],
+ ['Can it handle customer credit?','Yes. Customer accounts and credit-related workflows are part of the product, allowing the business to keep customer balances connected to sales.'],
+ ['Does it work when connectivity is interrupted?','The POS includes an offline workflow using local browser storage and a recovery queue. Businesses should still validate their own devices and operating conditions before relying on offline operation at scale.'],
+ ['Can several staff use one business?','Yes. The system supports tenant users and role/permission boundaries so owners, managers, cashiers and other staff can work within the same business.'],
+ ['Does KampStock support multiple stock locations?','The platform supports stock locations and location-aware inventory operations.'],
+ ['Does it support EFRIS?','KampStock contains EFRIS-related integration structures, but those structures must not be treated as proof of URA registration, certification or approval. Actual fiscalization readiness depends on the business, credentials and applicable external verification.'],
+ ['How are payments handled?','The platform includes Pesapal billing integration. Production payment processing still depends on the merchant account, credentials, callback/IPN configuration and successful end-to-end provider verification.'],
+ ['Where can I learn about data handling?','See the Privacy, Terms and Acceptable Use pages for the current product-level policies. Businesses should also assess their own legal and regulatory obligations.'],
+];
+
+export default function FAQPage() {
+ return <div className="min-h-screen bg-[#f5f2e9] text-[#172014]"><header className="border-b border-[#ddd7c8] bg-[#172014] text-white"><div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-5 sm:px-8"><Link to="/" className="flex items-center gap-3"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-lime-400 text-slate-950"><Store size={17}/></span><strong>KampStock</strong></Link><div className="flex gap-3"><Link to="/login" className="rounded-full px-4 py-2 text-sm text-white/75">Sign in</Link><Link to="/register" className="rounded-full bg-lime-400 px-4 py-2 text-sm font-bold text-slate-950">Get started</Link></div></div></header><main className="mx-auto max-w-4xl px-5 py-16 sm:px-8 sm:py-24"><p className="text-xs font-black uppercase tracking-[0.2em] text-orange-600">Frequently asked questions</p><h1 className="mt-4 text-5xl font-black tracking-[-.04em] sm:text-6xl">Straight answers before you put the business on it.</h1><div className="mt-12 divide-y divide-[#ddd7c8] border-y border-[#ddd7c8]">{faqs.map(([q,a])=><details key={q} className="group py-6"><summary className="cursor-pointer list-none pr-8 text-lg font-extrabold marker:hidden">{q}<span className="float-right text-orange-600 group-open:rotate-45 transition-transform">+</span></summary><p className="mt-4 max-w-3xl leading-7 text-slate-600">{a}</p></details>)}</div></main><footer className="border-t border-[#ddd7c8] px-5 py-8 text-center text-xs text-slate-500">© {new Date().getFullYear()} KampStock · <Link to="/privacy">Privacy</Link> · <Link to="/terms">Terms</Link></footer></div>;
+}
