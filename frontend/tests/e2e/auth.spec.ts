@@ -17,9 +17,9 @@ test.describe('Authentication flow', () => {
     await expect(page).toHaveURL(/\/login/);
   });
 
-  test('login page renders the email and password fields', async ({ page }) => {
+  test('login page renders the username and password fields', async ({ page }) => {
     await page.goto('/login');
-    await expect(page.getByLabel(/email/i)).toBeVisible();
+    await expect(page.getByLabel(/username/i)).toBeVisible();
     await expect(page.getByLabel(/password/i)).toBeVisible();
     await expect(page.getByRole('button', { name: /sign in|log in/i })).toBeVisible();
   });
@@ -40,7 +40,7 @@ test.describe('Authentication flow', () => {
 
   test('shows error message with invalid credentials', async ({ page }) => {
     await page.goto('/login');
-    await page.getByLabel(/email/i).fill('nonexistent@example.com');
+    await page.getByLabel(/email/i).fill('nonexistent-user');
     await page.getByLabel(/password/i).fill('wrongpassword');
     await page.getByRole('button', { name: /sign in|log in/i }).click();
     // Expect an error notification — exact text varies by implementation
