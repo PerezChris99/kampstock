@@ -13,26 +13,10 @@ export default defineConfig({
       manifest: false, // using /public/manifest.json instead
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-        runtimeCaching: [
-          {
-            urlPattern: /^http:\/\/localhost:3000\/api\/(products|stock|customers|categories|suppliers)/,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'api-read-cache',
-              expiration: { maxEntries: 300, maxAgeSeconds: 86400 },
-              networkTimeoutSeconds: 5,
-            },
-          },
-          {
-            urlPattern: /^https?:\/\/.*\/api\/(products|stock|customers|categories|suppliers)/,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'api-read-cache-prod',
-              expiration: { maxEntries: 300, maxAgeSeconds: 86400 },
-              networkTimeoutSeconds: 5,
-            },
-          },
-        ],
+        // Do not cache authenticated business API responses in the service worker.
+        // Tenant/customer/stock data must never survive logout or cross-user reuse
+        // through a browser cache. Offline POS continuity is handled by IndexedDB.
+        runtimeCaching: [],
       },
     }),
   ],
