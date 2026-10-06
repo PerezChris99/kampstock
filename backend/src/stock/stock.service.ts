@@ -56,10 +56,10 @@ export class StockService {
 
   async adjust(dto: StockAdjustmentDto, actorId: number, tenantId: number) {
     return this.prisma.$transaction(async (tx) => {
-      const location = await tx.stockLocation.findUnique({ where: { id: dto.locationId } });
+      const location = await tx.stockLocation.findFirst({ where: { id: dto.locationId, tenantId } });
       if (!location) throw new NotFoundException('Location not found');
 
-      const product = await tx.product.findUnique({ where: { id: dto.productId } });
+      const product = await tx.product.findFirst({ where: { id: dto.productId, tenantId } });
       if (!product) throw new NotFoundException('Product not found');
 
       const stockItem = await tx.stockItem.findFirst({
@@ -100,6 +100,15 @@ export class StockService {
 
   async transfer(dto: StockTransferDto, actorId: number, tenantId: number) {
     return this.prisma.$transaction(async (tx) => {
+      const [fromLocation, toLocation, product] = await Promise.all([
+        tx.stockLocation.findFirst({ where: { id: dto.fromLocationId, tenantId }, select: { id: true } }),
+        tx.stockLocation.findFirst({ where: { id: dto.toLocationId, tenantId }, select: { id: true } }),
+        tx.product.findFirst({ where: { id: dto.productId, tenantId }, select: { id: true } }),
+      ]);
+      if (!fromLocation || !toLocation) throw new BadRequestException('Both stock locations must belong to this tenant');
+      if (!product) throw new BadRequestException('Product not found for this tenant');
+      if (dto.fromLocationId === dto.toLocationId) throw new BadRequestException('Source and destination locations must differ');
+
       const fromItem = await tx.stockItem.findFirst({
         where: { productId: dto.productId, locationId: dto.fromLocationId, location: { tenantId } },
       });
@@ -107,10 +116,11 @@ export class StockService {
         throw new BadRequestException('Insufficient stock at source location');
       }
 
-      await tx.stockItem.update({
-        where: { id: fromItem.id },
-        data: { quantityOnHand: Number(fromItem.quantityOnHand) - dto.quantity },
+      const decremented = await tx.stockItem.updateMany({
+        where: { id: fromItem.id, quantityOnHand: { gte: dto.quantity } },
+        data: { quantityOnHand: { decrement: dto.quantity } },
       });
+      if (decremented.count !== 1) throw new BadRequestException('Stock changed concurrently; please retry the transfer');
 
       const toItem = await tx.stockItem.findFirst({
         where: { productId: dto.productId, locationId: dto.toLocationId, location: { tenantId } },

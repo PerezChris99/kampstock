@@ -198,7 +198,7 @@ Production secrets must never be committed.
 
 Requirements:
 
-- Node.js 20+
+- Node.js 24+
 - npm
 - SQLite for lightweight local development
 - PostgreSQL for production-parity testing

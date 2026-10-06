@@ -200,6 +200,7 @@ model StockMovement {
     createdBy    User           @relation(fields: [createdById], references: [id])
 
     @@index([productId, createdAt])
+    @@index([productId, movementType, createdAt])
     @@index([createdById])
     @@map("stock_movements")
 }
@@ -221,7 +222,8 @@ model Supplier {
     purchaseOrders   PurchaseOrder[]
     supplierInvoices SupplierInvoice[]
 
-    @@index([tenantId])
+    @@index([tenantId, isActive])
+    @@index([tenantId, createdAt])
     @@map("suppliers")
 }
 
@@ -339,6 +341,8 @@ model Customer {
     sales Sale[]
 
     @@index([tenantId, isActive])
+    @@index([tenantId, phone])
+    @@index([tenantId, createdAt])
     @@map("customers")
 }
 
@@ -427,6 +431,7 @@ model Expense {
     paidBy User @relation(fields: [paidById], references: [id])
 
     @@index([tenantId, paidAt])
+    @@index([tenantId, category, paidAt])
     @@map("expenses")
 }
 

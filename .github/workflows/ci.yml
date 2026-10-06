@@ -26,10 +26,10 @@ jobs:
       run:
         working-directory: backend
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
-          node-version: '22'
+          node-version: '24'
           cache: 'npm'
           cache-dependency-path: backend/package-lock.json
       - name: Install dependencies
@@ -79,10 +79,10 @@ jobs:
       run:
         working-directory: backend
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
-          node-version: '22'
+          node-version: '24'
           cache: 'npm'
           cache-dependency-path: backend/package-lock.json
       - name: Install dependencies
@@ -91,6 +91,16 @@ jobs:
         run: npx prisma generate --schema=./prisma-pg/schema.prisma
         env:
           DATABASE_URL: postgresql://kampstock:kampstock@127.0.0.1:5432/kampstock_test
+      - name: Generate PostgreSQL baseline migration artifact
+        run: npx prisma migrate diff --from-empty --to-schema=./prisma-pg/schema.prisma --script > /tmp/kampstock-initial.sql
+        env:
+          DATABASE_URL: postgresql://kampstock:kampstock@127.0.0.1:5432/kampstock_test
+      - name: Upload PostgreSQL baseline migration artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kampstock-postgres-baseline
+          path: /tmp/kampstock-initial.sql
+          retention-days: 1
       - name: Apply schema to ephemeral PostgreSQL
         run: npx prisma db push --schema=./prisma-pg/schema.prisma --accept-data-loss
         env:
@@ -115,10 +125,10 @@ jobs:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
-          node-version: '22'
+          node-version: '24'
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
       - name: Install dependencies
@@ -138,10 +148,10 @@ jobs:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
-          node-version: '22'
+          node-version: '24'
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
       - name: Install frontend dependencies
@@ -211,7 +221,7 @@ jobs:
     needs: [backend, frontend, e2e]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Build backend image
