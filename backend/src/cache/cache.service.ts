@@ -52,6 +52,18 @@ export class CacheService implements OnModuleDestroy {
     }
   }
 
+  /** Atomically increment a counter in Redis and apply a TTL on first write. */
+  async increment(key: string, ttlSeconds: number): Promise<number | null> {
+    if (!this.client) return null;
+    try {
+      const count = await this.client.incr(key);
+      if (count === 1) await this.client.expire(key, ttlSeconds);
+      return count;
+    } catch {
+      return null;
+    }
+  }
+
   async del(...keys: string[]): Promise<void> {
     if (!this.client || !keys.length) return;
     try {
