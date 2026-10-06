@@ -42,7 +42,11 @@ export class PesapalService {
     this.baseUrl = isLive
       ? 'https://pay.pesapal.com/v3'
       : 'https://cybqa.pesapal.com/pesapalv3';
-    this.http = axios.create({ baseURL: this.baseUrl });
+    this.http = axios.create({
+      baseURL: this.baseUrl,
+      timeout: 10_000,
+      headers: { Accept: 'application/json' },
+    });
   }
 
   private async getToken(): Promise<string> {
@@ -74,9 +78,8 @@ export class PesapalService {
     );
 
     if (data.status !== '200' || !data.token) {
-      throw new InternalServerErrorException(
-        'Pesapal auth failed: ' + data.message,
-      );
+      this.logger.error('Pesapal authentication failed');
+      throw new InternalServerErrorException('Payment provider authentication failed');
     }
     this.tokenCache = {
       token: data.token,
@@ -112,9 +115,8 @@ export class PesapalService {
       { headers: this.authHeaders(token) },
     );
     if (!data.ipn_id) {
-      throw new InternalServerErrorException(
-        'Pesapal IPN registration failed: ' + JSON.stringify(data),
-      );
+      this.logger.error('Pesapal IPN registration failed');
+      throw new InternalServerErrorException('Payment notification setup failed');
     }
     this.ipnId = data.ipn_id as string;
     this.logger.log(`Pesapal IPN registered: ${this.ipnId}`);
@@ -152,9 +154,8 @@ export class PesapalService {
     );
 
     if (data.error?.code || !data.redirect_url) {
-      throw new InternalServerErrorException(
-        'Pesapal order submission failed: ' + JSON.stringify(data),
-      );
+      this.logger.error('Pesapal order submission failed');
+      throw new InternalServerErrorException('Payment order could not be created');
     }
 
     return {
