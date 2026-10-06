@@ -67,7 +67,7 @@ export default function App() {
             <Route path="/billing/callback" element={<BillingCallbackPage />} />
             <Route path="/locked" element={<LockedPage />} />
             <Route
-              path="/"
+              path="/app"
               element={
                 <ProtectedRoute>
                   <AppLayout />
