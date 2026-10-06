@@ -32,8 +32,8 @@ export class SuppliersController {
   }
 
   @Get(':id/balance')
-  getBalance(@Param('id', ParseIntPipe) id: number) {
-    return this.suppliersService.getBalance(id);
+  getBalance(@Param('id', ParseIntPipe) id: number, @CurrentUser('tenantId') tenantId: number) {
+    return this.suppliersService.getBalance(id, tenantId);
   }
 
   @Put(':id')

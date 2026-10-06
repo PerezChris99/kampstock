@@ -54,7 +54,7 @@ export class StockService {
 
   // ─── Adjustments ────────────────────────────────────────────────────────────
 
-  async adjust(dto: StockAdjustmentDto, actorId: number) {
+  async adjust(dto: StockAdjustmentDto, actorId: number, tenantId: number) {
     return this.prisma.$transaction(async (tx) => {
       const location = await tx.stockLocation.findUnique({ where: { id: dto.locationId } });
       if (!location) throw new NotFoundException('Location not found');
@@ -98,10 +98,10 @@ export class StockService {
     });
   }
 
-  async transfer(dto: StockTransferDto, actorId: number) {
+  async transfer(dto: StockTransferDto, actorId: number, tenantId: number) {
     return this.prisma.$transaction(async (tx) => {
       const fromItem = await tx.stockItem.findFirst({
-        where: { productId: dto.productId, locationId: dto.fromLocationId },
+        where: { productId: dto.productId, locationId: dto.fromLocationId, location: { tenantId } },
       });
       if (!fromItem || Number(fromItem.quantityOnHand) < dto.quantity) {
         throw new BadRequestException('Insufficient stock at source location');
@@ -113,7 +113,7 @@ export class StockService {
       });
 
       const toItem = await tx.stockItem.findFirst({
-        where: { productId: dto.productId, locationId: dto.toLocationId },
+        where: { productId: dto.productId, locationId: dto.toLocationId, location: { tenantId } },
       });
 
       if (toItem) {
@@ -143,10 +143,11 @@ export class StockService {
     });
   }
 
-  async findMovements(productId?: number, locationId?: number, limit = 100) {
+  async findMovements(productId?: number, locationId?: number, tenantId?: number, limit = 100) {
     return this.prisma.stockMovement.findMany({
       where: {
         ...(productId && { productId }),
+        ...(tenantId && { product: { tenantId } }),
         ...(locationId && {
           OR: [{ fromLocationId: locationId }, { toLocationId: locationId }],
         }),

@@ -21,6 +21,9 @@ export class UsersService {
     });
     if (exists) throw new ConflictException('Username already taken');
 
+    const role = await this.prisma.role.findFirst({ where: { id: dto.roleId, tenantId }, select: { id: true } });
+    if (!role) throw new NotFoundException('Role not found for this tenant');
+
     const passwordHash = await bcrypt.hash(dto.password, 12);
     const user = await this.prisma.user.create({
       data: {
@@ -82,8 +85,8 @@ export class UsersService {
     return user;
   }
 
-  async toggleActive(id: number, actorId: number) {
-    const user = await this.prisma.user.findUnique({ where: { id } });
+  async toggleActive(id: number, actorId: number, tenantId: number) {
+    const user = await this.prisma.user.findFirst({ where: { id, tenantId } });
     if (!user) throw new NotFoundException('User not found');
     const updated = await this.prisma.user.update({
       where: { id },

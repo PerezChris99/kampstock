@@ -52,6 +52,18 @@ export class CacheService implements OnModuleDestroy {
     }
   }
 
+  /** Atomically increment a counter in Redis and apply a TTL on first write. */
+  async increment(key: string, ttlSeconds: number): Promise<number | null> {
+    if (!this.client) return null;
+    try {
+      const count = await this.client.incr(key);
+      if (count === 1) await this.client.expire(key, ttlSeconds);
+      return count;
+    } catch {
+      return null;
+    }
+  }
+
   async del(...keys: string[]): Promise<void> {
     if (!this.client || !keys.length) return;
     try {
@@ -61,11 +73,17 @@ export class CacheService implements OnModuleDestroy {
     }
   }
 
-  /** Invalidate all cache keys matching a glob pattern. */
+  /** Invalidate all cache keys matching a glob pattern without Redis KEYS blocking. */
   async delPattern(pattern: string): Promise<void> {
     if (!this.client) return;
     try {
-      const keys = await this.client.keys(pattern);
+      const keys: string[] = [];
+      let cursor = '0';
+      do {
+        const [nextCursor, batch] = await this.client.scan(cursor, 'MATCH', pattern, 'COUNT', 100);
+        cursor = nextCursor;
+        keys.push(...batch);
+      } while (cursor !== '0');
       if (keys.length) await this.client.del(...keys);
     } catch {
       // Non-fatal

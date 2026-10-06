@@ -37,26 +37,24 @@ export const envValidationSchema = Joi.object({
   // ── CSRF ─────────────────────────────────────────────────────────────────────
   // MUST be set in production. If missing, startup will log a critical warning.
   // Minimum 32 chars. Generate with: openssl rand -hex 32
-  CSRF_SECRET: Joi.string()
-    .min(32)
-    .optional()
-    .default(() => {
-      if (process.env.NODE_ENV === 'production') {
-        // eslint-disable-next-line no-console
-        console.error(
-          '[SECURITY CRITICAL] CSRF_SECRET env var is not set in production! ' +
-            'Set a strong secret (>=32 chars) in your Vercel dashboard immediately. ' +
-            'Falling back to a weak default — CSRF protection is degraded.',
-        );
-      }
-      return 'kampstock-csrf-default-CHANGE-ME-in-prod-32x';
+  CSRF_SECRET: Joi.when('NODE_ENV', {
+    is: 'production',
+    then: Joi.string().min(32).required().messages({
+      'any.required': 'CSRF_SECRET is required in production',
+      'string.min': 'CSRF_SECRET must be at least 32 characters',
     }),
+    otherwise: Joi.string().min(32).default('development-csrf-secret-change-me-32chars'),
+  }),
 
   // ── CORS ─────────────────────────────────────────────────────────────────────
   // Defaults to the known Vercel frontend domain; override via dashboard
-  ALLOWED_ORIGINS: Joi.string()
-    .optional()
-    .default('https://kampstock-avmu.vercel.app'),
+  ALLOWED_ORIGINS: Joi.when('NODE_ENV', {
+    is: 'production',
+    then: Joi.string().min(1).required().messages({
+      'any.required': 'ALLOWED_ORIGINS is required in production',
+    }),
+    otherwise: Joi.string().default('http://localhost:5173'),
+  }),
 
   // ── Pesapal payments ─────────────────────────────────────────────────────────
   // Pesapal is optional — app runs fully without billing enabled
@@ -72,10 +70,13 @@ export const envValidationSchema = Joi.object({
 
   // ── Frontend URL (used for CORS, email links) ─────────────────────────────────
   // Optional — defaults to the production frontend URL if not explicitly set
-  FRONTEND_URL: Joi.string()
-    .uri()
-    .optional()
-    .default('https://kampstock-avmu.vercel.app'),
+  FRONTEND_URL: Joi.when('NODE_ENV', {
+    is: 'production',
+    then: Joi.string().uri().required().messages({
+      'any.required': 'FRONTEND_URL is required in production',
+    }),
+    otherwise: Joi.string().uri().default('http://localhost:5173'),
+  }),
 
   // ── Observability (optional) ─────────────────────────────────────────────────
   SENTRY_DSN: Joi.string().uri().optional(),

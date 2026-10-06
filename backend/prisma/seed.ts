@@ -20,7 +20,7 @@ if (dbUrl.startsWith('file:')) {
   prisma = new PrismaClient({ adapter: new PrismaPg(pool) } as any);
 }
 
-// Cosmetics & Beauty shop product catalog (suitable for a Kampala cosmetics shop)
+// Synthetic demo catalog for automated tests and local development. These are fixtures, not claims about real businesses, suppliers, customers, prices, or contact details.
 const PRODUCT_CATALOG = [
   // --- FACE CARE ---
   {
@@ -923,7 +923,7 @@ const PRODUCT_CATALOG = [
   },
 ];
 
-// Cosmetics-focused suppliers for a Kampala beauty shop
+// Synthetic supplier fixtures for development/test data.
 const SUPPLIERS = [
   {
     name: 'BeautyPro Distributors Uganda',
@@ -983,7 +983,7 @@ const SUPPLIERS = [
   },
 ];
 
-// Beauty-shop wholesale customers
+// Synthetic customer fixtures for development/test data.
 const CUSTOMERS = [
   {
     name: 'Glam Zone Salon & Spa',
@@ -1082,7 +1082,11 @@ function randomChoice<T>(arr: T[]): T {
 }
 
 async function main() {
-  console.log('[seed] Seeding KampStock with cosmetics shop data...');
+  if (process.env.NODE_ENV === 'production' && process.env.ALLOW_DEMO_SEED !== 'true') {
+    throw new Error('Refusing to seed demo data in production. Set ALLOW_DEMO_SEED=true only for an explicitly approved fixture environment.');
+  }
+
+  console.log('[seed] Seeding KampStock with synthetic demo fixtures...');
 
   // Idempotency check — skip if already seeded
   const existingAdmin = await prisma.user.findUnique({

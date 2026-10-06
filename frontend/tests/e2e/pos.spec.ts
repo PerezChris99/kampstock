@@ -5,22 +5,22 @@ import { test, expect } from '@playwright/test';
  *
  * These tests assume a running backend (seeded with at least one product) and
  * a valid test user.  In local dev, set the environment variables:
- *   TEST_USER_EMAIL=admin@demo.com
- *   TEST_USER_PASSWORD=Admin1234!
+ *   TEST_USER_EMAIL=manager
+ *   TEST_USER_PASSWORD=manager123
  *
  * Because the backend may not be seeded in CI (E2E is primarily a smoke test),
  * many assertions use soft expectations or check UI state rather than data.
  */
 
-const EMAIL = process.env.TEST_USER_EMAIL ?? 'admin@demo.com';
-const PASSWORD = process.env.TEST_USER_PASSWORD ?? 'Admin1234!';
+const EMAIL = process.env.TEST_USER_EMAIL ?? 'manager';
+const PASSWORD = process.env.TEST_USER_PASSWORD ?? 'manager123';
 
 test.describe('POS page', () => {
   test.beforeEach(async ({ page }) => {
     // Log in before each test
     await page.goto('/login');
-    await page.getByLabel(/email/i).fill(EMAIL);
-    await page.getByLabel(/password/i).fill(PASSWORD);
+    await page.getByLabel(/username/i).fill(EMAIL);
+    await page.getByRole('textbox', { name: 'Password' }).fill(PASSWORD);
     await page.getByRole('button', { name: /sign in|log in/i }).click();
     // Wait for navigation away from /login (either dashboard or POS)
     await page.waitForURL((url) => !url.pathname.includes('/login'), {
@@ -33,7 +33,7 @@ test.describe('POS page', () => {
     await expect(page).toHaveURL(/\/pos/);
     // The POS page must have a cart or product list section
     await expect(
-      page.getByRole('heading', { name: /pos|point of sale|checkout/i }).or(
+      page.getByRole('heading', { name: 'POS', exact: true }).or(
         page.getByTestId('pos-page'),
       ),
     ).toBeVisible({ timeout: 10_000 });
@@ -42,7 +42,7 @@ test.describe('POS page', () => {
   test('POS page shows product search or product list', async ({ page }) => {
     await page.goto('/pos');
     // Either a search input or at least one product card should be visible
-    const searchInput = page.getByPlaceholder(/search|product/i);
+    const searchInput = page.getByPlaceholder(/scan barcode|type sku/i);
     const productList = page.getByTestId('product-list').or(page.getByRole('list'));
     const either = searchInput.or(productList);
     await expect(either.first()).toBeVisible({ timeout: 10_000 });

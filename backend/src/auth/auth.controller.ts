@@ -13,6 +13,7 @@ import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/auth.dto';
 import { Public } from './decorators/public.decorator';
+import { CurrentUser } from './decorators/current-user.decorator';
 
 const isDev = process.env.NODE_ENV !== 'production';
 const CSRF_COOKIE = 'csrf_token';
@@ -50,12 +51,7 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const ip =
-      (req.headers['x-forwarded-for'] as string | undefined)
-        ?.split(',')[0]
-        ?.trim() ??
-      req.socket?.remoteAddress ??
-      'unknown';
+    const ip = req.ip || 'unknown';
     const subdomainTenantId = (req as any).subdomainTenantId as
       | number
       | undefined;
@@ -95,7 +91,8 @@ export class AuthController {
 
   @Post('logout')
   @HttpCode(HttpStatus.NO_CONTENT)
-  logout(@Res({ passthrough: true }) res: Response) {
+  async logout(@CurrentUser('id') userId: number, @Res({ passthrough: true }) res: Response) {
+    await this.authService.logout(userId);
     res.clearCookie('access_token');
     res.clearCookie('refresh_token', { path: '/api/auth' });
   }

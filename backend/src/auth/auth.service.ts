@@ -9,6 +9,7 @@ import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { LoginDto } from './dto/auth.dto';
+import { CacheService } from '../cache/cache.service';
 
 interface AttemptRecord {
   count: number;
@@ -22,6 +23,7 @@ export class AuthService {
     private jwtService: JwtService,
     private config: ConfigService,
     private audit: AuditService,
+    private cache: CacheService,
   ) {}
 
   /** Per-username brute-force tracking (in-memory, suitable for single-instance) */
@@ -30,8 +32,13 @@ export class AuthService {
     process.env.NODE_ENV === 'production' ? 20 : 100; // 20 attempts before lockout
   private readonly LOCKOUT_MS = 5 * 60 * 1000; // 5 minutes
 
-  private checkLock(key: string): void {
+  private async checkLock(key: string): Promise<void> {
     const rec = this.attempts.get(key);
+    const sharedLockUntil = await this.cache.get<number>(`auth:lock:${key}`);
+    if (sharedLockUntil && Date.now() < sharedLockUntil) {
+      const minsLeft = Math.max(1, Math.ceil((sharedLockUntil - Date.now()) / 60000));
+      throw new UnauthorizedException(`Login temporarily limited due to too many failed attempts. Please try again in ${minsLeft} minute${minsLeft === 1 ? '' : 's'}.`);
+    }
     if (rec?.lockedUntil && Date.now() < rec.lockedUntil) {
       const secsLeft = Math.ceil((rec.lockedUntil - Date.now()) / 1000);
       const minsLeft = Math.ceil(secsLeft / 60);
@@ -46,15 +53,19 @@ export class AuthService {
     }
     // Clear expired lock automatically
     if (rec?.lockedUntil && Date.now() >= rec.lockedUntil) {
-      this.attempts.delete(key);
+      await this.cache.del(`auth:attempts:${key}`, `auth:lock:${key}`);
+    this.attempts.delete(key);
     }
   }
 
-  private recordFail(key: string, username?: string, ip?: string): void {
+  private async recordFail(key: string, username?: string, ip?: string): Promise<void> {
+    const sharedCount = await this.cache.increment(`auth:attempts:${key}`, Math.ceil(this.LOCKOUT_MS / 1000));
     const rec = this.attempts.get(key) ?? { count: 0 };
-    rec.count += 1;
+    if (sharedCount !== null) rec.count = sharedCount;
+    else rec.count += 1;
     if (rec.count >= this.MAX_ATTEMPTS) {
       rec.lockedUntil = Date.now() + this.LOCKOUT_MS;
+      await this.cache.set(`auth:lock:${key}`, rec.lockedUntil, Math.ceil(this.LOCKOUT_MS / 1000));
       // Persist the lockout to DB so admins can see and manage it
       if (username && ip && key.startsWith('user:')) {
         this.persistLock(username, ip, rec.count);
@@ -63,7 +74,7 @@ export class AuthService {
     this.attempts.set(key, rec);
   }
 
-  private clearAttempts(key: string, username?: string): void {
+  private async clearAttempts(key: string, username?: string): Promise<void> {
     const rec = this.attempts.get(key);
     if (rec?.lockedUntil && username) {
       // Mark the DB lock as resolved when user logs in successfully
@@ -74,6 +85,7 @@ export class AuthService {
         })
         .catch(() => {});
     }
+    await this.cache.del(`auth:attempts:${key}`, `auth:lock:${key}`);
     this.attempts.delete(key);
   }
 
@@ -104,8 +116,8 @@ export class AuthService {
 
   async login(dto: LoginDto, ip = 'unknown', subdomainTenantId?: number) {
     // Check lockout by both username and IP
-    this.checkLock(`user:${dto.username}`);
-    this.checkLock(`ip:${ip}`);
+    await this.checkLock(`user:${dto.username}`);
+    await this.checkLock(`ip:${ip}`);
 
     const user = await this.prisma.user.findUnique({
       where: {
@@ -125,8 +137,8 @@ export class AuthService {
       : (await bcrypt.compare(dto.password, dummyHash), false);
 
     if (!user || !user.isActive || !passwordMatch) {
-      this.recordFail(`user:${dto.username}`, dto.username, ip);
-      this.recordFail(`ip:${ip}`);
+      await this.recordFail(`user:${dto.username}`, dto.username, ip);
+      await this.recordFail(`ip:${ip}`);
       // Log failed attempt (fire-and-forget — never blocks login)
       this.audit
         .log(
@@ -145,12 +157,12 @@ export class AuthService {
 
     // If the request came in on a tenant subdomain, ensure the user belongs to that tenant
     if (subdomainTenantId && user.tenantId !== subdomainTenantId) {
-      this.recordFail(`user:${dto.username}`, dto.username, ip);
+      await this.recordFail(`user:${dto.username}`, dto.username, ip);
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    this.clearAttempts(`user:${dto.username}`, dto.username);
-    this.clearAttempts(`ip:${ip}`);
+    await this.clearAttempts(`user:${dto.username}`, dto.username);
+    await this.clearAttempts(`ip:${ip}`);
 
     // Record last login + audit (fire-and-forget — don't block the response)
     this.prisma.user
@@ -178,6 +190,10 @@ export class AuthService {
     }
 
     return tokens;
+  }
+
+  async logout(userId: number): Promise<void> {
+    await this.prisma.user.update({ where: { id: userId }, data: { tokenVersion: { increment: 1 } } });
   }
 
   async refresh(refreshToken: string) {

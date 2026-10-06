@@ -20,6 +20,9 @@ export class ProductsService {
       throw new BadRequestException('Product must have at least one unit');
     }
 
+    const category = await this.prisma.category.findFirst({ where: { id: dto.categoryId, tenantId }, select: { id: true } });
+    if (!category) throw new BadRequestException('Category not found for this tenant');
+
     const skuExists = await this.prisma.product.findUnique({ where: { sku_tenantId: { sku: dto.sku, tenantId } } });
     if (skuExists) throw new ConflictException('SKU already exists');
 
@@ -88,12 +91,17 @@ export class ProductsService {
 
   async update(id: number, dto: UpdateProductDto, actorId: number, tenantId: number) {
     const product = await this.findOne(id, tenantId);
+    if (dto.categoryId) {
+      const category = await this.prisma.category.findFirst({ where: { id: dto.categoryId, tenantId }, select: { id: true } });
+      if (!category) throw new BadRequestException('Category not found for this tenant');
+    }
     const updated = await this.prisma.product.update({ where: { id }, data: dto });
     await this.audit.log(actorId, 'UPDATE', 'Product', id, product, dto);
     return updated;
   }
 
-  async updateUnit(productId: number, unitId: number, dto: Partial<CreateProductUnitDto>, actorId: number) {
+  async updateUnit(productId: number, unitId: number, dto: Partial<CreateProductUnitDto>, actorId: number, tenantId: number) {
+    await this.findOne(productId, tenantId);
     const unit = await this.prisma.productUnit.findFirst({ where: { id: unitId, productId } });
     if (!unit) throw new NotFoundException('Product unit not found');
 

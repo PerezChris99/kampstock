@@ -23,11 +23,21 @@ export class SalesService {
     return `${prefix}-${suffix}`;
   }
 
-  async create(dto: CreateSaleDto, actorId: number, tenantId: number) {
+  async create(dto: CreateSaleDto, actorId: number, tenantId: number, role: string) {
     return this.prisma.$transaction(async (tx) => {
-      const locationId = dto.locationId ?? 1; // Default to first location
+      if (dto.clientReference) {
+        const existing = await tx.sale.findFirst({ where: { tenantId, clientReference: dto.clientReference } });
+        if (existing) return existing;
+      }
+      const locationId = dto.locationId ?? 1;
+      const location = await tx.stockLocation.findFirst({ where: { id: locationId, tenantId }, select: { id: true } });
+      if (!location) throw new BadRequestException('Stock location not found for this tenant');
+      if (dto.customerId) {
+        const customer = await tx.customer.findFirst({ where: { id: dto.customerId, tenantId }, select: { id: true } });
+        if (!customer) throw new BadRequestException('Customer not found for this tenant');
+      }
 
-      // Validate products and compute totals (read-only pass — no stock modifications yet)
+      // Validate products, pricing and compute totals (read-only pass — no stock modifications yet)
       let subtotal = 0;
       const lineData: any[] = [];
 
@@ -36,22 +46,34 @@ export class SalesService {
           where: { id: line.productId },
           include: { units: true },
         });
-        if (!product) throw new NotFoundException(`Product ${line.productId} not found`);
+        if (!product || product.tenantId !== tenantId) throw new NotFoundException(`Product ${line.productId} not found`);
+        const selectedUnit = line.productUnitId
+          ? product.units.find((u) => u.id === line.productUnitId)
+          : product.units.find((u) => u.isDefault) ?? product.units[0];
+        if (!selectedUnit) throw new BadRequestException(`No sellable unit configured for product "${product.name}"`);
+        const serverPrice = dto.saleType === 'WHOLESALE'
+          ? Number(selectedUnit.sellingPriceWholesale)
+          : Number(selectedUnit.sellingPriceRetail);
+        if (Math.abs(serverPrice - line.unitPrice) > 0.0001) {
+          throw new BadRequestException(`Price mismatch for product "${product.name}". Refresh the product price and try again.`);
+        }
 
         const stockItem = await tx.stockItem.findFirst({
           where: { productId: line.productId, locationId },
         });
         const onHand = stockItem ? Number(stockItem.quantityOnHand) : 0;
-        if (!dto.allowNegativeStock && onHand < line.quantity) {
+        const allowNegativeStock = dto.allowNegativeStock === true && ['Admin', 'Manager'].includes(role);
+        if (!allowNegativeStock && onHand < line.quantity) {
           throw new BadRequestException(
             `Insufficient stock for product "${product.name}". Available: ${onHand}`,
           );
         }
 
-        const lineTotal = line.quantity * line.unitPrice - (line.discount ?? 0);
+        const lineTotal = line.quantity * serverPrice - (line.discount ?? 0);
+        if (lineTotal < 0) throw new BadRequestException(`Discount cannot exceed line amount for product "${product.name}"`);
         const costPrice = stockItem ? Number(stockItem.lastCostPrice) : 0;
         subtotal += lineTotal;
-        lineData.push({ ...line, lineTotal, costPrice });
+        lineData.push({ ...line, productUnitId: selectedUnit.id, unitPrice: serverPrice, lineTotal, costPrice });
       }
 
       const discountTotal = dto.discountTotal ?? 0;
@@ -104,7 +126,7 @@ export class SalesService {
       // in the DB. If another concurrent transaction already consumed the stock,
       // count === 0 and we throw — preventing overselling without a separate lock.
       for (const line of lineData) {
-        if (!dto.allowNegativeStock) {
+        if (!(dto.allowNegativeStock === true && ['Admin', 'Manager'].includes(role))) {
           const updated = await tx.stockItem.updateMany({
             where: {
               productId: line.productId,
@@ -124,7 +146,7 @@ export class SalesService {
             );
           }
         } else {
-          // Negative stock allowed — just decrement without the floor check
+          // Explicit negative-stock override is limited to privileged roles.
           await tx.stockItem.updateMany({
             where: { productId: line.productId, locationId },
             data: { quantityOnHand: { decrement: line.quantity } },
@@ -186,9 +208,9 @@ export class SalesService {
     return { data, total, limit, offset };
   }
 
-  async findOne(id: number) {
-    const sale = await this.prisma.sale.findUnique({
-      where: { id },
+  async findOne(id: number, tenantId: number) {
+    const sale = await this.prisma.sale.findFirst({
+      where: { id, tenantId },
       include: {
         lines: { include: { product: { include: { units: true } } } },
         customer: true,
@@ -200,9 +222,9 @@ export class SalesService {
     return sale;
   }
 
-  async addPayment(saleId: number, dto: AddPaymentDto, actorId: number) {
+  async addPayment(saleId: number, dto: AddPaymentDto, actorId: number, tenantId: number) {
     return this.prisma.$transaction(async (tx) => {
-      const sale = await tx.sale.findUnique({ where: { id: saleId } });
+      const sale = await tx.sale.findFirst({ where: { id: saleId, tenantId } });
       if (!sale) throw new NotFoundException('Sale not found');
       if (Number(sale.balance) <= 0) throw new BadRequestException('Sale is already fully paid');
 
@@ -235,10 +257,10 @@ export class SalesService {
     });
   }
 
-  async returnSale(saleId: number, actorId: number) {
+  async returnSale(saleId: number, actorId: number, tenantId: number) {
     return this.prisma.$transaction(async (tx) => {
       const sale = await tx.sale.findUnique({
-        where: { id: saleId },
+        where: { id: saleId, tenantId },
         include: { lines: true },
       });
       if (!sale) throw new NotFoundException('Sale not found');
@@ -249,7 +271,7 @@ export class SalesService {
       // Reverse stock movements
       for (const line of sale.lines) {
         const stockItem = await tx.stockItem.findFirst({
-          where: { productId: line.productId },
+          where: { productId: line.productId, locationId: 1 },
         });
         if (stockItem) {
           await tx.stockItem.update({

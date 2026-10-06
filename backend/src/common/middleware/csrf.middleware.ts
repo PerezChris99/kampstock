@@ -1,6 +1,6 @@
 import { Injectable, NestMiddleware, ForbiddenException } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
-import { randomBytes, createHmac } from 'crypto';
+import { randomBytes, createHmac, timingSafeEqual } from 'crypto';
 
 const CSRF_COOKIE = 'csrf_token';
 const CSRF_HEADER = 'x-csrf-token';
@@ -31,7 +31,8 @@ function verifyCsrfToken(token: string, expected: string): boolean {
   // Constant-time comparison via re-signing
   const expectedSig = sign(expected);
   const providedSig = sign(token);
-  return expectedSig === providedSig && token === expected;
+  if (expectedSig !== providedSig || token.length !== expected.length) return false;
+  return timingSafeEqual(Buffer.from(token), Buffer.from(expected));
 }
 
 @Injectable()

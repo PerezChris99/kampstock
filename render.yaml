@@ -14,9 +14,9 @@ services:
     env: node
     plan: free
     rootDir: backend
-    buildCommand: npm install && npx prisma generate && npm run build && npx prisma db push
+    buildCommand: npm ci && npx prisma generate && npx prisma db push && npm run build
     startCommand: node dist/main
-    healthCheckPath: /api/health
+    healthCheckPath: /api/health/ready
     envVars:
       - key: DATABASE_URL
         fromDatabase:
@@ -28,13 +28,17 @@ services:
         generateValue: true
       - key: JWT_REFRESH_SECRET
         generateValue: true
+      - key: CSRF_SECRET
+        generateValue: true
       - key: JWT_EXPIRES_IN
         value: 15m
       - key: JWT_REFRESH_EXPIRES_IN
         value: 7d
       - key: ALLOWED_ORIGINS
-        # UPDATE THIS after deploying to Vercel — use your actual Vercel URL
-        # e.g. https://kampstock.vercel.app or https://kampstock-perezchris99.vercel.app
+        # Replace with the exact deployed frontend origin before production use.
+        value: https://kampstock.vercel.app
+      - key: FRONTEND_URL
+        # Replace with the exact deployed frontend origin before production use.
         value: https://kampstock.vercel.app
 
 databases:
