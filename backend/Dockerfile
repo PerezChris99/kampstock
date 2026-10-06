@@ -1,7 +1,7 @@
 # ────────────────────────────────────────────────────────────────
 # Stage 1: build
 # ────────────────────────────────────────────────────────────────
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 WORKDIR /app
 
 # Copy package files and install ALL deps (including devDependencies for build)
@@ -20,7 +20,7 @@ RUN npm run build
 # ────────────────────────────────────────────────────────────────
 # Stage 2: production image
 # ────────────────────────────────────────────────────────────────
-FROM node:20-alpine AS production
+FROM node:22-alpine AS production
 WORKDIR /app
 
 ENV NODE_ENV=production
@@ -42,4 +42,4 @@ USER kampstock
 EXPOSE 3000
 
 # Run migrations then start the server
-CMD ["sh", "-c", "npx prisma migrate deploy --schema=./prisma-pg/schema.prisma && node dist/main"]
+CMD ["node", "dist/main"]
