@@ -113,7 +113,8 @@ api.interceptors.response.use(
         await _refreshRequest;
         // New access_token cookie is now set; retry the original request.
         return api(originalRequest);
-        _csrfToken = null; // Clear stale CSRF token on session expiry
+      } catch {
+        _csrfToken = null;
         window.location.href = '/login';
       }
     }
