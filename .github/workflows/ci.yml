@@ -18,13 +18,6 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-permissions:
-  contents: read
-
-concurrency:
-  group: kampstock-ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
   backend:
     name: Backend — quality and tests
@@ -44,9 +37,11 @@ jobs:
       - name: Generate Prisma client
         run: npx prisma generate --schema=./prisma/schema.prisma
       - name: Lint
-        run: npm run lint -- --no-fix
+        run: npm run lint:check
       - name: TypeScript check
         run: npx tsc --noEmit
+      - name: Prepare test database
+        run: npx prisma db push --schema=./prisma/schema.prisma --skip-generate
       - name: Unit tests
         run: npm run test -- --runInBand --no-coverage
         env:
