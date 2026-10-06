@@ -29,6 +29,15 @@ export class GoodsReceiptsService {
       }
     }
 
+    // Every product and destination location must belong to this tenant.
+    const productIds = [...new Set(dto.lines.map((l) => l.productId))];
+    const [productCount, location] = await Promise.all([
+      this.prisma.product.count({ where: { id: { in: productIds }, tenantId } }),
+      this.prisma.stockLocation.findFirst({ where: { id: dto.locationId, tenantId }, select: { id: true } }),
+    ]);
+    if (productCount !== productIds.length) throw new BadRequestException('One or more products do not exist for this tenant');
+    if (!location) throw new BadRequestException('Stock location not found');
+
     return this.prisma.$transaction(async (tx) => {
       const receipt = await tx.goodsReceipt.create({
         data: {
@@ -55,6 +64,7 @@ export class GoodsReceiptsService {
           where: {
             productId: line.productId,
             locationId: dto.locationId,
+            location: { tenantId },
             batchNo: line.batchNo ?? null,
           },
         });
@@ -151,9 +161,9 @@ export class GoodsReceiptsService {
     return { data, total, limit: Math.min(limit, 200), offset };
   }
 
-  async findOne(id: number) {
+  async findOne(id: number, tenantId: number) {
     const receipt = await this.prisma.goodsReceipt.findUnique({
-      where: { id },
+      where: { id, tenantId },
       include: {
         lines: { include: { product: true } },
         receivedBy: { select: { id: true, name: true } },
@@ -165,8 +175,15 @@ export class GoodsReceiptsService {
     return receipt;
   }
 
-  async createInvoice(dto: CreateSupplierInvoiceDto) {
+  async createInvoice(dto: CreateSupplierInvoiceDto, tenantId: number) {
     const balance = dto.totalAmount - (dto.paidAmount ?? 0);
+    if (balance < 0) throw new BadRequestException('Paid amount cannot exceed invoice total');
+    const supplier = await this.prisma.supplier.findFirst({ where: { id: dto.supplierId, tenantId }, select: { id: true } });
+    if (!supplier) throw new BadRequestException('Supplier not found');
+    if (dto.goodsReceiptId) {
+      const receipt = await this.prisma.goodsReceipt.findFirst({ where: { id: dto.goodsReceiptId, tenantId }, select: { id: true } });
+      if (!receipt) throw new BadRequestException('Goods receipt not found');
+    }
     return this.prisma.supplierInvoice.create({
       data: {
         supplierId: dto.supplierId,
