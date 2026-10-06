@@ -272,6 +272,18 @@ export class SalesService {
     });
   }
 
+  private async resolveSaleLocation(tx: any, saleId: number, tenantId: number): Promise<number> {
+    const movement = await tx.stockMovement.findFirst({
+      where: { referenceId: saleId, referenceType: 'Sale', fromLocationId: { not: null }, product: { tenantId } },
+      select: { fromLocationId: true },
+      orderBy: { id: 'asc' },
+    });
+    if (!movement?.fromLocationId) {
+      throw new BadRequestException('Sale location could not be determined for this return');
+    }
+    return movement.fromLocationId;
+  }
+
   async returnSale(saleId: number, actorId: number, tenantId: number) {
     return this.prisma.$transaction(async (tx) => {
       const sale = await tx.sale.findFirst({
@@ -281,22 +293,38 @@ export class SalesService {
       if (!sale) throw new NotFoundException('Sale not found');
       if (sale.status === 'RETURNED') throw new BadRequestException('Sale already returned');
 
-      await tx.sale.update({ where: { id: saleId }, data: { status: 'RETURNED' } });
+      // Atomically claim the return so concurrent requests cannot both reverse
+      // the same sale's stock. The tenant predicate is part of the claim.
+      const claimed = await tx.sale.updateMany({
+        where: { id: saleId, tenantId, status: { not: 'RETURNED' } },
+        data: { status: 'RETURNED' },
+      });
+      if (claimed.count !== 1) {
+        throw new BadRequestException('Sale was already returned or changed concurrently');
+      }
 
-      // Reverse stock movements
+      // Reverse stock into the exact location used by the sale. The original
+      // implementation searched only by product + tenant, which could return
+      // stock into an arbitrary tenant location when multiple locations exist.
+      const locationId = await this.resolveSaleLocation(tx, saleId, tenantId);
       for (const line of sale.lines) {
         const stockItem = await tx.stockItem.findFirst({
-          where: { productId: line.productId, location: { tenantId } },
+          where: { productId: line.productId, locationId, location: { tenantId } },
         });
         if (stockItem) {
           await tx.stockItem.update({
             where: { id: stockItem.id },
-            data: { quantityOnHand: { increment: Number(line.quantity) } },
+            data: { quantityOnHand: { increment: line.quantity } },
+          });
+        } else {
+          await tx.stockItem.create({
+            data: { productId: line.productId, locationId, quantityOnHand: line.quantity },
           });
         }
         await tx.stockMovement.create({
           data: {
             productId: line.productId,
+            toLocationId: locationId,
             quantity: line.quantity,
             movementType: 'RETURN_IN',
             referenceId: saleId,

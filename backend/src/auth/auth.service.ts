@@ -115,6 +115,9 @@ export class AuthService {
   }
 
   async login(dto: LoginDto, ip = 'unknown', subdomainTenantId?: number) {
+    if (process.env.NODE_ENV === 'production' && !subdomainTenantId) {
+      throw new UnauthorizedException('Tenant context is required for login');
+    }
     const tenantId = subdomainTenantId ?? 1;
 
     // Check lockout by both username and IP

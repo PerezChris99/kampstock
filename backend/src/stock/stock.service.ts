@@ -63,23 +63,47 @@ export class StockService {
       if (!product) throw new NotFoundException('Product not found');
 
       const stockItem = await tx.stockItem.findFirst({
-        where: { productId: dto.productId, locationId: dto.locationId },
+        where: { productId: dto.productId, locationId: dto.locationId, batchNo: dto.batchNo ?? null },
       });
 
-      const newQty = (stockItem ? Number(stockItem.quantityOnHand) : 0) + dto.quantity;
-      if (newQty < 0) throw new BadRequestException('Insufficient stock for this adjustment');
+      if (stockItem) {
+        if (dto.quantity < 0) {
+          const decremented = await tx.stockItem.updateMany({
+            where: {
+              id: stockItem.id,
+              quantityOnHand: { gte: Math.abs(dto.quantity) },
+            },
+            data: { quantityOnHand: { decrement: Math.abs(dto.quantity) } },
+          });
+          if (decremented.count !== 1) {
+            throw new BadRequestException('Stock changed concurrently; please retry the adjustment');
+          }
+        } else if (dto.quantity > 0) {
+          await tx.stockItem.update({
+            where: { id: stockItem.id },
+            data: { quantityOnHand: { increment: dto.quantity } },
+          });
+        }
+      } else {
+        if (dto.quantity < 0) {
+          throw new BadRequestException('Insufficient stock for this adjustment');
+        }
+        await tx.stockItem.create({
+          data: {
+            productId: dto.productId,
+            locationId: dto.locationId,
+            quantityOnHand: dto.quantity,
+            batchNo: dto.batchNo,
+            expiryDate: dto.expiryDate ? new Date(dto.expiryDate) : undefined,
+          },
+        });
+      }
 
-      await tx.stockItem.upsert({
-        where: stockItem ? { id: stockItem.id } : { id: 0 },
-        create: {
-          productId: dto.productId,
-          locationId: dto.locationId,
-          quantityOnHand: newQty,
-          batchNo: dto.batchNo,
-          expiryDate: dto.expiryDate ? new Date(dto.expiryDate) : undefined,
-        },
-        update: { quantityOnHand: newQty },
+      const resultingItem = await tx.stockItem.findFirst({
+        where: { productId: dto.productId, locationId: dto.locationId, batchNo: dto.batchNo ?? null },
+        select: { id: true, quantityOnHand: true },
       });
+      const newQty = resultingItem ? Number(resultingItem.quantityOnHand) : 0;
 
       await tx.stockMovement.create({
         data: {
@@ -93,7 +117,7 @@ export class StockService {
         },
       });
 
-      await this.audit.log(actorId, 'STOCK_ADJUSTMENT', 'StockItem', stockItem?.id ?? null, { qty: stockItem?.quantityOnHand }, { qty: newQty });
+      await this.audit.log(actorId, 'STOCK_ADJUSTMENT', 'StockItem', resultingItem?.id ?? stockItem?.id ?? null, { qty: stockItem?.quantityOnHand }, { qty: newQty }, undefined, tenantId);
       return { success: true, newQuantity: newQty };
     });
   }
@@ -159,7 +183,10 @@ export class StockService {
         ...(productId && { productId }),
         ...(tenantId && { product: { tenantId } }),
         ...(locationId && {
-          OR: [{ fromLocationId: locationId }, { toLocationId: locationId }],
+          OR: [
+            { fromLocationId: locationId, fromLocation: { tenantId } },
+            { toLocationId: locationId, toLocation: { tenantId } },
+          ],
         }),
       },
       include: {
