@@ -42,4 +42,4 @@ USER kampstock
 EXPOSE 3000
 
 # Run migrations then start the server
-CMD ["node", "dist/main"]
+CMD ["sh", "-c", "npx prisma migrate deploy --schema=./prisma-pg/schema.prisma && node dist/main"]
