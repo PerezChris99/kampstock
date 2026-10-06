@@ -65,8 +65,12 @@ async function getDB(): Promise<IDBPDatabase<KampstockDB>> {
 
 export async function enqueueOfflineSale(payload: unknown): Promise<void> {
   const db = await getDB();
+  const clientReference = globalThis.crypto.randomUUID();
+  const queuedPayload = payload && typeof payload === 'object'
+    ? { ...(payload as Record<string, unknown>), clientReference }
+    : payload;
   await db.add('pending-sales', {
-    payload,
+    payload: queuedPayload,
     createdAt: new Date().toISOString(),
     retries: 0,
   });
