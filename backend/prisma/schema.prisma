@@ -175,6 +175,8 @@ model StockItem {
     @@unique([productId, locationId, batchNo])
     @@index([productId])
     @@index([locationId])
+    @@index([locationId, quantityOnHand])
+    @@index([locationId, expiryDate])
     @@map("stock_items")
 }
 
@@ -278,6 +280,7 @@ model GoodsReceipt {
     supplierInvoice SupplierInvoice?
 
     @@index([tenantId])
+    @@index([tenantId, receiptDate])
     @@map("goods_receipts")
 }
 
@@ -313,6 +316,7 @@ model SupplierInvoice {
     goodsReceipt GoodsReceipt? @relation(fields: [goodsReceiptId], references: [id])
 
     @@index([supplierId])
+    @@index([supplierId, invoiceDate])
     @@map("supplier_invoices")
 }
 
@@ -401,6 +405,7 @@ model Payment {
     receivedBy User @relation(fields: [receivedById], references: [id])
 
     @@index([saleId])
+    @@index([receivedAt])
     @@map("payments")
 }
 
@@ -467,6 +472,7 @@ model Notification {
     createdAt  DateTime @default(now()) @map("created_at")
 
     @@index([tenantId, isRead])
+    @@index([tenantId, isRead, createdAt])
     @@map("notifications")
 }
 
@@ -513,6 +519,7 @@ model Subscription {
     tenant Tenant @relation(fields: [tenantId], references: [id])
 
     @@index([tenantId, status])
+    @@index([tenantId, createdAt])
     @@map("subscriptions")
 }
 
