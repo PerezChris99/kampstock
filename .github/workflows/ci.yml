@@ -98,6 +98,14 @@ jobs:
         env:
           DATABASE_URL: postgresql://kampstock:kampstock@127.0.0.1:5432/kampstock_test
 
+      - name: Backend tests against PostgreSQL
+        run: npm run test -- --runInBand --no-coverage
+        env:
+          NODE_ENV: test
+          DATABASE_URL: postgresql://kampstock:kampstock@127.0.0.1:5432/kampstock_test
+          JWT_SECRET: ci-postgres-jwt-secret-32-characters-minimum
+          JWT_REFRESH_SECRET: ci-postgres-refresh-secret-32-minimum
+          CSRF_SECRET: ci-postgres-csrf-secret-32-characters-minimum
   frontend:
     name: Frontend — quality and build
     runs-on: ubuntu-latest
