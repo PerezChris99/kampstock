@@ -53,7 +53,7 @@ function Footer() {
         </div>
         <div>
           <p className="mb-4 text-xs font-bold uppercase tracking-[0.18em] text-lime-400">Product</p>
-          <div className="space-y-3 text-sm"><a href="#features" className="block hover:text-white">Capabilities</a><a href="#how-it-works" className="block hover:text-white">How it works</a><Link to="/about" className="block hover:text-white">About KampStock</Link><Link to="/register" className="block hover:text-white">Create a business</Link></div>
+          <div className="space-y-3 text-sm"><a href="#features" className="block hover:text-white">Capabilities</a><Link to="/how-it-works" className="block hover:text-white">How it works</Link><Link to="/about" className="block hover:text-white">About KampStock</Link><Link to="/faq" className="block hover:text-white">FAQ</Link><Link to="/register" className="block hover:text-white">Create a business</Link></div>
         </div>
         <div>
           <p className="mb-4 text-xs font-bold uppercase tracking-[0.18em] text-lime-400">Company</p>
@@ -61,7 +61,7 @@ function Footer() {
         </div>
         <div>
           <p className="mb-4 text-xs font-bold uppercase tracking-[0.18em] text-lime-400">Legal</p>
-          <div className="space-y-3 text-sm"><Link to="/privacy" className="block hover:text-white">Privacy</Link><Link to="/terms" className="block hover:text-white">Terms of use</Link><Link to="/acceptable-use" className="block hover:text-white">Acceptable use</Link></div>
+          <div className="space-y-3 text-sm"><Link to="/privacy" className="block hover:text-white">Privacy</Link><Link to="/terms" className="block hover:text-white">Terms of use</Link><Link to="/acceptable-use" className="block hover:text-white">Acceptable use</Link><Link to="/security" className="block hover:text-white">Security</Link></div>
         </div>
       </div>
       <div className="border-t border-white/10">
@@ -158,7 +158,7 @@ export default function LandingPage() {
                 ['04', 'Manage with confidence', 'Use reports and live operational data to see what is really happening.'],
               ].map(([n,t,d]) => <div key={n} className="border-t border-white/15 pt-5"><span className="text-sm font-black text-lime-400">{n}</span><h3 className="mt-5 text-lg font-extrabold">{t}</h3><p className="mt-2 text-sm leading-6 text-white/55">{d}</p></div>)}
             </div>
-            <Link to="/about#how-it-works" className="mt-10 inline-flex items-center rounded-full bg-white px-5 py-3 text-sm font-bold text-[#172014]">Read the full onboarding guide <ArrowRight className="ml-2" size={16} /></Link>
+            <Link to="/how-it-works" className="mt-10 inline-flex items-center rounded-full bg-white px-5 py-3 text-sm font-bold text-[#172014]">Read the full onboarding guide <ArrowRight className="ml-2" size={16} /></Link>
           </div>
         </section>
 
