@@ -50,8 +50,9 @@ export class ProductsController {
     @Param('unitId', ParseIntPipe) unitId: number,
     @Body() dto: Partial<CreateProductUnitDto>,
     @CurrentUser('id') actorId: number,
+    @CurrentUser('tenantId') tenantId: number,
   ) {
-    return this.productsService.updateUnit(id, unitId, dto, actorId);
+    return this.productsService.updateUnit(id, unitId, dto, actorId, tenantId);
   }
 
   @Delete(':id')
