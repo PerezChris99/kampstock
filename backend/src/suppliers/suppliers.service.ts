@@ -48,9 +48,11 @@ export class SuppliersService {
     return this.prisma.supplier.update({ where: { id }, data: dto });
   }
 
-  async getBalance(id: number) {
+  async getBalance(id: number, tenantId: number) {
+    const supplier = await this.prisma.supplier.findFirst({ where: { id, tenantId }, select: { id: true } });
+    if (!supplier) throw new NotFoundException('Supplier not found');
     const invoices = await this.prisma.supplierInvoice.findMany({
-      where: { goodsReceipt: { purchaseOrder: { supplierId: id } } },
+      where: { supplierId: id, goodsReceipt: { tenantId } },
       select: { totalAmount: true, paidAmount: true, balance: true },
     });
     const totalOwed = invoices.reduce((s, i) => s + Number(i.balance), 0);
