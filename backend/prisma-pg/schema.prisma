@@ -370,6 +370,8 @@ model Sale {
     @@index([tenantId, createdAt])
     @@index([tenantId, status])
     @@index([customerId])
+    @@index([tenantId, clientReference])
+    @@unique([tenantId, clientReference])
     @@map("sales")
 }
 
