@@ -34,7 +34,7 @@ export class UsersController {
 
   @Patch(':id/toggle-active')
   @Roles('Admin')
-  toggleActive(@Param('id', ParseIntPipe) id: number, @CurrentUser('id') actorId: number) {
-    return this.usersService.toggleActive(id, actorId);
+  toggleActive(@Param('id', ParseIntPipe) id: number, @CurrentUser('id') actorId: number, @CurrentUser('tenantId') tenantId: number) {
+    return this.usersService.toggleActive(id, actorId, tenantId);
   }
 }
