@@ -101,7 +101,7 @@ export class ProductsService {
   }
 
   async updateUnit(productId: number, unitId: number, dto: Partial<CreateProductUnitDto>, actorId: number, tenantId: number) {
-    const product = await this.findOne(productId, tenantId);
+    await this.findOne(productId, tenantId);
     const unit = await this.prisma.productUnit.findFirst({ where: { id: unitId, productId } });
     if (!unit) throw new NotFoundException('Product unit not found');
 
