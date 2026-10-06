@@ -33,7 +33,7 @@ test.describe('POS page', () => {
     await expect(page).toHaveURL(/\/pos/);
     // The POS page must have a cart or product list section
     await expect(
-      page.getByRole('heading', { name: /pos|point of sale|checkout/i }).or(
+      page.getByRole('heading', { name: 'POS', exact: true }).or(
         page.getByTestId('pos-page'),
       ),
     ).toBeVisible({ timeout: 10_000 });
@@ -42,7 +42,7 @@ test.describe('POS page', () => {
   test('POS page shows product search or product list', async ({ page }) => {
     await page.goto('/pos');
     // Either a search input or at least one product card should be visible
-    const searchInput = page.getByPlaceholder(/search|product/i);
+    const searchInput = page.getByPlaceholder(/scan barcode|type sku/i);
     const productList = page.getByTestId('product-list').or(page.getByRole('list'));
     const either = searchInput.or(productList);
     await expect(either.first()).toBeVisible({ timeout: 10_000 });
