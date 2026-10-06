@@ -57,7 +57,7 @@ async function bootstrap() {
   });
 
   const isProd = process.env.NODE_ENV === 'production';
-  if (isProd) app.set('trust proxy', 1);
+  if (isProd) app.getHttpAdapter().getInstance().set('trust proxy', 1);
 
   // ── Request body size limit ───────────────────────────────────────────────────
   // Prevents large payload DoS attacks. Backup restore endpoint may need up to
