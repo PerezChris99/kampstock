@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ArrowRight, Boxes, CircleDollarSign, ShieldCheck, Store, Users } from 'lucide-react';
+import { ArrowRight, Boxes, CircleDollarSign, ShieldCheck, Store } from 'lucide-react';
 
 const steps = [
   ['01', 'Create the workspace', 'Register the business and establish the people, roles and stock locations that will use KampStock.'],
