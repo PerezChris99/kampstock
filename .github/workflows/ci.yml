@@ -125,6 +125,12 @@ jobs:
           ALLOWED_ORIGINS: http://127.0.0.1:5173
       - name: Wait for backend
         run: npx wait-on http://127.0.0.1:3000/api/health --timeout 30000
+      - name: Verify seeded authentication endpoint
+        run: |
+          curl --fail-with-body -sS -c /tmp/kampstock-cookies \
+            -H 'Content-Type: application/json' \
+            -d '{"username":"manager","password":"manager123"}' \
+            http://127.0.0.1:3000/api/auth/login
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
       - name: Build production bundle
