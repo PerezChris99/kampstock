@@ -10,6 +10,10 @@ export class CreateSaleLineDto {
   @IsInt()
   productId: number;
 
+  @IsOptional()
+  @IsInt()
+  productUnitId?: number;
+
   @IsNumber()
   @Min(0.0001)
   quantity: number;
