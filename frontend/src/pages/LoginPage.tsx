@@ -26,7 +26,7 @@ export default function LoginPage() {
       if (data.requirePasswordReset) {
         navigate('/change-password?forced=1');
       } else {
-        navigate('/');
+        navigate('/app');
       }
     } catch (err: any) {
       const status = err?.response?.status;

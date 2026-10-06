@@ -1,204 +1,33 @@
 import { Link } from 'react-router-dom';
-import {
-  ArrowLeft, Store, ShoppingCart, Package, Warehouse,
-  BarChart3, Users, Smartphone, Wifi, MapPin, Shield, Award,
-} from 'lucide-react';
+import { ArrowRight, Boxes, CircleDollarSign, ShieldCheck, Store } from 'lucide-react';
 
-const features = [
-  {
-    icon: ShoppingCart,
-    title: 'Point of Sale',
-    desc: 'Barcode-based POS with retail & wholesale pricing, mobile money, cash and bank payments — built for Uganda.',
-  },
-  {
-    icon: Package,
-    title: 'Inventory & Stock',
-    desc: 'Real-time stock levels across warehouse locations, low-stock alerts, and goods receipt processing.',
-  },
-  {
-    icon: BarChart3,
-    title: 'Reports & Analytics',
-    desc: 'P&L summaries, top products, stock valuation, slow-movers — all exportable as PDF.',
-  },
-  {
-    icon: Users,
-    title: 'Multi-User Access',
-    desc: 'Role-based access for Admin, Manager, Cashier and Storekeeper with a full audit trail.',
-  },
-  {
-    icon: Smartphone,
-    title: 'Mobile-First & PWA',
-    desc: 'Works on any device — installable as an app on the Android phones carried by cashiers and supervisors.',
-  },
-  {
-    icon: Wifi,
-    title: 'Offline Resilient',
-    desc: 'Cached reads keep working through power outages and the slow network patches common across Uganda.',
-  },
-  {
-    icon: Warehouse,
-    title: 'Supplier & Purchasing',
-    desc: 'Manage supplier contacts, raise purchase orders, and record goods receipts to keep stock accurate.',
-  },
-  {
-    icon: Shield,
-    title: 'Secure by Default',
-    desc: 'JWT auth, role guards, rate limiting, brute-force lockout, and sanitised error responses out of the box.',
-  },
+const steps = [
+  ['01', 'Create the workspace', 'Register the business and establish the people, roles and stock locations that will use KampStock.'],
+  ['02', 'Build the catalogue', 'Add products, units, prices, suppliers and opening stock. For established businesses, import or enter the current stock position carefully.'],
+  ['03', 'Run the counter', 'Use POS for daily sales, take cash or digital payments, manage customer credit and keep the transaction record tied to stock.'],
+  ['04', 'Keep the stockroom aligned', 'Raise purchase orders, receive goods, record supplier invoices and monitor movements across locations.'],
+  ['05', 'Manage the business', 'Use reports, expenses, customer balances and stock information to understand performance and make decisions.'],
 ];
 
 export default function AboutPage() {
-  return (
-    <div className="min-h-screen bg-slate-950 text-white">
-      {/* Header */}
-      <header className="border-b border-slate-800/60 px-4 sm:px-6 py-4">
-        <div className="max-w-5xl mx-auto flex items-center gap-3">
-          <button
-            onClick={() => window.history.back()}
-            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
-            aria-label="Go back"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </button>
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-indigo-500 flex items-center justify-center">
-              <Store className="w-3.5 h-3.5 text-white" />
-            </div>
-            <span className="font-bold text-base">KampStock</span>
-          </div>
-          <Link
-            to="/login"
-            className="ml-auto text-sm text-slate-400 hover:text-white transition"
-          >
-            Sign In
-          </Link>
-        </div>
-      </header>
-
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-16 space-y-16">
-        {/* Hero */}
-        <section className="text-center max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-semibold tracking-wider uppercase mb-5">
-            <MapPin className="w-3 h-3" /> Made for Uganda
-          </div>
-          <h1 className="text-4xl sm:text-5xl font-bold mb-5 bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent leading-tight">
-            Your Business.{' '}
-            <span className="bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">
-              Your Stock.
-            </span>
-          </h1>
-          <p className="text-lg text-slate-400 leading-relaxed">
-            KampStock is a comprehensive inventory and point-of-sale management platform built for
-            Ugandan wholesale and retail businesses — from a boda boda spare-parts stall in Owino
-            Market to a multi-branch supermarket chain in Kampala.
-          </p>
-          <div className="flex items-center justify-center flex-wrap gap-x-5 gap-y-2 mt-6 text-sm text-slate-500">
-            <span className="flex items-center gap-1.5">
-              <Shield className="w-3.5 h-3.5 text-green-400" /> Secure
-            </span>
-            <span className="text-slate-700">·</span>
-            <span className="flex items-center gap-1.5">
-              <Wifi className="w-3.5 h-3.5 text-blue-400" /> PWA / Offline
-            </span>
-            <span className="text-slate-700">·</span>
-            <span className="flex items-center gap-1.5">
-              <Award className="w-3.5 h-3.5 text-amber-400" /> v2.0
-            </span>
-            <span className="text-slate-700">·</span>
-            <span className="flex items-center gap-1.5">
-              <MapPin className="w-3.5 h-3.5 text-rose-400" /> Uganda 🇺🇬
-            </span>
-          </div>
-        </section>
-
-        {/* Features grid */}
-        <section>
-          <h2 className="text-xl font-semibold mb-6 text-slate-200">What KampStock does</h2>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {features.map(({ icon: Icon, title, desc }) => (
-              <div
-                key={title}
-                className="bg-slate-900 border border-slate-800 rounded-xl p-5 hover:border-slate-700 transition"
-              >
-                <div className="w-9 h-9 rounded-lg bg-indigo-500/10 flex items-center justify-center mb-3">
-                  <Icon className="w-4 h-4 text-indigo-400" />
-                </div>
-                <h3 className="font-semibold text-sm text-white mb-1.5">{title}</h3>
-                <p className="text-xs text-slate-500 leading-relaxed">{desc}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Uganda context */}
-        <section className="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8">
-          <h2 className="text-xl font-semibold mb-2 text-slate-200">
-            Built for the Ugandan market
-          </h2>
-          <p className="text-slate-400 text-sm leading-relaxed mb-5">
-            Whether you run a hardware store in Industrial Area, a produce stall at Nakasero Market,
-            an agro-input shop in Masaka, or a wholesale warehouse in Kawempe — KampStock handles
-            the real-world complexity of business in Uganda.
-          </p>
-          <ul className="grid sm:grid-cols-2 gap-2 text-sm text-slate-400">
-            {[
-              'Ugandan Shillings (UGX) with proper comma formatting',
-              'MTN Mobile Money, Airtel Money, cash & bank transfers',
-              'Wholesale and retail pricing tiers on the same product',
-              'Works through power outages and slow network patches',
-              'Multi-branch / multi-tenant for growing businesses',
-              'Role-based access: owners, managers, cashiers & storekeepers',
-              'Purchase orders and goods receipts for supplier management',
-              'Expense tracking for rent, salaries, and overhead costs',
-            ].map((item) => (
-              <li key={item} className="flex items-start gap-2">
-                <span className="text-green-400 mt-0.5 flex-shrink-0">✓</span>
-                {item}
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        {/* Developer */}
-        <section className="border-t border-slate-800/60 pt-10">
-          <p className="text-xs text-slate-600 uppercase tracking-widest mb-5">Developer</p>
-          <div className="flex flex-col sm:flex-row items-start gap-5">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center flex-shrink-0 text-xl font-bold select-none">
-              PC
-            </div>
-            <div className="flex-1">
-              <a
-                href="https://perezchris.netlify.app"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-2xl font-bold text-white hover:text-indigo-400 transition-colors"
-              >
-                Perez Chris
-                <span className="ml-1.5 text-base text-indigo-500">↗</span>
-              </a>
-              <p className="text-slate-400 text-sm mt-1.5 leading-relaxed max-w-md">
-                Full-stack software developer based in Uganda, building practical, reliable software
-                for African businesses and beyond.
-              </p>
-              <a
-                href="https://perezchris.netlify.app"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 mt-2 text-sm text-indigo-400 hover:text-indigo-300 transition-colors"
-              >
-                perezchris.netlify.app <span className="text-xs">↗</span>
-              </a>
-            </div>
-            <div className="text-right flex-shrink-0 self-start sm:self-center">
-              <p className="text-xs text-slate-600 mb-1">Version</p>
-              <p className="text-sm font-mono text-slate-400">2.0.0</p>
-              <p className="text-xs text-slate-600 mt-2">
-                © {new Date().getFullYear()} KampStock
-              </p>
-            </div>
-          </div>
-        </section>
-      </main>
-    </div>
-  );
+  return <div className="min-h-screen bg-[#f5f2e9] text-[#172014]">
+    <header className="border-b border-[#ddd7c8] bg-[#172014] text-white">
+      <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-5 sm:px-8">
+        <Link to="/" className="flex items-center gap-3"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-lime-400 text-slate-950"><Store size={17}/></span><strong>KampStock</strong></Link>
+        <div className="flex items-center gap-3"><Link to="/login" className="rounded-full px-4 py-2 text-sm font-semibold text-white/75 hover:text-white">Sign in</Link><Link to="/register" className="rounded-full bg-white px-4 py-2 text-sm font-bold text-[#172014]">Get started</Link></div>
+      </div>
+    </header>
+    <main>
+      <section className="mx-auto max-w-6xl px-5 py-16 sm:px-8 sm:py-24"><p className="text-xs font-black uppercase tracking-[0.2em] text-orange-600">About KampStock</p><h1 className="mt-4 max-w-4xl text-5xl font-black tracking-[-.04em] sm:text-7xl">Software that follows the goods, not just the numbers.</h1><p className="mt-7 max-w-3xl text-lg leading-8 text-slate-600">KampStock was created for businesses where products physically arrive, move through a store or warehouse, get sold across a counter and eventually have to reconcile back to a number that the owner can trust.</p></section>
+      <section className="border-y border-[#ddd7c8] bg-[#ebe7da]"><div className="mx-auto grid max-w-6xl gap-px bg-[#d8d1c0] md:grid-cols-3">{[
+        [Boxes,'Stock','Know what came in, what moved and what remains.'],
+        [CircleDollarSign,'Trade','Sell at the counter and keep payment and customer records connected.'],
+        [ShieldCheck,'Control','Give each person the access they need without giving away the whole business.'],
+      ].map(([Icon,title,text]) => <article key={String(title)} className="bg-[#f5f2e9] p-8 sm:p-10"><Icon size={25} className="text-orange-600"/><h2 className="mt-7 text-xl font-extrabold">{String(title)}</h2><p className="mt-2 leading-7 text-slate-600">{String(text)}</p></article>)}</div></section>
+      <section id="how-it-works" className="mx-auto max-w-6xl px-5 py-20 sm:px-8 sm:py-24"><div className="max-w-2xl"><p className="text-xs font-black uppercase tracking-[0.2em] text-orange-600">How it works</p><h2 className="mt-3 text-4xl font-black tracking-tight sm:text-5xl">A straightforward path from setup to daily trade.</h2></div><div className="mt-12 divide-y divide-[#ddd7c8] border-y border-[#ddd7c8]">{steps.map(([number,title,text]) => <div key={number} className="grid gap-4 py-8 md:grid-cols-[80px_250px_1fr]"><span className="font-black text-lime-700">{number}</span><h3 className="text-lg font-extrabold">{title}</h3><p className="leading-7 text-slate-600">{text}</p></div>)}</div></section>
+      <section className="bg-[#172014] text-white"><div className="mx-auto max-w-6xl px-5 py-20 sm:px-8"><div className="grid gap-12 md:grid-cols-2 md:items-center"><div><p className="text-xs font-black uppercase tracking-[0.2em] text-lime-400">Why it exists</p><h2 className="mt-3 text-4xl font-black tracking-tight">Because a growing business should not have to reconstruct its day from notebooks, memory and disconnected spreadsheets.</h2></div><div className="space-y-6 text-sm leading-7 text-white/65"><p>KampStock brings the operational record closer to the actual work. The goal is not to make a business look more sophisticated; it is to make the business easier to run and harder to lose control of.</p><p>It is built around the realities of wholesale and retail operations in Uganda: physical inventory, multiple payment methods, customer credit, suppliers, intermittent connectivity and the need for owners and managers to see what is happening.</p></div></div></div></section>
+      <section className="mx-auto max-w-6xl px-5 py-20 text-center sm:px-8"><h2 className="text-3xl font-black tracking-tight">Ready to put the operation in one place?</h2><p className="mx-auto mt-3 max-w-xl text-slate-600">Set up a workspace and start with the workflows your business already understands.</p><Link to="/register" className="mt-7 inline-flex items-center rounded-full bg-[#172014] px-6 py-3.5 text-sm font-bold text-white">Create your business <ArrowRight className="ml-2" size={16}/></Link></section>
+    </main>
+    <footer className="border-t border-[#ddd7c8] px-5 py-8 text-center text-xs text-slate-500">© {new Date().getFullYear()} KampStock · Built by Perez Chris · <Link to="/privacy" className="hover:text-slate-900">Privacy</Link> · <Link to="/terms" className="hover:text-slate-900">Terms</Link></footer>
+  </div>;
 }

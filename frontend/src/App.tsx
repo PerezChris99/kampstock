@@ -7,6 +7,8 @@ import ErrorBoundary from './components/ErrorBoundary';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import AboutPage from './pages/AboutPage';
+import LandingPage from './pages/LandingPage';
+import LegalPage from './pages/LegalPage';
 import DashboardPage from './pages/DashboardPage';
 import POSPage from './pages/POSPage';
 import ProductsPage from './pages/ProductsPage';
@@ -59,10 +61,13 @@ export default function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/about" element={<AboutPage />} />
+            <Route path="/privacy" element={<LegalPage />} />
+            <Route path="/terms" element={<LegalPage />} />
+            <Route path="/acceptable-use" element={<LegalPage />} />
             <Route path="/billing/callback" element={<BillingCallbackPage />} />
             <Route path="/locked" element={<LockedPage />} />
             <Route
-              path="/"
+              path="/app"
               element={
                 <ProtectedRoute>
                   <AppLayout />
@@ -116,6 +121,7 @@ export default function App() {
                 }
               />
             </Route>
+            <Route path="/" element={<LandingPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </BrowserRouter>

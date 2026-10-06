@@ -13,7 +13,7 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Authentication flow', () => {
   test('unauthenticated user is redirected to /login', async ({ page }) => {
-    await page.goto('/dashboard');
+    await page.goto('/app');
     await expect(page).toHaveURL(/\/login/);
   });
 
