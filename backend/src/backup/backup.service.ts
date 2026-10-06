@@ -45,6 +45,12 @@ export class BackupService {
       sales,
       saleLines,
       payments,
+      priceHistories,
+      stockMovements,
+      goodsReceipts,
+      goodsReceiptLines,
+      supplierInvoices,
+      invoiceFiscals,
     ] = await Promise.all([
       this.prisma.role.findMany({ where: { tenantId } }),
       // passwordHash intentionally excluded — restore issues temp passwords for security
@@ -76,6 +82,12 @@ export class BackupService {
       this.prisma.sale.findMany({ where: { tenantId } }),
       this.prisma.saleLine.findMany({ where: { sale: { tenantId } } }),
       this.prisma.payment.findMany({ where: { sale: { tenantId } } }),
+      this.prisma.priceHistory.findMany({ where: { product: { tenantId } } }),
+      this.prisma.stockMovement.findMany({ where: { product: { tenantId } } }),
+      this.prisma.goodsReceipt.findMany({ where: { tenantId } }),
+      this.prisma.goodsReceiptLine.findMany({ where: { goodsReceipt: { tenantId } } }),
+      this.prisma.supplierInvoice.findMany({ where: { supplier: { tenantId } } }),
+      this.prisma.invoiceFiscal.findMany({ where: { sale: { tenantId } } }),
     ]);
 
     const tables = {
@@ -94,6 +106,12 @@ export class BackupService {
       sales,
       saleLines,
       payments,
+      priceHistories,
+      stockMovements,
+      goodsReceipts,
+      goodsReceiptLines,
+      supplierInvoices,
+      invoiceFiscals,
     };
 
     const rowCounts: Record<string, number> = {};
@@ -169,6 +187,12 @@ export class BackupService {
     await this.prisma.$transaction(async (tx) => {
       // Clear tenant-scoped data in reverse dependency order
       await tx.payment.deleteMany({ where: { sale: { tenantId } } });
+      await tx.invoiceFiscal.deleteMany({ where: { sale: { tenantId } } });
+      await tx.stockMovement.deleteMany({ where: { product: { tenantId } } });
+      await tx.priceHistory.deleteMany({ where: { product: { tenantId } } });
+      await tx.supplierInvoice.deleteMany({ where: { supplier: { tenantId } } });
+      await tx.goodsReceiptLine.deleteMany({ where: { goodsReceipt: { tenantId } } });
+      await tx.goodsReceipt.deleteMany({ where: { tenantId } });
       await tx.saleLine.deleteMany({ where: { sale: { tenantId } } });
       await tx.sale.deleteMany({ where: { tenantId } });
       await tx.expense.deleteMany({ where: { tenantId } });
@@ -435,6 +459,93 @@ export class BackupService {
       }));
       if (payments.length)
         await tx.payment.createMany({ data: payments });
+
+      const invoiceFiscals = (data.tables.invoiceFiscals ?? []).map((fiscal: any) => ({
+        id: fiscal.id,
+        saleId: fiscal.saleId,
+        efrisUid: fiscal.efrisUid ?? null,
+        efrisStatus: fiscal.efrisStatus ?? 'PENDING',
+        efrisPayload: fiscal.efrisPayload ?? null,
+        responsePayload: fiscal.responsePayload ?? null,
+        createdAt: new Date(fiscal.createdAt),
+        updatedAt: new Date(fiscal.updatedAt),
+      }));
+      if (invoiceFiscals.length)
+        await tx.invoiceFiscal.createMany({ data: invoiceFiscals });
+      summary.invoiceFiscals = invoiceFiscals.length;
+
+      const priceHistories = (data.tables.priceHistories ?? []).map((history: any) => ({
+        id: history.id,
+        productId: history.productId,
+        oldPrice: history.oldPrice,
+        newPrice: history.newPrice,
+        priceType: history.priceType,
+        changedById: history.changedById,
+        changedAt: new Date(history.changedAt),
+      }));
+      if (priceHistories.length)
+        await tx.priceHistory.createMany({ data: priceHistories });
+      summary.priceHistories = priceHistories.length;
+
+      const goodsReceipts = (data.tables.goodsReceipts ?? []).map((receipt: any) => ({
+        id: receipt.id,
+        purchaseOrderId: receipt.purchaseOrderId ?? null,
+        tenantId,
+        receiptDate: new Date(receipt.receiptDate),
+        notes: receipt.notes ?? null,
+        receivedById: receipt.receivedById,
+        createdAt: new Date(receipt.createdAt),
+      }));
+      if (goodsReceipts.length)
+        await tx.goodsReceipt.createMany({ data: goodsReceipts });
+      summary.goodsReceipts = goodsReceipts.length;
+
+      const goodsReceiptLines = (data.tables.goodsReceiptLines ?? []).map((line: any) => ({
+        id: line.id,
+        goodsReceiptId: line.goodsReceiptId,
+        productId: line.productId,
+        quantity: line.quantity,
+        unitCost: line.unitCost,
+        expiryDate: line.expiryDate ? new Date(line.expiryDate) : null,
+        batchNo: line.batchNo ?? null,
+      }));
+      if (goodsReceiptLines.length)
+        await tx.goodsReceiptLine.createMany({ data: goodsReceiptLines });
+      summary.goodsReceiptLines = goodsReceiptLines.length;
+
+      const supplierInvoices = (data.tables.supplierInvoices ?? []).map((invoice: any) => ({
+        id: invoice.id,
+        supplierId: invoice.supplierId,
+        goodsReceiptId: invoice.goodsReceiptId ?? null,
+        invoiceNumber: invoice.invoiceNumber,
+        invoiceDate: new Date(invoice.invoiceDate),
+        totalAmount: invoice.totalAmount,
+        paidAmount: invoice.paidAmount ?? 0,
+        balance: invoice.balance,
+        createdAt: new Date(invoice.createdAt),
+        updatedAt: new Date(invoice.updatedAt),
+      }));
+      if (supplierInvoices.length)
+        await tx.supplierInvoice.createMany({ data: supplierInvoices });
+      summary.supplierInvoices = supplierInvoices.length;
+
+      const stockMovements = (data.tables.stockMovements ?? []).map((movement: any) => ({
+        id: movement.id,
+        productId: movement.productId,
+        fromLocationId: movement.fromLocationId ?? null,
+        toLocationId: movement.toLocationId ?? null,
+        quantity: movement.quantity,
+        movementType: movement.movementType,
+        referenceId: movement.referenceId ?? null,
+        referenceType: movement.referenceType ?? null,
+        notes: movement.notes ?? null,
+        createdById: movement.createdById,
+        createdAt: new Date(movement.createdAt),
+      }));
+      if (stockMovements.length)
+        await tx.stockMovement.createMany({ data: stockMovements });
+      summary.stockMovements = stockMovements.length;
+
       summary.sales = sales.length;
     });
 
