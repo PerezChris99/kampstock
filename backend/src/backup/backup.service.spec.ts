@@ -6,6 +6,12 @@ import { AuditService } from '../audit/audit.service';
 // ─── minimal mock tx for $transaction ───────────────────────────────────────
 const makeTx = () => ({
   payment: { deleteMany: jest.fn().mockResolvedValue({}) },
+  invoiceFiscal: { deleteMany: jest.fn().mockResolvedValue({}), createMany: jest.fn().mockResolvedValue({}) },
+  stockMovement: { deleteMany: jest.fn().mockResolvedValue({}), createMany: jest.fn().mockResolvedValue({}) },
+  priceHistory: { deleteMany: jest.fn().mockResolvedValue({}), createMany: jest.fn().mockResolvedValue({}) },
+  supplierInvoice: { deleteMany: jest.fn().mockResolvedValue({}), createMany: jest.fn().mockResolvedValue({}) },
+  goodsReceiptLine: { deleteMany: jest.fn().mockResolvedValue({}), createMany: jest.fn().mockResolvedValue({}) },
+  goodsReceipt: { deleteMany: jest.fn().mockResolvedValue({}), createMany: jest.fn().mockResolvedValue({}) },
   saleLine: { deleteMany: jest.fn().mockResolvedValue({}) },
   sale: { deleteMany: jest.fn().mockResolvedValue({}) },
   expense: { deleteMany: jest.fn().mockResolvedValue({}) },
@@ -38,6 +44,12 @@ const mockPrisma = {
   sale: { findMany: jest.fn().mockResolvedValue([]), count: jest.fn().mockResolvedValue(0) },
   saleLine: { findMany: jest.fn().mockResolvedValue([]) },
   payment: { findMany: jest.fn().mockResolvedValue([]) },
+  priceHistory: { findMany: jest.fn().mockResolvedValue([]) },
+  stockMovement: { findMany: jest.fn().mockResolvedValue([]) },
+  goodsReceipt: { findMany: jest.fn().mockResolvedValue([]) },
+  goodsReceiptLine: { findMany: jest.fn().mockResolvedValue([]) },
+  supplierInvoice: { findMany: jest.fn().mockResolvedValue([]) },
+  invoiceFiscal: { findMany: jest.fn().mockResolvedValue([]) },
   $transaction: jest.fn(),
 };
 
