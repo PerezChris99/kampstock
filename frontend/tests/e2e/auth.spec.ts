@@ -41,7 +41,7 @@ test.describe('Authentication flow', () => {
   test('shows error message with invalid credentials', async ({ page }) => {
     await page.goto('/login');
     await page.getByLabel(/username/i).fill('nonexistent-user');
-    await page.getByLabel(/password/i).fill('wrongpassword');
+    await page.getByRole('textbox', { name: 'Password' }).fill('wrongpassword');
     await page.getByRole('button', { name: /sign in|log in/i }).click();
     // Expect an error notification — exact text varies by implementation
     await expect(
