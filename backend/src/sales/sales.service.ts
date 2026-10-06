@@ -42,8 +42,8 @@ export class SalesService {
       const lineData: any[] = [];
 
       for (const line of dto.lines) {
-        const product = await tx.product.findUnique({
-          where: { id: line.productId },
+        const product = await tx.product.findFirst({
+          where: { id: line.productId, tenantId },
           include: { units: true },
         });
         if (!product || product.tenantId !== tenantId) throw new NotFoundException(`Product ${line.productId} not found`);
@@ -59,7 +59,7 @@ export class SalesService {
         }
 
         const stockItem = await tx.stockItem.findFirst({
-          where: { productId: line.productId, locationId },
+          where: { productId: line.productId, locationId, location: { tenantId } },
         });
         const onHand = stockItem ? Number(stockItem.quantityOnHand) : 0;
         const allowNegativeStock = dto.allowNegativeStock === true && ['Admin', 'Manager'].includes(role);
@@ -227,6 +227,26 @@ export class SalesService {
       const sale = await tx.sale.findFirst({ where: { id: saleId, tenantId } });
       if (!sale) throw new NotFoundException('Sale not found');
       if (Number(sale.balance) <= 0) throw new BadRequestException('Sale is already fully paid');
+      if (dto.amount > Number(sale.balance)) {
+        throw new BadRequestException('Payment cannot exceed the outstanding balance');
+      }
+
+      // Claim the payment amount atomically. Concurrent payment requests can no
+      // longer both read the same balance and overpay the sale.
+      const claimed = await tx.sale.updateMany({
+        where: {
+          id: saleId,
+          tenantId,
+          balance: { gte: dto.amount },
+        },
+        data: {
+          paidAmount: { increment: dto.amount },
+          balance: { decrement: dto.amount },
+        },
+      });
+      if (claimed.count !== 1) {
+        throw new BadRequestException('Payment could not be applied because the sale balance changed. Please retry.');
+      }
 
       const payment = await tx.payment.create({
         data: {
@@ -238,19 +258,14 @@ export class SalesService {
         },
       });
 
-      const newPaid = Number(sale.paidAmount) + dto.amount;
-      const newBalance = Math.max(0, Number(sale.grandTotal) - newPaid);
-
-      await tx.sale.update({
-        where: { id: saleId },
-        data: { paidAmount: newPaid, balance: newBalance },
-      });
-
       if (sale.customerId) {
-        await tx.customer.update({
-          where: { id: sale.customerId },
+        const customerUpdated = await tx.customer.updateMany({
+          where: { id: sale.customerId, tenantId },
           data: { balance: { decrement: dto.amount } },
         });
+        if (customerUpdated.count !== 1) {
+          throw new BadRequestException('Customer balance could not be updated');
+        }
       }
 
       return payment;
@@ -259,7 +274,7 @@ export class SalesService {
 
   async returnSale(saleId: number, actorId: number, tenantId: number) {
     return this.prisma.$transaction(async (tx) => {
-      const sale = await tx.sale.findUnique({
+      const sale = await tx.sale.findFirst({
         where: { id: saleId, tenantId },
         include: { lines: true },
       });
@@ -271,7 +286,7 @@ export class SalesService {
       // Reverse stock movements
       for (const line of sale.lines) {
         const stockItem = await tx.stockItem.findFirst({
-          where: { productId: line.productId, locationId: 1 },
+          where: { productId: line.productId, location: { tenantId } },
         });
         if (stockItem) {
           await tx.stockItem.update({
