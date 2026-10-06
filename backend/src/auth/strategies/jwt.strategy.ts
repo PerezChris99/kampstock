@@ -37,12 +37,20 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       jwtFromRequest: cookieOrBearer,
       ignoreExpiration: false,
       secretOrKey: secret,
-      passReqToCallback: false,
+      passReqToCallback: true,
     });
   }
 
-  async validate(payload: any) {
+  async validate(req: Request, payload: any) {
     if (!payload?.sub) throw new UnauthorizedException('Invalid token payload');
+
+    // A browser/client-supplied tenant header or tenant subdomain is only a
+    // routing hint. Never allow it to override the tenant embedded in the
+    // authenticated token. A mismatch is an explicit cross-tenant attempt.
+    const resolvedTenantId = req.subdomainTenantId;
+    if (resolvedTenantId && Number(payload.tenantId ?? 1) !== resolvedTenantId) {
+      throw new UnauthorizedException('Tenant context does not match authenticated account');
+    }
 
     const now = Date.now();
     const cacheKey = 'auth:user:' + payload.sub;
