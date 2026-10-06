@@ -139,8 +139,11 @@ export class BillingService {
     }
 
     if (normalized === 'failed' || normalized === 'invalid') {
-      await this.prisma.subscription.update({ where: { id: sub.id }, data: { status: 'FAILED' } });
-      return { status: 'failed' };
+      const failed = await this.prisma.subscription.updateMany({
+        where: { id: sub.id, status: 'PENDING' },
+        data: { status: 'FAILED' },
+      });
+      return { status: failed.count === 1 ? 'failed' : 'already_processed' };
     }
 
     return { status: 'pending' };
