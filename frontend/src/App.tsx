@@ -70,6 +70,7 @@ export default function App() {
             <Route path="/faq" element={<FAQPage />} />
             <Route path="/security" element={<SecurityPage />} />
             <Route path="/contact" element={<ContactPage />} />
+            <Route path="/billing" element={<LegalPage />} />
             <Route path="/contact" element={<ContactPage />} />
             <Route path="/privacy" element={<LegalPage />} />
             <Route path="/terms" element={<LegalPage />} />
