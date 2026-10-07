@@ -61,7 +61,7 @@ function Footer() {
         </div>
         <div>
           <p className="mb-4 text-xs font-bold uppercase tracking-[0.18em] text-lime-400">Legal</p>
-          <div className="space-y-3 text-sm"><Link to="/privacy" className="block hover:text-white">Privacy</Link><Link to="/terms" className="block hover:text-white">Terms of use</Link><Link to="/acceptable-use" className="block hover:text-white">Acceptable use</Link><Link to="/security" className="block hover:text-white">Security</Link><Link to="/billing" className="block hover:text-white">Billing & subscriptions</Link></div>
+          <div className="space-y-3 text-sm"><Link to="/privacy" className="block hover:text-white">Privacy</Link><Link to="/terms" className="block hover:text-white">Terms of use</Link><Link to="/acceptable-use" className="block hover:text-white">Acceptable use</Link><Link to="/security" className="block hover:text-white">Security</Link><Link to="/billing" className="block hover:text-white">Billing & subscriptions</Link><Link to="/cookies" className="block hover:text-white">Cookie policy</Link><Link to="/intellectual-property" className="block hover:text-white">Intellectual property</Link></div>
         </div>
       </div>
       <div className="border-t border-white/10">
