@@ -53,7 +53,7 @@ function Footer() {
         </div>
         <div>
           <p className="mb-4 text-xs font-bold uppercase tracking-[0.18em] text-lime-400">Product</p>
-          <div className="space-y-3 text-sm"><a href="#features" className="block hover:text-white">Capabilities</a><Link to="/how-it-works" className="block hover:text-white">How it works</Link><Link to="/about" className="block hover:text-white">About KampStock</Link><Link to="/faq" className="block hover:text-white">FAQ</Link><Link to="/register" className="block hover:text-white">Create a business</Link></div>
+          <div className="space-y-3 text-sm"><a href="#features" className="block hover:text-white">Capabilities</a><Link to="/how-it-works" className="block hover:text-white">How it works</Link><Link to="/about" className="block hover:text-white">About KampStock</Link><Link to="/faq" className="block hover:text-white">FAQ</Link><Link to="/contact" className="block hover:text-white">Contact</Link><Link to="/register" className="block hover:text-white">Create a business</Link></div>
         </div>
         <div>
           <p className="mb-4 text-xs font-bold uppercase tracking-[0.18em] text-lime-400">Company</p>

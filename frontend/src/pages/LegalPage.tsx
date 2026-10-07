@@ -26,6 +26,17 @@ const documents = {
       ['Intellectual property', 'KampStock software, branding, documentation and original materials remain protected intellectual property. Reproduction, redistribution, resale, deployment for third parties, modification or commercial reuse requires prior written permission unless expressly authorized in writing.'],
     ],
   },
+  billing: {
+    title: 'Billing & subscription',
+    intro: 'KampStock subscription access is tied to the plan and commercial terms applicable to the business. Payment processing may involve third-party providers and is subject to their service availability and terms.',
+    sections: [
+      ['Subscription status', 'Access to subscription features depends on the status recorded for the business. Expiry, suspension, renewal and reactivation are controlled by the service configuration and applicable plan terms.'],
+      ['Payment processing', 'KampStock includes Pesapal billing integration. Production payment processing depends on the merchant account, credentials, callback/IPN configuration and successful end-to-end provider verification.'],
+      ['Payment records', 'Subscription and payment status records are maintained to support entitlement decisions, reconciliation, support and audit requirements.'],
+      ['Third-party services', 'Payment providers may impose their own fees, processing rules, availability limits and terms. KampStock does not represent third-party services as being under its direct operational control.'],
+      ['Commercial terms', 'Pricing, billing frequency, trial periods, grace periods, refunds and cancellation terms are determined by the commercial agreement presented to or accepted by the business.'],
+    ],
+  },
   acceptable: {
     title: 'Acceptable use',
     intro: 'KampStock is intended to support legitimate commerce. The following rules protect businesses, their customers and the integrity of the service.',
