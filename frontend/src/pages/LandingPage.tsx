@@ -67,7 +67,7 @@ function Footer() {
       <div className="border-t border-white/10">
         <div className="mx-auto flex max-w-7xl flex-col gap-2 px-5 py-6 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between sm:px-8 lg:px-10">
           <span>© {new Date().getFullYear()} KampStock. All rights reserved.</span>
-          <span>Created by Perez Chris. Proprietary software; use requires prior written permission.</span>
+          <span>Created by Perez Chris. Copyright © 2024–2026 KampStock. All rights reserved. Proprietary software; use requires prior written permission.</span>
         </div>
       </div>
     </footer>
@@ -78,6 +78,7 @@ export default function LandingPage() {
   const [active, setActive] = useState(0);
   const [paused, setPaused] = useState(false);
   const [tourActive, setTourActive] = useState(0);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   useEffect(() => {
     if (paused) return undefined;
     const timer = window.setInterval(() => setActive((current) => (current + 1) % slides.length), 6500);
@@ -104,9 +105,31 @@ export default function LandingPage() {
           <div className="flex items-center gap-2">
             <Link to="/login" className="hidden rounded-full px-4 py-2 text-sm font-semibold text-white hover:bg-white/10 sm:block">Sign in</Link>
             <Link to="/register" className="rounded-full bg-white px-4 py-2.5 text-sm font-bold text-[#172014] shadow-lg hover:bg-lime-100">Start your business <ArrowRight className="ml-1 inline" size={15} /></Link>
+            <button type="button" aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'} aria-expanded={mobileMenuOpen} onClick={() => setMobileMenuOpen((open) => !open)} className="rounded-full border border-white/20 bg-black/20 p-2.5 text-white backdrop-blur lg:hidden">
+              <span className="sr-only">{mobileMenuOpen ? 'Close menu' : 'Open menu'}</span>
+              <span aria-hidden="true" className="block h-4 w-5 border-y-2 border-white relative"><span className="absolute inset-x-0 top-1/2 border-t-2 border-white" /></span>
+            </button>
           </div>
         </div>
       </header>
+        {mobileMenuOpen && (
+          <div className="border-t border-white/10 bg-[#10140d]/95 px-5 py-4 backdrop-blur lg:hidden">
+            <nav aria-label="Mobile navigation" className="mx-auto grid max-w-7xl gap-1 text-sm font-semibold text-white/80">
+              {[
+                ['Product', '#features'],
+                ['How it works', '/how-it-works'],
+                ['About', '/about'],
+                ['Security', '/security'],
+                ['FAQ', '/faq'],
+              ].map(([label, href]) => href.startsWith('#') ? (
+                <a key={label} href={href} onClick={() => setMobileMenuOpen(false)} className="rounded-xl px-3 py-3 hover:bg-white/10 hover:text-white">{label}</a>
+              ) : (
+                <Link key={label} to={href} onClick={() => setMobileMenuOpen(false)} className="rounded-xl px-3 py-3 hover:bg-white/10 hover:text-white">{label}</Link>
+              ))}
+              <Link to="/login" onClick={() => setMobileMenuOpen(false)} className="mt-2 rounded-xl border border-white/15 px-3 py-3 text-white">Sign in</Link>
+            </nav>
+          </div>
+        )}
 
       <main>
         <section className="relative min-h-[760px] overflow-hidden bg-[#172014] text-white sm:min-h-[820px]">
