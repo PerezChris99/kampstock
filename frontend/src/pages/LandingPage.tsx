@@ -77,13 +77,14 @@ function Footer() {
 export default function LandingPage() {
   const [active, setActive] = useState(0);
   const [paused, setPaused] = useState(false);
+  const [reducedMotion] = useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   const [tourActive, setTourActive] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   useEffect(() => {
-    if (paused) return undefined;
+    if (paused || reducedMotion) return undefined;
     const timer = window.setInterval(() => setActive((current) => (current + 1) % slides.length), 6500);
     return () => window.clearInterval(timer);
-  }, [paused]);
+  }, [paused, reducedMotion]);
 
   const slide = slides[active];
 
