@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowRight, BarChart3, Boxes, ChevronLeft, ChevronRight,
-  CircleDollarSign, CloudOff, ShieldCheck, Store, Users,
+  CircleDollarSign, CloudOff, PackageCheck, Pause, Play, ShieldCheck, ShoppingCart, Truck, Store, Users,
 } from 'lucide-react';
 
 const slides = [
@@ -61,13 +61,13 @@ function Footer() {
         </div>
         <div>
           <p className="mb-4 text-xs font-bold uppercase tracking-[0.18em] text-lime-400">Legal</p>
-          <div className="space-y-3 text-sm"><Link to="/privacy" className="block hover:text-white">Privacy</Link><Link to="/terms" className="block hover:text-white">Terms of use</Link><Link to="/acceptable-use" className="block hover:text-white">Acceptable use</Link><Link to="/security" className="block hover:text-white">Security</Link></div>
+          <div className="space-y-3 text-sm"><Link to="/privacy" className="block hover:text-white">Privacy</Link><Link to="/terms" className="block hover:text-white">Terms of use</Link><Link to="/acceptable-use" className="block hover:text-white">Acceptable use</Link><Link to="/security" className="block hover:text-white">Security</Link><Link to="/billing" className="block hover:text-white">Billing & subscriptions</Link><Link to="/cookies" className="block hover:text-white">Cookie policy</Link><Link to="/intellectual-property" className="block hover:text-white">Intellectual property</Link></div>
         </div>
       </div>
       <div className="border-t border-white/10">
         <div className="mx-auto flex max-w-7xl flex-col gap-2 px-5 py-6 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between sm:px-8 lg:px-10">
           <span>© {new Date().getFullYear()} KampStock. All rights reserved.</span>
-          <span>Use of the platform is subject to permission and the applicable terms.</span>
+          <span>Created by Perez Chris. Proprietary software; use requires prior written permission.</span>
         </div>
       </div>
     </footer>
@@ -76,10 +76,13 @@ function Footer() {
 
 export default function LandingPage() {
   const [active, setActive] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const [tourActive, setTourActive] = useState(0);
   useEffect(() => {
+    if (paused) return undefined;
     const timer = window.setInterval(() => setActive((current) => (current + 1) % slides.length), 6500);
     return () => window.clearInterval(timer);
-  }, []);
+  }, [paused]);
 
   const slide = slides[active];
 
@@ -91,10 +94,12 @@ export default function LandingPage() {
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-lime-400 text-slate-950 shadow-lg"><Store size={19} /></div>
             <span className="text-xl font-extrabold tracking-tight">KampStock</span>
           </Link>
-          <nav className="hidden items-center gap-8 text-sm font-semibold text-white/80 md:flex">
-            <a href="#features" className="hover:text-white">Capabilities</a>
-            <a href="#how-it-works" className="hover:text-white">How it works</a>
+          <nav aria-label="Main navigation" className="hidden items-center gap-7 text-sm font-semibold text-white/85 lg:flex">
+            <a href="#features" className="hover:text-white">Product</a>
+            <Link to="/how-it-works" className="hover:text-white">How it works</Link>
             <Link to="/about" className="hover:text-white">About</Link>
+            <Link to="/security" className="hover:text-white">Security</Link>
+            <Link to="/faq" className="hover:text-white">FAQ</Link>
           </nav>
           <div className="flex items-center gap-2">
             <Link to="/login" className="hidden rounded-full px-4 py-2 text-sm font-semibold text-white hover:bg-white/10 sm:block">Sign in</Link>
@@ -117,14 +122,15 @@ export default function LandingPage() {
               <p className="mt-7 max-w-2xl text-base leading-7 text-white/75 sm:text-lg">{slide.text}</p>
               <div className="mt-9 flex flex-wrap gap-3">
                 <Link to="/register" className="rounded-full bg-lime-400 px-6 py-3.5 text-sm font-extrabold text-slate-950 shadow-xl hover:bg-lime-300">Set up your business <ArrowRight className="ml-1 inline" size={16} /></Link>
-                <Link to="/about" className="rounded-full border border-white/25 bg-white/10 px-6 py-3.5 text-sm font-bold text-white backdrop-blur hover:bg-white/15">See how it works</Link>
+                <Link to="/how-it-works" className="rounded-full border border-white/25 bg-white/10 px-6 py-3.5 text-sm font-bold text-white backdrop-blur hover:bg-white/15">See how it works</Link>
               </div>
             </div>
           </div>
-          <div className="absolute bottom-12 right-5 flex items-center gap-2 sm:right-10">
-            <button aria-label="Previous slide" onClick={() => setActive((active - 1 + slides.length) % slides.length)} className="rounded-full border border-white/25 bg-black/20 p-3 text-white backdrop-blur hover:bg-white/15"><ChevronLeft size={18} /></button>
-            {slides.map((_, index) => <button key={index} aria-label={`Go to slide ${index + 1}`} onClick={() => setActive(index)} className={`h-1.5 rounded-full transition-all ${index === active ? 'w-10 bg-lime-400' : 'w-5 bg-white/40'}`} />)}
-            <button aria-label="Next slide" onClick={() => setActive((active + 1) % slides.length)} className="rounded-full border border-white/25 bg-black/20 p-3 text-white backdrop-blur hover:bg-white/15"><ChevronRight size={18} /></button>
+          <div className="absolute bottom-12 right-5 flex items-center gap-2 sm:right-10" aria-label="Hero slideshow controls">
+            <button type="button" aria-label="Previous slide" onClick={() => setActive((active - 1 + slides.length) % slides.length)} className="rounded-full border border-white/25 bg-black/20 p-3 text-white backdrop-blur hover:bg-white/15"><ChevronLeft size={18} /></button>
+            {slides.map((_, index) => <button type="button" key={index} aria-label={`Go to slide ${index + 1}`} aria-pressed={index === active} onClick={() => setActive(index)} className={`h-1.5 rounded-full transition-all ${index === active ? 'w-10 bg-lime-400' : 'w-5 bg-white/40'}`} />)}
+            <button type="button" aria-label="Next slide" onClick={() => setActive((active + 1) % slides.length)} className="rounded-full border border-white/25 bg-black/20 p-3 text-white backdrop-blur hover:bg-white/15"><ChevronRight size={18} /></button>
+            <button type="button" aria-label={paused ? 'Resume slideshow' : 'Pause slideshow'} aria-pressed={paused} onClick={() => setPaused(!paused)} className="rounded-full border border-white/25 bg-black/20 p-3 text-white backdrop-blur hover:bg-white/15">{paused ? <Play size={16} /> : <Pause size={16} />}</button>
           </div>
         </section>
 
@@ -159,6 +165,88 @@ export default function LandingPage() {
               ].map(([n,t,d]) => <div key={n} className="border-t border-white/15 pt-5"><span className="text-sm font-black text-lime-400">{n}</span><h3 className="mt-5 text-lg font-extrabold">{t}</h3><p className="mt-2 text-sm leading-6 text-white/55">{d}</p></div>)}
             </div>
             <Link to="/how-it-works" className="mt-10 inline-flex items-center rounded-full bg-white px-5 py-3 text-sm font-bold text-[#172014]">Read the full onboarding guide <ArrowRight className="ml-2" size={16} /></Link>
+          </div>
+        </section>
+
+        <section className="mx-auto max-w-7xl px-5 py-20 sm:px-8 lg:px-10">
+          <div className="grid gap-10 lg:grid-cols-[.8fr_1.2fr] lg:items-center">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-orange-600">From stockroom to sale</p>
+              <h2 className="mt-3 text-4xl font-black tracking-tight sm:text-5xl">Follow the work, not a pile of disconnected records.</h2>
+              <p className="mt-5 leading-7 text-slate-600">Explore the main parts of KampStock and how each supports a real retail or wholesale workflow. This product overview is illustrative, not a live account or customer-data demo.</p>
+              <div className="mt-7 grid grid-cols-2 gap-2">
+                {[
+                  [Store, 'Business overview', 'One operational picture'],
+                  [Boxes, 'Products & stock', 'Know what remains'],
+                  [ShoppingCart, 'Point of sale', 'Record the sale'],
+                  [Truck, 'Purchasing', 'Follow deliveries'],
+                  [Users, 'Customers', 'Keep balances clear'],
+                  [BarChart3, 'Reports', 'Understand activity'],
+                ].map(([Icon, title, description], index) => {
+                  const TourIcon = Icon as typeof Store;
+                  return <button key={String(title)} type="button" aria-pressed={tourActive === index} onClick={() => setTourActive(index)} className={`rounded-xl border p-3 text-left transition-colors ${tourActive === index ? 'border-[#26351f] bg-[#26351f] text-white' : 'border-[#d8d1c0] bg-white hover:bg-[#ebe7da]'}`}><TourIcon size={19}/><span className="mt-2 block text-sm font-extrabold">{String(title)}</span><span className={`mt-1 block text-xs ${tourActive === index ? 'text-white/65' : 'text-slate-500'}`}>{String(description)}</span></button>;
+                })}
+              </div>
+            </div>
+            <div className="overflow-hidden rounded-[1.75rem] border border-[#d8d1c0] bg-white shadow-[0_24px_70px_rgba(32,39,23,.12)]">
+              <div className="flex items-center justify-between border-b border-[#e8e4da] bg-[#f8f7f1] px-5 py-4"><div className="flex gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-[#c86e4b]"/><span className="h-2.5 w-2.5 rounded-full bg-[#d8b55c]"/><span className="h-2.5 w-2.5 rounded-full bg-[#71915b]"/></div><span className="text-xs font-semibold text-slate-500">KampStock · Product overview</span></div>
+              <div className="p-6 sm:p-9">
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-orange-600">Product area 0{tourActive + 1}</p>
+                <h3 className="mt-3 text-3xl font-black tracking-tight">{['Business overview','Products & stock','Point of sale','Purchasing','Customers','Reports'][tourActive]}</h3>
+                <p className="mt-4 max-w-lg leading-7 text-slate-600">{[
+                  'Bring everyday business activity into one place so owners and managers can see the moving parts.',
+                  'Manage the catalogue, quantities and movements that explain where stock came from and where it went.',
+                  'Record transactions at the counter while keeping the sale connected to the stock record.',
+                  'Follow purchase orders, receiving and supplier records through the buying process.',
+                  'Keep customer and supplier relationships close to the commercial history behind the numbers.',
+                  'Review recorded sales, expenses and stock information to make better-informed decisions.',
+                ][tourActive]}</p>
+                <div className="mt-7 grid grid-cols-2 gap-3"><div className="rounded-xl border border-[#e8e4da] p-4"><span className="text-xs text-slate-500">Designed for</span><p className="mt-2 font-extrabold">Daily operations</p></div><div className="rounded-xl border border-[#e8e4da] p-4"><span className="text-xs text-slate-500">Works alongside</span><p className="mt-2 font-extrabold">Your team</p></div></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="border-y border-[#ddd7c8] bg-[#ebe7da]">
+          <div className="mx-auto grid max-w-7xl gap-10 px-5 py-20 sm:px-8 lg:grid-cols-2 lg:items-center lg:px-10">
+            <div><p className="text-xs font-black uppercase tracking-[0.2em] text-orange-600">Built with Ugandan trade in mind</p><h2 className="mt-3 text-4xl font-black tracking-tight sm:text-5xl">Made for the way local businesses move goods.</h2><p className="mt-5 leading-7 text-slate-600">Retail and wholesale depend on stock accuracy, customer relationships, supplier deliveries and practical ways to keep trading through connectivity interruptions.</p></div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {[
+                ['Retail & wholesale', 'Workflows for businesses that buy, hold and sell physical goods.'],
+                ['Customer credit', 'Keep credit-related activity connected to customer and sales records.'],
+                ['Stock locations', 'Track stock within the locations configured for your business.'],
+                ['Connectivity awareness', 'An offline POS workflow supports recovery when the network interrupts work.'],
+              ].map(([title, text]) => <article key={title} className="rounded-2xl border border-[#d7d0bf] bg-[#f5f2e9] p-5"><h3 className="font-extrabold">{title}</h3><p className="mt-2 text-sm leading-6 text-slate-600">{text}</p></article>)}
+              <p className="text-xs leading-5 text-slate-500 sm:col-span-2">EFRIS-related code is not proof of URA registration, certification or approval. Any fiscal integration must be verified for the business and actual provider configuration.</p>
+            </div>
+          </div>
+        </section>
+
+        <section className="mx-auto max-w-7xl px-5 py-20 sm:px-8 lg:px-10">
+          <div className="grid gap-10 lg:grid-cols-[.8fr_1.2fr] lg:items-center">
+            <div><p className="text-xs font-black uppercase tracking-[0.2em] text-orange-600">Business-critical by design</p><h2 className="mt-3 text-4xl font-black tracking-tight sm:text-5xl">Dependable records matter as much as a fast counter.</h2><p className="mt-5 leading-7 text-slate-600">KampStock is engineered with tenant boundaries, controlled access and transaction integrity in mind. Production security also depends on deployment configuration, provider setup and operating practice.</p><Link to="/security" className="mt-6 inline-flex items-center font-bold text-[#344b26] hover:text-orange-600">Read about security & reliability <ArrowRight className="ml-2" size={17}/></Link></div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {[
+                [ShieldCheck, 'Access boundaries', 'Authentication and role-based access help separate business responsibilities.'],
+                [PackageCheck, 'Transaction integrity', 'Core workflows are designed to keep operational records connected.'],
+                [CloudOff, 'Recovery-minded POS', 'Offline workflow and recovery logic support continuity through interruptions.'],
+                [BarChart3, 'Tested delivery process', 'Automated CI and monitoring integrations support ongoing engineering quality.'],
+              ].map(([Icon, title, text]) => { const FeatureIcon = Icon as typeof Store; return <article key={String(title)} className="rounded-2xl border border-[#ddd7c8] bg-white p-6"><FeatureIcon className="text-[#536c2c]" size={23}/><h3 className="mt-4 font-extrabold">{String(title)}</h3><p className="mt-2 text-sm leading-6 text-slate-600">{String(text)}</p></article>; })}
+            </div>
+          </div>
+        </section>
+
+        <section className="border-y border-[#ddd7c8] bg-white">
+          <div className="mx-auto max-w-5xl px-5 py-20 sm:px-8">
+            <div className="max-w-2xl"><p className="text-xs font-black uppercase tracking-[0.2em] text-orange-600">Questions, answered plainly</p><h2 className="mt-3 text-4xl font-black tracking-tight sm:text-5xl">Know what you are signing up for.</h2></div>
+            <div className="mt-10 divide-y divide-[#e8e4da] border-y border-[#e8e4da]">
+              {[
+                ['Who is KampStock for?', 'KampStock is designed for retail shops, wholesalers and stock-based businesses that need sales, inventory, purchasing and business records to work together.'],
+                ['Can I use the POS when connectivity drops?', 'KampStock includes an offline POS workflow. Validate it with your team and devices before relying on it for critical trading.'],
+                ['Does KampStock support EFRIS?', 'The codebase includes EFRIS-related structures, but that is not proof of URA registration, certification or approval. Actual readiness requires external verification.'],
+              ].map(([question, answer]) => <details key={question} className="group py-5"><summary className="cursor-pointer list-none pr-8 text-base font-extrabold sm:text-lg">{question}<span aria-hidden="true" className="float-right text-orange-600 transition-transform group-open:rotate-45">+</span></summary><p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600">{answer}</p></details>)}
+            </div>
+            <Link to="/faq" className="mt-6 inline-flex items-center text-sm font-bold text-[#344b26] hover:text-orange-600">Visit all FAQs <ArrowRight className="ml-2" size={16}/></Link>
           </div>
         </section>
 
