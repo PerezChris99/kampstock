@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>/</loc></url>
-  <url><loc>/about</loc></url>
-  <url><loc>/how-it-works</loc></url>
-  <url><loc>/faq</loc></url>
-  <url><loc>/security</loc></url>
-  <url><loc>/contact</loc></url>
-  <url><loc>/privacy</loc></url>
-  <url><loc>/terms</loc></url>
-  <url><loc>/acceptable-use</loc></url>
-  <url><loc>/billing</loc></url>
+  <url><loc>https://kampstock-pzmh.vercel.app/</loc></url>
+  <url><loc>https://kampstock-pzmh.vercel.app/about</loc></url>
+  <url><loc>https://kampstock-pzmh.vercel.app/how-it-works</loc></url>
+  <url><loc>https://kampstock-pzmh.vercel.app/faq</loc></url>
+  <url><loc>https://kampstock-pzmh.vercel.app/security</loc></url>
+  <url><loc>https://kampstock-pzmh.vercel.app/contact</loc></url>
+  <url><loc>https://kampstock-pzmh.vercel.app/privacy</loc></url>
+  <url><loc>https://kampstock-pzmh.vercel.app/terms</loc></url>
+  <url><loc>https://kampstock-pzmh.vercel.app/acceptable-use</loc></url>
+  <url><loc>https://kampstock-pzmh.vercel.app/billing</loc></url>
 </urlset>
