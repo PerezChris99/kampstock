@@ -11,7 +11,6 @@ import HowItWorksPage from './pages/HowItWorksPage';
 import FAQPage from './pages/FAQPage';
 import SecurityPage from './pages/SecurityPage';
 import ContactPage from './pages/ContactPage';
-import ContactPage from './pages/ContactPage';
 import LandingPage from './pages/LandingPage';
 import LegalPage from './pages/LegalPage';
 import DashboardPage from './pages/DashboardPage';
