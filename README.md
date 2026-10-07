@@ -325,8 +325,8 @@ Migration changes must be tested against disposable PostgreSQL, reviewed for des
 
 ### Remaining external/operational gates
 
-- [ ] Authoritative production Prisma migration baseline
-- [ ] Production migration deployment and rollback exercise
+- [x] Authoritative production Prisma migration baseline
+- [ ] Production migration rollback exercise
 - [ ] Production backup and restore exercise
 - [ ] Production payment credentials/callbacks verified
 - [ ] EFRIS registration/configuration/certification completed where applicable
