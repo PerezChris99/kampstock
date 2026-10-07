@@ -1,4 +1,4 @@
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { ArrowLeft, Store } from 'lucide-react';
 
 const documents = {
@@ -51,8 +51,14 @@ const documents = {
 } as const;
 
 export default function LegalPage() {
-  const { type = 'privacy' } = useParams();
-  const document = documents[type as keyof typeof documents] ?? documents.privacy;
+  const location = useLocation();
+  const typeByPath: Record<string, keyof typeof documents> = {
+    '/privacy': 'privacy',
+    '/terms': 'terms',
+    '/acceptable-use': 'acceptable',
+    '/billing': 'billing',
+  };
+  const document = documents[typeByPath[location.pathname] ?? 'privacy'];
   return <div className="min-h-screen bg-[#f5f2e9] text-[#172014]">
     <header className="border-b border-[#ddd7c8] bg-[#172014] text-white">
       <div className="mx-auto flex max-w-4xl items-center justify-between px-5 py-5 sm:px-8">
