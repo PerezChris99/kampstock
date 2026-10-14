@@ -1,4 +1,4 @@
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { ArrowLeft, Store } from 'lucide-react';
 
 const documents = {
@@ -37,6 +37,28 @@ const documents = {
       ['Commercial terms', 'Pricing, billing frequency, trial periods, grace periods, refunds and cancellation terms are determined by the commercial agreement presented to or accepted by the business.'],
     ],
   },
+  cookies: {
+    title: 'Cookie policy',
+    intro: 'KampStock may use browser storage and similar technologies required to keep the application secure, remember session-related state and support product functionality. The exact technologies in use depend on the deployed application and enabled integrations.',
+    sections: [
+      ['Essential storage', 'The application may use storage needed for authentication, security, offline point-of-sale workflows and reliable operation. Disabling browser storage may affect some product functions.'],
+      ['Offline POS data', 'Offline point-of-sale workflows may store operational data locally in the browser so pending work can be recovered and synchronized. Use trusted devices, protect device access and sign out when finished.'],
+      ['Analytics and third parties', 'This policy does not claim that optional advertising or analytics cookies are active. Any future non-essential tracking should be disclosed and configured in accordance with applicable requirements before it is enabled.'],
+      ['Managing browser data', 'You can manage or clear site data through your browser settings. Clearing local data may remove locally stored offline information that has not synchronized, so confirm pending work is synchronized before doing so.'],
+      ['Questions', 'For questions about storage or data handling, use the support channel provided by the service operator.'],
+    ],
+  },
+  intellectualProperty: {
+    title: 'Intellectual property',
+    intro: 'KampStock is proprietary software. Access to the platform does not transfer ownership of its source code, design, documentation, brand assets or other protected materials.',
+    sections: [
+      ['Ownership', 'KampStock software, source code, architecture, documentation, visual design, branding and original materials are protected intellectual property of the applicable copyright holder.'],
+      ['Permission required', 'Unless expressly authorized in a written agreement, copying, modifying, redistributing, sublicensing, reselling, deploying for third parties or commercially reusing the software or substantial parts of it is prohibited.'],
+      ['Limited service access', 'A business may use the platform only within the access and permissions granted by the service operator and the applicable terms. Platform access is not a transfer or sale of intellectual property.'],
+      ['Third-party materials', 'Third-party libraries, services, trademarks and assets remain subject to their respective owners and licenses. This policy does not claim ownership of third-party materials.'],
+      ['Permission and enquiries', 'For licensing or written permission requests, contact the project maintainer through the established project channel.'],
+    ],
+  },
   acceptable: {
     title: 'Acceptable use',
     intro: 'KampStock is intended to support legitimate commerce. The following rules protect businesses, their customers and the integrity of the service.',
@@ -51,8 +73,16 @@ const documents = {
 } as const;
 
 export default function LegalPage() {
-  const { type = 'privacy' } = useParams();
-  const document = documents[type as keyof typeof documents] ?? documents.privacy;
+  const location = useLocation();
+  const typeByPath: Record<string, keyof typeof documents> = {
+    '/privacy': 'privacy',
+    '/terms': 'terms',
+    '/acceptable-use': 'acceptable',
+    '/cookies': 'cookies',
+    '/intellectual-property': 'intellectualProperty',
+    '/billing': 'billing',
+  };
+  const document = documents[typeByPath[location.pathname] ?? 'privacy'];
   return <div className="min-h-screen bg-[#f5f2e9] text-[#172014]">
     <header className="border-b border-[#ddd7c8] bg-[#172014] text-white">
       <div className="mx-auto flex max-w-4xl items-center justify-between px-5 py-5 sm:px-8">
