@@ -10,6 +10,7 @@ import AboutPage from './pages/AboutPage';
 import HowItWorksPage from './pages/HowItWorksPage';
 import FAQPage from './pages/FAQPage';
 import SecurityPage from './pages/SecurityPage';
+import ContactPage from './pages/ContactPage';
 import LandingPage from './pages/LandingPage';
 import LegalPage from './pages/LegalPage';
 import DashboardPage from './pages/DashboardPage';
@@ -67,9 +68,13 @@ export default function App() {
             <Route path="/how-it-works" element={<HowItWorksPage />} />
             <Route path="/faq" element={<FAQPage />} />
             <Route path="/security" element={<SecurityPage />} />
+            <Route path="/contact" element={<ContactPage />} />
+            <Route path="/billing" element={<LegalPage />} />
             <Route path="/privacy" element={<LegalPage />} />
             <Route path="/terms" element={<LegalPage />} />
             <Route path="/acceptable-use" element={<LegalPage />} />
+            <Route path="/cookies" element={<LegalPage />} />
+            <Route path="/intellectual-property" element={<LegalPage />} />
             <Route path="/billing/callback" element={<BillingCallbackPage />} />
             <Route path="/locked" element={<LockedPage />} />
             <Route
