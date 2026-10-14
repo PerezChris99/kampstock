@@ -23,7 +23,8 @@
     "db:migrate": "npx prisma migrate dev",
     "db:push": "npx prisma db push",
     "vercel-build": "prisma generate --schema=prisma-pg/schema.prisma && nest build",
-    "lint:check": "eslint \"{src,apps,libs,test}/**/*.ts\""
+    "lint:check": "eslint \"{src,apps,libs,test}/**/*.ts\"",
+    "db:migrate:deploy": "npx prisma migrate deploy --schema=./prisma-pg/schema.prisma"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"
